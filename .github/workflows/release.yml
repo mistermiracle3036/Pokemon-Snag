@@ -1,0 +1,104 @@
+name: Build and attach mod zip
+
+# Runs when you publish a release in the GitHub UI. You create the
+# release and tag; this builds the installable zip and attaches it, so
+# there's nothing to zip or upload by hand.
+on:
+  release:
+    types: [published]
+  # Lets you re-run it against an existing release without re-publishing
+  # (Actions tab -> this workflow -> Run workflow -> type the tag).
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to attach the zip to (e.g. v0.11.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the tag and the mod id
+        id: info
+        run: |
+          TAG="${{ github.event.release.tag_name || inputs.tag }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # version = tag without a leading "v"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          # mod id comes from the manifest, so this file works unchanged
+          # in any of the mod repos
+          MOD_ID=$(python3 -c "import json;print(json.load(open('manifest.json'))['id'])")
+          echo "mod_id=$MOD_ID" >> "$GITHUB_OUTPUT"
+          echo "Tag: $TAG / mod id: $MOD_ID"
+
+      # The check that matters. Shipping two different builds under one
+      # version number is the bug that wastes the most time later, because
+      # "which code is actually live" stops being answerable. Three places
+      # must agree: the tag, manifest.json, and the top CHANGELOG heading.
+      - name: Check tag, manifest and CHANGELOG agree
+        run: |
+          set -e
+          VERSION="${{ steps.info.outputs.version }}"
+
+          MANIFEST=$(python3 -c "import json;print(json.load(open('manifest.json'))['version'])")
+          CHANGELOG=$(grep -m1 '^## ' CHANGELOG.md | sed 's/^## *//' | tr -d '[]' | awk '{print $1}')
+
+          echo "tag       : $VERSION"
+          echo "manifest  : $MANIFEST"
+          echo "changelog : $CHANGELOG"
+
+          FAIL=0
+          if [ "$VERSION" != "$MANIFEST" ]; then
+            echo "::error::manifest.json says $MANIFEST but the tag says $VERSION"
+            FAIL=1
+          fi
+          if [ "$VERSION" != "$CHANGELOG" ]; then
+            echo "::error::top CHANGELOG heading says $CHANGELOG but the tag says $VERSION"
+            FAIL=1
+          fi
+
+          # main.lua's mod.exports.version is what the in-game load log
+          # prints, so it's how you confirm which build is running. Only a
+          # warning: not every mod sets it.
+          if grep -q 'mod.exports.version' main.lua; then
+            LUA=$(grep -o 'mod\.exports\.version *= *"[^"]*"' main.lua | head -1 | sed 's/.*"\(.*\)"/\1/')
+            echo "main.lua  : $LUA"
+            if [ "$VERSION" != "$LUA" ]; then
+              echo "::warning::main.lua reports $LUA but the tag says $VERSION - the in-game load log will be wrong"
+            fi
+          fi
+
+          exit $FAIL
+
+      - name: Build the installable zip
+        run: |
+          MOD_ID="${{ steps.info.outputs.mod_id }}"
+          # The engine expects the mod folder to be named after the mod id,
+          # NOT after the repo, so the zip always contains <mod_id>/...
+          # Plain cp + rm rather than rsync/tar: fewer moving parts, and
+          # every step here is easy to eyeball in the log.
+          mkdir -p build/"$MOD_ID"
+          cp -r ./* build/"$MOD_ID"/ 2>/dev/null || true
+          cp .modkitignore build/"$MOD_ID"/ 2>/dev/null || true
+          # repo-only files that shouldn't ship inside the mod
+          rm -rf build/"$MOD_ID"/build
+          rm -rf build/"$MOD_ID"/tests
+          rm -rf build/"$MOD_ID"/.github
+          rm -f  build/"$MOD_ID"/.gitignore
+          cd build
+          zip -r "../$MOD_ID.zip" "$MOD_ID" -x '*.DS_Store'
+          cd ..
+          echo "--- zip contents ---"
+          unzip -l "$MOD_ID.zip"
+
+      - name: Attach it to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ steps.info.outputs.tag }}" \
+            "${{ steps.info.outputs.mod_id }}.zip" --clobber
