@@ -70,7 +70,10 @@ load log prints the running version so you can confirm what's live.
 - **kanto_ribbons** — supported. Reads the snag marker on stolen Pokémon.
 - **SHINY_POKEMON** — optional integration for shiny visuals; shininess
   itself is engine-native, so the guaranteed shiny snag works without it.
-- **pokeball_colors** — optional. Gives the Snag Ball its own colours.
+- **pokeball_colors** — optional. Recolours the Snag Ball to a Team
+  Rocket palette (near-black body, red accent) when the game is in
+  ADVANCED colour mode. The toss arc and flicker are set by Pokemon Snag
+  itself and don't need it.
 - **Dramatic Shape (voxel mode)** — played and tested in voxel mode.
 - **Red, Blue and Yellow all supported.** Where an NPC's internal name
   differs between versions, both are registered. Jessie and the Pewter
