@@ -187,3 +187,20 @@ Mart stock is static data, so conditional stock (quest-gated,
 option-controlled) is done by wrapping `Data:textEntry` and appending to
 a **copy** of the entry. The underlying table is never mutated, so turning
 the option off cleanly removes the item again.
+
+## Releasing
+
+Releases are automatic. Bump `version` in `manifest.json`, make the top
+`CHANGELOG.md` heading match, keep `mod.exports.version` in step, and
+commit to `main`. The workflow in `.github/workflows/release.yml` tags
+it, builds `snag_quest-<version>.zip`, and publishes the release with
+that version's changelog section, install steps and a SHA-256 checksum.
+
+Pushing to `main` without changing the version does nothing — the tag
+check short-circuits it. If the three version numbers disagree, the run
+fails loudly rather than shipping a build whose in-game load log lies
+about which code is running.
+
+Note the zip's inner folder is named from the mod **id** (`snag_quest`),
+not the repo (`Pokemon-Snag`). The launcher's updater prefers an asset
+named `<id>-<version>.zip`, so that naming is deliberate.

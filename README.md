@@ -1,9 +1,13 @@
-# Pokemon Snag — Steal Pokémon from Trainers 
+# Pokemon Snag — Steal Pokémon from Trainers
 
-A Team Rocket questline for **gen1recomp** (Red / Blue / Yellow). Jessie
-recruits you into a shady side business: a custom **Snag Ball** that can
-steal Pokémon straight from other trainers — and a network of black-market
-"fences" across Kanto who'll pay you in Snag Balls for the goods.
+**Throw a ball at another trainer's Pokémon and take it.** Pokemon Snag
+adds the Snag Ball to **gen1recomp** (Red / Blue / Yellow): a real,
+reusable ball that works in trainer battles, so any Pokémon an opponent
+sends out is a Pokémon you can walk away with.
+
+Jessie recruits you into the business in Viridian City, and a network of
+black-market "fences" across Kanto will pay you in Snag Balls for the
+goods — so the better your thefts, the more you can steal.
 
 > **Development Preview:** Pokemon Snag is in active development. Bug reports
 > and feature ideas are welcome in
@@ -67,13 +71,16 @@ load log prints the running version so you can confirm what's live.
 
 - **quest_system** — required. Pokemon Snag registers its questline in the
   journal (objectives, tracking, markers).
-- **kanto_ribbons** — supported. Reads the snag marker on stolen Pokémon.
-- **SHINY_POKEMON** — optional integration for shiny visuals; shininess
-  itself is engine-native, so the guaranteed shiny snag works without it.
-- **pokeball_colors** — optional. Recolours the Snag Ball to a Team
-  Rocket palette (near-black body, red accent) when the game is in
-  ADVANCED colour mode. The toss arc and flicker are set by Pokemon Snag
-  itself and don't need it.
+- **[kanto_ribbons](https://github.com/mistermiracle3036/kanto_ribbons)** —
+  supported. Reads the snag marker on stolen Pokémon and awards a ribbon.
+- **[Shiny Pokémon](https://github.com/masterwebx/gen1recomp-shiny-pokemon)** —
+  optional integration for shiny visuals; shininess itself is
+  engine-native, so the guaranteed shiny snag works without it.
+- **[Pokéball Colors](https://github.com/mistermiracle3036/Pokeball-Colors)** —
+  optional. Gives the Snag Ball its own colours.
+- **[NPC Inspector](https://github.com/mistermiracle3036/npc_inspector)** —
+  not required to play; the dev tool used to target this mod's NPCs
+  correctly across Red, Blue and Yellow.
 - **Dramatic Shape (voxel mode)** — played and tested in voxel mode.
 - **Red, Blue and Yellow all supported.** Where an NPC's internal name
   differs between versions, both are registered. Jessie and the Pewter

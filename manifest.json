@@ -1,7 +1,7 @@
 {
   "id": "snag_quest",
   "name": "Pokemon Snag",
-  "version": "0.11.5",
+  "version": "0.11.7",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -20,6 +20,6 @@
     "pokeball_colors"
   ],
   "conflicts": [],
-  "description": "Introduction to Thievery: Jessie lifts her grandfather's cash to have a SNAG BALL made, and wants the odd MEOWTH a picnicker is holding. Steal Pokemon from trainers, and fence them for more balls. Requires Quest System.",
+  "description": "Steal Pokemon from other trainers. The SNAG BALL works in trainer battles, so any Pokemon an opponent sends out is one you can take. Earn them from Jessie's questline or fence stolen Pokemon to black-market buyers across Kanto. Requires Quest System.",
   "github": "mistermiracle3036/Pokemon-Snag"
 }

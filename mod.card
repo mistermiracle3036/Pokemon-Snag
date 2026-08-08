@@ -1,5 +1,5 @@
 return {
-  summary = "Help Jessie get back a Pokemon a picnicker's holding -- her grandfather's, technically -- and keep the SNAG BALL she had made.",
+  summary = "Steal Pokemon from other trainers with the SNAG BALL, and fence what you steal for more balls.",
   author  = "Mister Miracle",
 
   tags = { "story", "quest", "mechanic" },
@@ -22,7 +22,6 @@ return {
     known = {
       "with \"Continue battle after snag\" on (default), a snag also awards EXP and plays the faint sound/slide, since it routes through the real faint pipeline -- a normal catch never does either",
       "with that option off, a snag ends the trainer battle immediately even if they had other Pokemon left",
-      "snag_quest owns tossAnim/flicker for SNAG BALL; pokeball_colors recolours it (ADVANCED colour mode only) but should not patch those two fields, or the last-folded op wins silently",
     },
   },
 

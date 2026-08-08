@@ -4,6 +4,35 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.11.7
+
+- Releases are now fully automatic: bump `version` in `manifest.json`,
+  commit to main, and CI tags it, builds the zip and publishes the
+  release. No Releases form, no hand-attached asset. Idempotent -- an
+  ordinary docs commit does nothing, because the tag check
+  short-circuits it.
+- Release notes are generated from that version's CHANGELOG section and
+  now include install steps and a **SHA-256 checksum** of the archive.
+- Cross-linked the actual repos for kanto_ribbons, Shiny Pokemon,
+  Pokeball Colors and NPC Inspector in the compatibility list, instead
+  of naming them as plain text.
+- Documented the release process in DEVELOPMENT.md.
+- Approach adapted from ArmstrongThomas/gen1-modern-ui, which releases
+  on manifest version change rather than on a manually created tag.
+
+## 0.11.6
+
+- Presentation only, no behaviour change. Led with the actual hook --
+  stealing Pokemon from other trainers -- rather than describing the
+  questline first:
+  - README title is now "Pokemon Snag - Steal Pokemon from Trainers",
+    and the opening line says what the mod does in one sentence.
+  - manifest description and mod.card summary rewritten to match. The
+    manifest one is what shows in the in-game mod manager, so it was
+    the most valuable place to fix.
+- The in-game mod NAME stays "Pokemon Snag" -- a tagline belongs on a
+  repo page, not in a menu list.
+
 ## 0.11.5
 
 - Future-proofing for coexistence with pokeball_colors, so the two mods
@@ -24,6 +53,10 @@ matches the version in `manifest.json`.
 - Registered on game.ready rather than at load, because mod.find can't
   see a mod that hasn't loaded yet and load order between two
   independent mods isn't guaranteed either way.
+- Trimmed the pokeball_colors note in the README and mod.card down to
+  one line. Implementation detail (which colour fields, which colour
+  mode, who owns tossAnim) belongs in DEVELOPMENT.md, not in docs a
+  player reads.
 
 ## 0.11.4
 
