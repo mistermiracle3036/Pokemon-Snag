@@ -24,6 +24,10 @@ matches the version in `manifest.json`.
 - Registered on game.ready rather than at load, because mod.find can't
   see a mod that hasn't loaded yet and load order between two
   independent mods isn't guaranteed either way.
+- Trimmed the pokeball_colors note in the README and mod.card down to
+  one line. Implementation detail (which colour fields, which colour
+  mode, who owns tossAnim) belongs in DEVELOPMENT.md, not in docs a
+  player reads.
 
 ## 0.11.4
 
