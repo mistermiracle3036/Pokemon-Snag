@@ -1,11 +1,11 @@
-# Snag Quest
+# Pokemon Snag
 
 A Team Rocket questline for **gen1recomp** (Red / Blue / Yellow). Jessie
 recruits you into a shady side business: a custom **Snag Ball** that can
 steal Pokémon straight from other trainers — and a network of black-market
 "fences" across Kanto who'll pay you in Snag Balls for the goods.
 
-> **Development Preview:** Snag Quest is in active development. Bug reports
+> **Development Preview:** Pokemon Snag is in active development. Bug reports
 > and feature ideas are welcome in
 > [GitHub Issues](../../issues) — please include the version number from
 > your load log and which other mods were enabled.
@@ -21,7 +21,9 @@ collapsed so you only reveal what you want.
   a Picnicker with a very special Meowth. The snag is guaranteed — and so
   is a surprise about that Meowth.
 - **The Snag Ball.** A custom ball that works in *trainer* battles. Throw
-  it at an opponent's Pokémon and it's yours. Snagged Pokémon are marked
+  it at an opponent's Pokémon and it's yours. It throws with the
+  Ultra/Master-tier arc and flicker, because a ball that costs ₽10,000 or
+  a stolen Pokémon shouldn't look like a starter item. Snagged Pokémon are marked
   permanently and keep a record of who you took them from and at what
   level.
 - **Keep fighting.** By default the battle continues after a successful
@@ -31,42 +33,52 @@ collapsed so you only reveal what you want.
   paying **1–5 Snag Balls** depending on the mon's level, rarity and who
   you stole it from. VIP targets — a certain rival, gym leaders, the
   Elite Four — fetch top price.
-- **Mart supply line.** Optionally, Snag Balls appear for sale in marts
-  (default ON, and they are *not* cheap).
+- **Choose your supply.** One setting decides where new Snag Balls come
+  from: the marts (they are *not* cheap), the fences, or both.
 
 ## Options
 
-Open **MODS → SNAG QUEST → OPTIONS** (F10 mod manager):
+Open **MODS → POKEMON SNAG → OPTIONS** (F10 mod manager):
 
 | Option | Default | Effect |
 | ------ | ------- | ------ |
 | CONTINUE BATTLE AFTER SNAG | ON | Trainer battles continue after a successful snag instead of ending |
-| SELL SNAG BALLS IN MARTS | ON | Snag Balls purchasable in marts for ₽10,000 |
-| DEV: REPLAY MEOWTH QUEST | OFF | Dev/testing toggle — resets the intro quest |
+| GET NEW SNAG BALLS | BOTH | Where Snag Balls come from after the quest: `BOTH`, `MART` (₽10,000 each) or `FENCES` |
+| [DEV] REPLAY INTRO QUEST | OFF | Dev/testing toggle — lets you redo *Introduction to Thievery* |
 
 ## Installation
 
-<!-- TODO/CONFIRM: exact wording for how users install mods in gen1recomp
-     (folder path / mod manager import). Fill in the same instructions you
-     follow yourself. -->
-
-1. Download `snag_quest.zip` from the
+1. Download `snag_quest-<version>.zip` from the
    [latest release](../../releases/latest).
-2. Install it like any other gen1recomp mod.
-3. Requires gen1recomp **0.1.38 or newer** and the **Quest System** mod
+2. In the launcher: **MODS → Import mod .zip**. On iOS, delete any older
+   downloaded copy of the zip from Files first.
+3. Fully quit and relaunch.
+4. Requires gen1recomp **0.1.38 or newer** and the **Quest System** mod
    (hard dependency — quest journal entries live there).
+
+**Updating:** once installed, the launcher checks this repo for new
+releases. The mod's entry shows "vX.Y.Z available" → tap → **Update** →
+fully quit and relaunch. No manual re-download.
+
+After installing an update, **fully quit and relaunch** the game. The
+load log prints the running version so you can confirm what's live.
 
 ## Compatibility
 
-- **quest_system** — required. Snag Quest registers its questline in the
+- **quest_system** — required. Pokemon Snag registers its questline in the
   journal (objectives, tracking, markers).
 - **kanto_ribbons** — supported. Reads the snag marker on stolen Pokémon.
 - **SHINY_POKEMON** — optional integration for shiny visuals; shininess
   itself is engine-native, so the guaranteed shiny snag works without it.
+- **pokeball_colors** — optional. Recolours the Snag Ball to a Team
+  Rocket palette (near-black body, red accent) when the game is in
+  ADVANCED colour mode. The toss arc and flicker are set by Pokemon Snag
+  itself and don't need it.
 - **Dramatic Shape (voxel mode)** — played and tested in voxel mode.
-- Works in Red, Blue and Yellow. Merchant NPCs are registered under both
-  Red/Blue and Yellow text constants where known.
-  <!-- TODO/CONFIRM: Pewter merchant Yellow constant still unverified -->
+- **Red, Blue and Yellow all supported.** Where an NPC's internal name
+  differs between versions, both are registered. Jessie and the Pewter
+  fence were verified identical across Red and Yellow on real saves; the
+  Celadon fence genuinely differs and both names ship.
 
 ## How snag payouts work
 
@@ -74,7 +86,17 @@ Base payout is 1 Snag Ball, plus bonuses for high level, hard-to-catch
 species and VIP victims, capped at 5. Exact thresholds are in the
 [FAQ](FAQ.md) behind a spoiler fold.
 
+## For modders
+
+If you're building on this, [DEVELOPMENT.md](DEVELOPMENT.md) documents the
+engine internals this mod touches and the reasoning behind them — the
+trainer-battle ball gate, the faint-pipeline handoff, and the
+`mon.snagged` / `mon.snagFrom` / `mon.snagLevel` fields other mods can
+read.
+
 ## Credits
 
 Built for [gen1recomp](https://github.com/bryanthaboi/gen1recomp).
+By **Mister Miracle**
+([@mistermiracle3036](https://github.com/mistermiracle3036)).
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

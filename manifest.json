@@ -1,7 +1,7 @@
 {
   "id": "snag_quest",
-  "name": "Team Rocket: Snag Quest",
-  "version": "0.7.0",
+  "name": "Pokemon Snag",
+  "version": "0.11.5",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -16,8 +16,10 @@
     "quest_system"
   ],
   "optional_dependencies": [
-    "SHINY_POKEMON"
+    "SHINY_POKEMON",
+    "pokeball_colors"
   ],
   "conflicts": [],
-  "description": "Grandpas Meowth: help the girl in Viridian City get back a Pokemon a Rocket grunt swiped from her grandfather (the games own catching-tutorial Old Man), and keep his SNAG BALLS for yourself. Requires Quest System."
+  "description": "Introduction to Thievery: Jessie lifts her grandfather's cash to have a SNAG BALL made, and wants the odd MEOWTH a picnicker is holding. Steal Pokemon from trainers, and fence them for more balls. Requires Quest System.",
+  "github": "mistermiracle3036/Pokemon-Snag"
 }

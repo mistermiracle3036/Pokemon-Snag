@@ -1,4 +1,4 @@
-# Snag Quest — developer notes
+# Pokemon Snag — developer notes
 
 Engine internals this mod touches, and why. Written for anyone building
 on gen1recomp — a lot of what's here isn't documented anywhere else, and
@@ -32,6 +32,39 @@ They survive save/load for free: `Party.add` / `Boxes.deposit` are plain
 table dump with no field whitelist.
 
 `kanto_ribbons` reads `mon.snagged`. **Don't rename it.**
+
+## Cross-mod contract
+
+Declared in code (`mod.exports`) rather than in prose, so another mod can
+check it at runtime instead of relying on a note that goes stale:
+
+```lua
+local sq = mod.find("snag_quest")
+sq.exports.owns        -- { balls = { SNAG_BALL = {...} }, monFields = {...} }
+sq.exports.ballColors  -- { SNAG_BALL = { body = {...}, accent = {...} } }
+```
+
+**What this mod owns:** the whole `SNAG_BALL` ball record — registration,
+`attempt`, `tossAnim`, `flicker`. Patching those from elsewhere fights
+this mod silently, because the last folded op wins with no error. Check
+`exports.owns` and back off instead.
+
+**What's open:** the colour. `pokeball_colors` keys its palette off ball
+id and exposes `exports.colors` for other mods to register into, so this
+mod registers its own entry there on `game.ready` (only if the key is
+absent — a colour that mod deliberately ships wins). That inverts the
+dependency: renaming, recolouring or adding a second ball here needs no
+change in `pokeball_colors`, ever.
+
+**Why `game.ready` and not load time:** `mod.find` can't see a mod that
+hasn't loaded yet, and load order between two independent mods isn't
+guaranteed either way. By `game.ready` both exist, and it still lands
+long before anything draws a ball.
+
+**The general rule this follows:** a mod that *owns* a thing registers
+it; a mod that *decorates* things reads a registry keyed by id and never
+writes to records it doesn't own. Follow that and two mods never need to
+tell each other anything.
 
 ## Engine seams this mod patches
 
@@ -151,6 +184,6 @@ a constant that doesn't exist simply never dispatches.
 ## Mart integration
 
 Mart stock is static data, so conditional stock (quest-gated,
-option-toggled) is done by wrapping `Data:textEntry` and appending to a
-**copy** of the entry. The underlying table is never mutated, so turning
+option-controlled) is done by wrapping `Data:textEntry` and appending to
+a **copy** of the entry. The underlying table is never mutated, so turning
 the option off cleanly removes the item again.
