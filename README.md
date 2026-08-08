@@ -1,4 +1,4 @@
-# Pokemon Snag
+# Pokemon Snag — Steal Pokémon from Trainers 
 
 A Team Rocket questline for **gen1recomp** (Red / Blue / Yellow). Jessie
 recruits you into a shady side business: a custom **Snag Ball** that can
