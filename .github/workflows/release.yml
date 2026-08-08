@@ -1,0 +1,157 @@
+name: Build and release mod zip
+
+# Release by editing manifest.json. Bump "version", commit to main, and
+# this tags it, builds the zip and publishes the release. There is no
+# Releases form to find and no zip to attach by hand.
+#
+# Safe to push to main repeatedly: if the version already has a tag, or a
+# release for that tag already exists, this does nothing.
+on:
+  push:
+    branches: [main]
+  # Manual re-run, e.g. if a release exists but its asset is missing.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so the tag check is accurate
+
+      - name: Read the manifest
+        id: info
+        run: |
+          VERSION=$(python3 -c "import json;print(json.load(open('manifest.json'))['version'])")
+          MOD_ID=$(python3 -c "import json;print(json.load(open('manifest.json'))['id'])")
+          echo "version=$VERSION"  >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION"     >> "$GITHUB_OUTPUT"
+          echo "mod_id=$MOD_ID"    >> "$GITHUB_OUTPUT"
+          echo "Manifest says $MOD_ID $VERSION"
+
+      # Nothing below runs for an ordinary docs commit -- only when the
+      # manifest version is genuinely new.
+      - name: Has this version already been released?
+        id: check
+        run: |
+          TAG="${{ steps.info.outputs.tag }}"
+          git fetch --tags --force
+          if git show-ref --tags --verify --quiet "refs/tags/$TAG"; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "$TAG already exists - nothing to do."
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG is new - will build and release."
+          fi
+
+      # Shipping two different builds under one version number is the bug
+      # that wastes the most time later, because "which code is actually
+      # live" stops being answerable. The manifest, the CHANGELOG heading
+      # and main.lua must agree before anything is published.
+      - name: Check manifest, CHANGELOG and main.lua agree
+        if: steps.check.outputs.new == 'true'
+        run: |
+          set -e
+          VERSION="${{ steps.info.outputs.version }}"
+          CHANGELOG=$(grep -m1 '^## ' CHANGELOG.md | sed 's/^## *//' | tr -d '[]' | awk '{print $1}')
+          echo "manifest  : $VERSION"
+          echo "changelog : $CHANGELOG"
+
+          FAIL=0
+          if [ "$VERSION" != "$CHANGELOG" ]; then
+            echo "::error::top CHANGELOG heading says $CHANGELOG but manifest.json says $VERSION"
+            FAIL=1
+          fi
+
+          # main.lua's mod.exports.version is what the in-game load log
+          # prints, so it's how you confirm which build is running.
+          if grep -q 'mod.exports.version' main.lua; then
+            LUA=$(grep -o 'mod\.exports\.version *= *"[^"]*"' main.lua | head -1 | sed 's/.*"\(.*\)"/\1/')
+            echo "main.lua  : $LUA"
+            if [ "$VERSION" != "$LUA" ]; then
+              echo "::error::main.lua reports $LUA but manifest.json says $VERSION - the in-game load log would be wrong"
+              FAIL=1
+            fi
+          fi
+
+          # The launcher only offers in-app updates for mods whose manifest
+          # carries a "github" field. Forgetting it breaks nothing visibly --
+          # updates just never appear -- so warn loudly.
+          if ! python3 -c "import json,sys; sys.exit(0 if json.load(open('manifest.json')).get('github') else 1)"; then
+            echo "::warning::manifest.json has no \"github\" field - the launcher will never offer in-app updates"
+          fi
+
+          exit $FAIL
+
+      - name: Build the installable zip
+        if: steps.check.outputs.new == 'true'
+        id: build
+        run: |
+          MOD_ID="${{ steps.info.outputs.mod_id }}"
+          VERSION="${{ steps.info.outputs.version }}"
+          # The engine expects the mod folder to be named after the mod id,
+          # NOT after the repo -- those differ (repo Pokemon-Snag, id
+          # snag_quest) and getting it wrong makes the launcher's updater
+          # fall back to picking an arbitrary zip.
+          mkdir -p build/"$MOD_ID"
+          cp -r ./* build/"$MOD_ID"/ 2>/dev/null || true
+          cp .modkitignore build/"$MOD_ID"/ 2>/dev/null || true
+          rm -rf build/"$MOD_ID"/build build/"$MOD_ID"/tests build/"$MOD_ID"/.github
+          rm -f  build/"$MOD_ID"/.gitignore
+          cd build
+          zip -r "../$MOD_ID-$VERSION.zip" "$MOD_ID" -x '*.DS_Store'
+          cd ..
+          ASSET="$MOD_ID-$VERSION.zip"
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$ASSET" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+          echo "--- zip contents ---"
+          unzip -l "$ASSET"
+
+      - name: Tag the version
+        if: steps.check.outputs.new == 'true'
+        run: |
+          TAG="${{ steps.info.outputs.tag }}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "${{ steps.info.outputs.mod_id }} ${{ steps.info.outputs.version }}"
+          git push origin "$TAG"
+
+      - name: Publish the release
+        if: steps.check.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.info.outputs.tag }}"
+          ASSET="${{ steps.build.outputs.asset }}"
+          VERSION="${{ steps.info.outputs.version }}"
+
+          # Release notes = this version's CHANGELOG section, plus install
+          # steps and the checksum so anyone can verify the download.
+          awk -v v="## $VERSION" '
+            $0 == v {found=1; next}
+            found && /^## / {exit}
+            found {print}
+          ' CHANGELOG.md > notes.md
+
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "**Install:** download \`$ASSET\`, then in the launcher choose"
+            echo "**MODS → Import mod .zip**. Fully quit and relaunch afterwards."
+            echo ""
+            echo "\`SHA-256: ${{ steps.build.outputs.sha256 }}\`"
+          } >> notes.md
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists - uploading asset only."
+            gh release upload "$TAG" "$ASSET" --clobber
+          else
+            gh release create "$TAG" "$ASSET" \
+              --title "$TAG" \
+              --notes-file notes.md
+          fi
