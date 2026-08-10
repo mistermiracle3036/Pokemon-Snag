@@ -4,6 +4,80 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.0
+
+- TEST VERSION, not for release. Reworks who buys stolen Pokemon: the
+  fences go from three to four, and the Nugget Bridge recruiter becomes
+  one of them.
+
+### Fences
+
+- **Cut the Cerulean grunt entirely.** The mod-spawned Rocket in
+  CERULEAN_CITY, his dialogue and his CASCADEBADGE-gated merchant
+  registration are gone. His position (cell 32,17) had been verified in
+  game and he worked -- this is a design cut, not a bug fix. The Nugget
+  Bridge recruiter replaces him, and one fewer spawned NPC is one fewer
+  thing that can fail silently. The Route 24 stand-in still spawns and
+  still uses the shared sprite-probing helper.
+- **The Nugget Bridge recruiter is now a fence.** No badge gate --
+  finishing the first job is the credential, and it already lands later
+  than CASCADEBADGE in practice. Standard payout, no VIP bonus of his
+  own. He buys in BOTH of his forms (the vanilla NPC pre-BILL and this
+  mod's stand-in after BILL hides him), because they are the same
+  character and which one you meet is an accident of progress.
+- His post-quest hint pointing at the CELADON gambler is gone rather
+  than kept alongside: with him buying, sending the player to another
+  city to sell was redundant. The MART hint still stands in when the
+  GET NEW SNAG BALLS option has fences switched off, so that branch
+  never points at a closed door.
+- **New fourth fence: the VERMILION CITY sailor** guarding the S.S.
+  ANNE gangway (TEXT_VERMILIONCITY_SAILOR1), gated on the
+  THUNDERBADGE. Verified against engine source before writing: his
+  `onStep` ticket check at cell (18,30) is a separate hook from his
+  `talk` entry and is untouched, so boarding the ship still works
+  pre-departure; and the engine's own comment that "the sailor himself
+  never hides" still reads true, so he persists as a permanent fence
+  after the ship sails.
+  - **TODO/CONFIRM (Yellow):** the text constant is the Red/Blue name
+    and has NOT been verified on a Yellow save. Yellow renames objects
+    per map, so this needs reading off a running Yellow game with the
+    NPC Inspector before it ships.
+
+### Fixed
+
+- **`base_talk` only ever handled one of the three shapes a vanilla
+  talk can take.** A talk entry can be a Lua handler, a row list, or
+  absent entirely (confirmed from OverworldState:showMapText). It
+  handled the handler case; a row list was called as if it were a
+  function, and an absent entry returned with no text at all. Both
+  failures look identical in game -- the NPC turns to face you and says
+  nothing. This mattered immediately, because the Vermilion sailor's
+  base talk is a row list, and it had been silently eating the PEWTER
+  man's vanilla line for every player who had not yet earned the
+  BOULDERBADGE. All three shapes are handled now.
+- The quest journal's in-progress objective still read "Bring a MEOWTH
+  back to the girl in Viridian City" -- left over from the pre-0.13.0
+  opening and wrong since. It now names the Nugget Bridge recruiter.
+
+### Internal
+
+- The fence transaction is factored into shared script rows so the
+  recruiter can use it without going through `registerMerchant`. He
+  can't: he already owns a talk entry for his own text constant, and
+  two contributions for one map + constant do not merge -- MapScripts
+  picks a single winner per constant and drops the loser silently. The
+  rows are shared instead of the registration, with per-copy label
+  suffixes so two copies can coexist in one script.
+- All six registered talk scripts were run through the engine's own
+  `ScriptRunner.validate`: every command resolves, every jump target
+  has a matching label, no duplicate labels.
+
+### Known stale
+
+- README, FAQ and `mod.card` still describe the pre-0.13 Jessie opening
+  and say there are two fences. Deliberately left for a docs pass once
+  this design is confirmed to stick.
+
 ## 0.13.1
 
 - TEST VERSION. Fixes the recruiter being missing entirely on an

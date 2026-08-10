@@ -663,8 +663,53 @@ return function(mod)
     ctx.lastCheck = questDoneForReal(ctx.game) and fencesEnabled()
   end)
 
+  -- The transaction itself, as script rows: offer, pick, pay or decline.
+  --
+  -- Factored out of registerMerchant in 0.14.0 so the Nugget Bridge
+  -- recruiter can be a fence too. He CANNOT go through registerMerchant:
+  -- he already owns a talk entry for his own text constant (the whole
+  -- questline), and two contributions for one map+constant do not merge
+  -- -- buildView takes a single winner per TEXT constant
+  -- (src/script/MapScripts.lua) and drops the loser silently. So the
+  -- rows are shared instead of the registration, and his questline
+  -- script splices them into its own post-quest branch.
+  --
+  -- `tag` suffixes the labels so two copies can coexist in one script:
+  -- ScriptRunner.validate rejects a duplicate label outright, and
+  -- scanLabels would otherwise resolve every jump to the first copy.
+  --
+  -- Concatenate row chunks into one flat script. Used to splice fenceRows
+  -- into a script that also has other branches (the recruiter's).
+  local function concatRows(...)
+    local out = {}
+    for _, chunk in ipairs({ ... }) do
+      for _, row in ipairs(chunk) do out[#out + 1] = row end
+    end
+    return out
+  end
+
+  -- spec = { intro, refuse, sold }
+  local function fenceRows(spec, tag)
+    local soldLabel = "snagsold_" .. tag
+    local doneLabel = "snagdone_" .. tag
+    return {
+      { "show_text", spec.intro },
+      { "snag_quest:sell_snagged" },
+      { "jump_if_true", soldLabel },
+      -- covers cancel / refusal / non-snagged pick / would-empty-the-
+      -- party alike with one catch-all line
+      { "show_text", spec.refuse },
+      { "jump", doneLabel },
+
+      { "label", soldLabel },
+      { "show_text", spec.sold },
+
+      { "label", doneLabel },
+    }
+  end
+
   -- spec = { map, texts = { ... }, badge = "BOULDERBADGE" or nil,
-  --          intro, refuse, sold }
+  --          intro, refuse, sold, fallback }
   local function registerMerchant(spec)
     local talk = {}
     for _, textConst in ipairs(spec.texts) do
@@ -676,17 +721,10 @@ return function(mod)
         rows[#rows + 1] = { "snag_quest:check_badge", spec.badge }
         rows[#rows + 1] = { "jump_if_false", "base" }
       end
+      for _, row in ipairs(fenceRows(spec, "merchant")) do
+        rows[#rows + 1] = row
+      end
       local tail = {
-        { "show_text", spec.intro },
-        { "snag_quest:sell_snagged" },
-        { "jump_if_true", "sold" },
-        -- covers cancel / refusal / non-snagged pick / would-empty-the-
-        -- party alike with one catch-all line
-        { "show_text", spec.refuse },
-        { "jump", "end" },
-
-        { "label", "sold" },
-        { "show_text", spec.sold },
         { "jump", "end" },
 
         { "label", "base" },
@@ -719,11 +757,19 @@ return function(mod)
   -- Yellow]". Registering only MIDDLE_AGED_MAN2 (Yellow's name) meant
   -- this never fired at all on a Red/Blue save. Both are covered now.
   -- No badge gate: the Game Corner is already deep enough in.
+  --
+  -- VOICE (0.14.0): the fences are deliberately NOT one organization.
+  -- The sailor and the Nugget Bridge recruiter are TEAM ROCKET; the
+  -- gambler and the Pewter man are independents who happen to buy stolen
+  -- goods. The opener below says so out loud -- he clocks who you work
+  -- for and makes a point of not working for them -- so the black market
+  -- reads wider than one gang and Rocket membership isn't the only
+  -- reason anyone deals with you.
   registerMerchant({
     map = "GAME_CORNER",
     texts = { "TEXT_GAMECORNER_MIDDLE_AGED_MAN2", "TEXT_GAMECORNER_CLERK2" },
     badge = nil,
-    intro = "Got something for me?",
+    intro = "Heh. I know that\nlook.\fROCKET's new\nerrand runner.\fRelax -- I don't\nwork for them.\vI just like what\nfalls off their\ntrucks.\fGot something\nfor me?",
     refuse = "No deal? Fine, fine.\fBut only POKeMON with...\na certain history.\vYou know the kind.",
     sold = "Heh heh... pleasure\ndoing business.\fBring me more like that\nand we'll talk again.",
   })
@@ -743,46 +789,83 @@ return function(mod)
   -- object renames are per-map (the Game Corner coin-giver is renamed;
   -- this NPC and TEXT_VIRIDIANCITY_GIRL are not), so a rename must be
   -- checked per NPC rather than assumed either way.
+  --
+  -- VOICE (0.14.0): rewritten to make him the mod's blunt collector
+  -- rather than a criminal -- indifference, not villainy. He is the
+  -- best-matched NPC in the mod precisely because his VANILLA line is
+  -- about traded Pokemon disobeying without badges, and this mod's whole
+  -- premise is the direct answer to it; the intro now states that
+  -- contradiction and says he wants specimens, not accomplices. Like the
+  -- gambler he is an independent, not TEAM ROCKET -- hence the opening
+  -- disclaimer about who you run with.
   registerMerchant({
     map = "PEWTER_NIDORAN_HOUSE",
     texts = { "TEXT_PEWTERNIDORANHOUSE_MIDDLE_AGED_MAN" },
     badge = "BOULDERBADGE",
-    intro = "A POKeMON traded from\nanother trainer won't\nobey without BADGES.\fSnagged POKeMON, though?\vThey'll listen to\nanybody. Funny, that.\fI take an interest in\nthe... irregularly\nacquired. Show me?",
+    intro = "I don't care who\nyou run with.\vI care about the\nPOKeMON.\fA traded one won't\nobey without\nBADGES.\fA stolen one obeys\nanybody.\vThat shouldn't be\ntrue.\fI'd like more of\nthem to study.",
     refuse = "No? Suit yourself.\fThe offer stands, if\nyou come by something\nwith an interesting\npast.",
     sold = "Fascinating. No BADGES,\nno hesitation.\fBring me another and\nI'll pay the same.",
   })
 
   ----------------------------------------------------------------------
-  -- CERULEAN -- a Team Rocket grunt loitering near the robbed house.
+  -- VERMILION -- the sailor guarding the S.S. ANNE gangway (0.14.0).
   --
-  -- Unlike the other two, this NPC does not exist in the base game: it's
-  -- spawned by this mod via mod.world:spawnNpc. That means the text key
-  -- is OURS, invented here -- so there is no ROM constant to look up and
-  -- no Red/Blue-vs-Yellow rename risk for this one at all.
+  -- Both of the risky details here were checked against the engine
+  -- source before this was written, not assumed:
   --
-  -- Runtime spawn rather than a maps:patch on purpose:
-  --   * a rejected map record silently disables the ENTIRE mod while the
-  --     manager still shows it Ready, so patching vanilla map data is the
-  --     riskiest thing available here;
-  --   * runtime objects are trivially repositionable, which matters while
-  --     the exact spot is still being dialled in by walking around.
-  -- The cost is that runtime objects are never serialized -- hence the
-  -- respawn-on-entry handling below.
+  -- 1. data/scripts/story.lua's M.VERMILION_CITY gives this sailor BOTH
+  --    a `talk` entry AND an `onStep` trigger, and the onStep is the one
+  --    that matters for boarding: standing on cell (18,30) facing down
+  --    runs the S.S. TICKET check and walks the player back up without
+  --    one. That hook is a separate key on the same contribution and is
+  --    NOT touched by registering a talk -- MapScripts merges talk per
+  --    TEXT constant and chains onStep independently
+  --    (src/script/MapScripts.lua buildView), so taking over the talk
+  --    path leaves boarding the ship exactly as it was.
+  -- 2. The engine's own comment on that block reads "The sailor himself
+  --    never hides" -- confirmed still true in the source in this repo.
+  --    He persists after the ship departs, which is the whole reason he
+  --    can be a permanent fence rather than a window that closes.
+  --
+  -- His base talk is a ROW LIST, not a Lua handler -- which is what
+  -- forced the base_talk fix further down this file. Before the
+  -- pre-badge path would have thrown on calling a table.
+  --
+  -- THUNDERBADGE-gated (badge id confirmed from data/scripts/gyms.lua
+  -- and victories.lua). That gate also orders the fiction for free: the
+  -- badge is behind LT.SURGE, LT.SURGE is behind the S.S. ANNE, so by
+  -- the time he starts buying, the ship has sailed and his vanilla
+  -- ticket dialogue has nothing left to do anyway.
+  --
+  -- YELLOW: *** TODO/CONFIRM *** -- TEXT_VERMILIONCITY_SAILOR1 is the
+  -- Red/Blue constant and has NOT been verified on a Yellow save. The
+  -- Yellow object renames are per-map (the Game Corner coin-giver is
+  -- renamed; the Pewter man is not), so this must be read off a running
+  -- Yellow game with the NPC Inspector rather than assumed. If it turns
+  -- out to differ, add the Yellow constant to `texts` below -- extra
+  -- entries are harmless, since a constant that doesn't exist never
+  -- dispatches.
+  --
+  -- VOICE: Rocket, like the recruiter -- a dock hand who moves cargo and
+  -- has stopped counting it. Deliberately a different register from the
+  -- two independents above.
   ----------------------------------------------------------------------
-  local CERULEAN_ROCKET = {
-    map   = "CERULEAN_CITY",
-    name  = "SNAG_CERULEAN_ROCKET",
-    text  = "TEXT_SNAG_CERULEAN_ROCKET",
-    -- FIRST-GUESS POSITION, walk-grid cells (not pixels, not blocks).
-    -- Aiming for the street just south-east of the robbed house. This is
-    -- a guess: the map grid isn't readable from the engine repo (map data
-    -- is ROM-extracted), so expect to nudge it. Lower y = further north,
-    -- lower x = further west.
-    x = 32,
-    y = 17,
-    facing = "DOWN",
-  }
+  registerMerchant({
+    map = "VERMILION_CITY",
+    texts = { "TEXT_VERMILIONCITY_SAILOR1" },
+    badge = "THUNDERBADGE",
+    intro = "So you're the new\none.\fWord came down the\ndocks before you\ndid.\fForty crates on\nthe manifest.\vI counted\nthirty-eight.\fThat's how this\nworks. You stop\ncounting.\fGot something\naboard nobody\nlogged?",
+    refuse = "Then don't waste\nmy shift, rookie.\fCome back when\nyou're carrying\nsomething without\npaperwork.",
+    sold = "No name, no\ntrainer, no\nquestions.\fManifest says it\nwas never here.\v...Tell your boss\nthe docks are\nstill quiet.",
+  })
 
+  ----------------------------------------------------------------------
+  -- Sprite probing for the mod's own spawned NPCs.
+  --
+  -- (0.14.0 removed the Cerulean fence that this helper was first written
+  -- for -- see the CHANGELOG. The Route 24 recruiter stand-in below still
+  -- spawns, and still needs it.)
+  --
   -- An unknown sprite id makes NPC.new assert, and that assert is
   -- SWALLOWED inside an event handler -- the NPC simply never appears,
   -- with no error anywhere. So probe for one that actually exists
@@ -802,72 +885,6 @@ return function(mod)
     for id in pairs(sprites) do return id end
     return nil
   end
-
-  local function ceruleanRocketWanted(game)
-    return questDoneForReal(game)
-      and fencesEnabled()
-      and (game.save.inventory and (game.save.inventory.CASCADEBADGE or 0) > 0)
-  end
-
-  local function ensureCeruleanRocket(game)
-    if not (game and mod.world and mod.world.spawnNpc) then return end
-    if not ceruleanRocketWanted(game) then return end
-
-    -- don't stack duplicates if this runs twice for one entry
-    if mod.world.npc then
-      local existing = mod.world:npc(CERULEAN_ROCKET.map, CERULEAN_ROCKET.name)
-      if existing then return end
-    end
-
-    local sprite = rocketSprite(game)
-    if not sprite then return end
-
-    mod.world:spawnNpc(CERULEAN_ROCKET.map, {
-      name = CERULEAN_ROCKET.name,
-      sprite = sprite,
-      x = CERULEAN_ROCKET.x,
-      y = CERULEAN_ROCKET.y,
-      movement = "STAY",              -- deliberately stationary for now
-      range = CERULEAN_ROCKET.facing,
-      text = CERULEAN_ROCKET.text,
-    })
-    mod.log:info("spawned Cerulean fence at %d,%d (sprite %s)",
-      CERULEAN_ROCKET.x, CERULEAN_ROCKET.y, tostring(sprite))
-  end
-
-  -- Errors inside an events:on handler are swallowed whole -- no crash,
-  -- no reachable log, nothing on screen. pcall so a failure here can
-  -- never take the rest of the mod's event handling with it.
-  local function safeEnsure(game)
-    local ok, err = pcall(ensureCeruleanRocket, game)
-    if not ok then
-      mod.log:warn("snag_quest: Cerulean spawn failed: %s", tostring(err))
-    end
-  end
-
-  mod.events:on("map.entered", function(payload)
-    local game = (payload and payload.game) or currentGameRef
-    safeEnsure(game)
-  end)
-
-  -- map.entered is skipped entirely on a checkpoint/save restore, so a
-  -- player loading a save while already standing in Cerulean would never
-  -- see him. game.ready covers that case.
-  mod.events:on("game.ready", function(payload)
-    local game = payload and payload.game
-    if game then safeEnsure(game) end
-  end)
-
-  registerMerchant({
-    map = CERULEAN_ROCKET.map,
-    texts = { CERULEAN_ROCKET.text },
-    badge = "CASCADEBADGE",
-    intro = "...You're the one moving\nhot POKeMON, huh.\fWord travels. Show me\nwhat you've got.",
-    refuse = "Nothing worth my time?\fThen quit wasting it.\vI'm supposed to be\nkeeping a low profile.",
-    sold = "Heh. The boss would\nlike you.\fCome back when you've\nlifted another.",
-    -- he is mod-spawned, so there's no vanilla line to fall back to
-    fallback = "...What? Move along.",
-  })
 
   ----------------------------------------------------------------------
   -- 4. Turn the Meowth in. Confirmed pattern lifted directly from the
@@ -935,7 +952,10 @@ return function(mod)
     description = "A TEAM ROCKET recruiter has a first assignment for you: the boss wants the oddly-coloured MEOWTH a PICNICKER is holding.",
     objective   = function(game)
       if hasFlag(game, FLAG_DONE) then return "MEOWTH is home safe." end
-      if hasFlag(game, FLAG_STARTED) then return "Bring a MEOWTH back to the girl in Viridian City." end
+      -- 0.14.0: was "back to the girl in Viridian City" -- left over from
+      -- the pre-0.13.0 Jessie opening, and wrong since the quest moved to
+      -- the Nugget Bridge recruiter. Viridian is untouched now.
+      if hasFlag(game, FLAG_STARTED) then return "Bring a MEOWTH back to the TEAM ROCKET recruiter at the end of NUGGET BRIDGE." end
       return "Beat the TEAM ROCKET recruiter at the end of NUGGET BRIDGE, then hear him out."
     end,
     location = "Route 24",
@@ -964,12 +984,61 @@ return function(mod)
   --    recruitment pitch, the battle -- stays vanilla, reached through
   --    base_talk.
   ----------------------------------------------------------------------
+  -- Hand a talk back to whatever the engine would have done with it.
+  --
+  -- MapScripts.baseTalk returns the BASE contribution's talk value for
+  -- this constant, and that value has three possible shapes -- confirmed
+  -- from OverworldState:showMapText (src/world/OverworldController.lua),
+  -- which is the single funnel every NPC talk goes through:
+  --
+  --   function  a Lua talk handler; called with (game, ow, npc, onDone).
+  --             The Game Corner coin-giver is one of these
+  --             (data/scripts/flavor/game_corner.lua's coinGiver).
+  --   table     a { "command", ... } row list, run by the ScriptRunner.
+  --             The Vermilion sailor is one of these (data/scripts/
+  --             story.lua M.VERMILION_CITY.talk).
+  --   nil       no ported script at all; showMapText falls through to
+  --             Game.data:resolveText(mapLabel, textConst) and shows the
+  --             plain ROM text. The Pewter man is one of these -- the
+  --             engine's flavor script for his map defines only the
+  --             NIDORAN.
+  --
+  -- Until 0.14.0 this handled ONLY the function shape: a row list was
+  -- called as if it were a function (error -> swallowed by the runner ->
+  -- the NPC turns to face you and says nothing) and nil returned early
+  -- with no text at all. That mattered from 0.14.0 on because the
+  -- Vermilion sailor's base talk is the S.S. ANNE ticket check, and
+  -- because it silently ate the Pewter man's vanilla line for every
+  -- player who had not yet earned the BOULDERBADGE.
+  --
+  -- NOTE: registering a talk for a constant means showMapText's own
+  -- resolveText fallback is never reached -- our rows win outright -- so
+  -- reproducing all three shapes here is the only way a gated-off branch
+  -- can look untouched.
   local function baseTalkCommand(ctx, mapId, textId)
     local base = MapScripts.baseTalk(mapId, textId)
-    if not base then return end
-    local runner = ctx.runner
-    base(ctx.game, ctx.overworld, ctx.npc, function() runner:resume() end)
-    runner:yield()
+    if type(base) == "function" then
+      local runner = ctx.runner
+      base(ctx.game, ctx.overworld, ctx.npc, function() runner:resume() end)
+      runner:yield()
+      return
+    end
+    if type(base) == "table" then
+      -- ScriptRunner:exec is a plain synchronous row loop on the CURRENT
+      -- coroutine (src/script/ScriptRunner.lua), so blocking rows inside
+      -- the base script yield and resume on our own runner exactly as
+      -- they would have if the engine had dispatched them itself. The
+      -- base rows are indexed from 1 of their OWN list, so vanilla's
+      -- hand-numbered jump targets still resolve.
+      ctx.runner:exec(base, ctx)
+      return
+    end
+    -- No ported script: show the ROM text the engine would have shown.
+    -- Commands.show_text already resolves an object TEXT_ constant
+    -- through ctx.overworld.map.def.label when it isn't a bare text key
+    -- (confirmed from src/script/Commands.lua), which is exactly
+    -- showMapText's own fallback.
+    require("src.script.Commands").show_text(ctx, textId)
   end
   mod.content.commands:register("snag_quest:base_talk", { foreground = true, fn = baseTalkCommand })
 
@@ -1006,7 +1075,34 @@ return function(mod)
   -- beaten, so declining just leaves the offer open. Come back and
   -- talk again.
   ----------------------------------------------------------------------
-  local ROUTE24_TALK = {
+  -- The recruiter's own fence lines (0.14.0).
+  --
+  -- He is the fourth fence, and the only one who is not registered
+  -- through registerMerchant -- see the note on fenceRows for why he
+  -- can't be. Design decisions, deliberate:
+  --   * NO badge gate. Finishing the first job IS the credential, and in
+  --     practice this lands later than CASCADEBADGE anyway.
+  --   * Standard payout, no VIP bonus of his own -- snagPayout is
+  --     unchanged and he pays exactly what the other three pay.
+  -- He replaces the CASCADEBADGE-gated Cerulean grunt that 0.13.1 spawned
+  -- in CERULEAN_CITY; that NPC is gone as of this version.
+  --
+  -- These rows go in the post-quest branch, so they compose with the
+  -- questline instead of overwriting it: pre-quest he still recruits,
+  -- mid-quest he still takes the MEOWTH and re-arms the PICNICKER
+  -- rematch, and only the "done" branch changes. The Celadon hint that
+  -- used to live in that branch is GONE rather than kept alongside --
+  -- with him buying, sending the player to another city to sell was
+  -- redundant. The MART hint still stands in when fences are switched
+  -- off, so the branch never points at a closed door.
+  local RECRUITER_FENCE = {
+    intro = "The boss remembers\ngood work.\fI'm still posted\nhere. I still pay.\vCarrying anything\nthat isn't yours?",
+    refuse = "Nothing? Then get\nback out there.\fThe BALLs don't\nrestock\nthemselves.",
+    sold = "Good. I'll log it\nas never arriving.\fKeep this up and\nthe boss learns\nyour name.",
+  }
+  local DONE_MART_HINT = "The boss remembers\ngood work.\fThe bigger MARTS\nstock SNAG BALLs\nnow, if you can\nafford them."
+
+  local ROUTE24_TALK = concatRows({
     { "snag_quest:check_defeated" },
     { "jump_if_false", "vanilla" },
 
@@ -1043,11 +1139,11 @@ return function(mod)
     { "label", "done" },
     { "snag_quest:check_fence_open" },
     { "jump_if_false", "done_mart" },
-    { "show_text", "The boss remembers good\nwork.\fThere's a gambler at the\nCELADON GAME CORNER who\npays in SNAG BALLs.\fDon't ask what he does\nwith what you bring him." },
+  }, fenceRows(RECRUITER_FENCE, "recruiter"), {
     { "jump", "end" },
 
     { "label", "done_mart" },
-    { "show_text", "The boss remembers good\nwork.\fThe bigger MARTS stock\nSNAG BALLs now, if you\ncan afford them." },
+    { "show_text", DONE_MART_HINT },
     { "jump", "end" },
 
     { "label", "declined" },
@@ -1057,7 +1153,7 @@ return function(mod)
     { "label", "vanilla" },
     { "snag_quest:base_talk", "ROUTE_24", "TEXT_ROUTE24_COOLTRAINER_M1" },
     { "label", "end" },
-  }
+  })
 
   mod.content.map_scripts:register("ROUTE_24", {
     talk = { TEXT_ROUTE24_COOLTRAINER_M1 = ROUTE24_TALK },
@@ -1142,7 +1238,15 @@ return function(mod)
   end)
 
   -- Same script as the vanilla takeover, minus the beat-him-first gate.
-  local ROUTE24_STANDIN_TALK = {
+  --
+  -- He is a fence in BOTH forms on purpose. These two objects are the
+  -- same character -- which one the player meets depends only on whether
+  -- BILL has hidden the vanilla one yet -- so a player pre-BILL who
+  -- finishes the quest gets the same buyer a player post-BILL does. Only
+  -- making the stand-in a fence would have left the pre-BILL recruiter
+  -- pointing at CELADON for a service he himself provides three steps
+  -- later.
+  local ROUTE24_STANDIN_TALK = concatRows({
     { "snag_quest:check_quest_done" },
     { "jump_if_true", "done" },
     { "check_flag", FLAG_STARTED },
@@ -1176,17 +1280,17 @@ return function(mod)
     { "label", "done" },
     { "snag_quest:check_fence_open" },
     { "jump_if_false", "done_mart" },
-    { "show_text", "The boss remembers good\nwork.\fThere's a gambler at the\nCELADON GAME CORNER who\npays in SNAG BALLs.\fDon't ask what he does\nwith what you bring him." },
+  }, fenceRows(RECRUITER_FENCE, "standin"), {
     { "jump", "end" },
 
     { "label", "done_mart" },
-    { "show_text", "The boss remembers good\nwork.\fThe bigger MARTS stock\nSNAG BALLs now, if you\ncan afford them." },
+    { "show_text", DONE_MART_HINT },
     { "jump", "end" },
 
     { "label", "declined" },
     { "show_text", "Heh. Think it over.\fI'm not going anywhere." },
     { "label", "end" },
-  }
+  })
 
   mod.content.map_scripts:register(ROUTE24_ROCKET.map, {
     talk = { [ROUTE24_ROCKET.text] = ROUTE24_STANDIN_TALK },
@@ -1236,6 +1340,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.13.1"
+  mod.exports.version = "0.14.0"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end
