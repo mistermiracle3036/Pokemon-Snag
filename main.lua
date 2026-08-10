@@ -683,6 +683,52 @@ return function(mod)
     ctx.lastCheck = questDoneForReal(ctx.game) and fencesEnabled()
   end)
 
+  ----------------------------------------------------------------------
+  -- *** DIAGNOSTIC -- 0.14.2 TEST BUILD ONLY. REMOVE BEFORE RELEASE. ***
+  --
+  -- 0.14.0/0.14.1 reported all three registerMerchant fences (CELADON,
+  -- PEWTER, VERMILION) doing nothing on device, with NO entry on the
+  -- mod manager's [ERRS] screen -- so nothing is throwing. Running the
+  -- exact registered rows through the engine's real ScriptRunner off
+  -- device showed all three take the fence path and build their intro
+  -- text box correctly, identically to the recruiter's script, which
+  -- works. So the rows are not the problem: either the talk never
+  -- dispatches to us at all, or the save state differs from what I
+  -- assumed.
+  --
+  -- This row makes that difference visible. It is the FIRST row of every
+  -- fence script, and it writes one line to [ERRS] via
+  -- Runtime.reportError -- the only output channel that exists on iOS.
+  --
+  -- Reading it:
+  --   NO line at all      the talk never reached our script. The TEXT_
+  --                       constant doesn't match this NPC on this
+  --                       version, or something outranks us.
+  --   q = quest done      questDoneForReal (Y/n)
+  --   f = fences enabled  the GET NEW SNAG BALLS option (Y/n)
+  --   b = badge held      Y/n, or "-" for an ungated fence
+  --   t = base talk type  what the vanilla handler is: fun / tab / nil
+  --
+  -- Runtime.reportError prefixes "snag_quest: ", which already eats most
+  -- of the [ERRS] screen's 16-column line, so the payload is kept terse
+  -- on purpose rather than made readable.
+  ----------------------------------------------------------------------
+  mod.content.commands:register("snag_quest:probe", function(ctx, tag, mapId, textConst, badgeId)
+    local ok, err = pcall(function()
+      local inv = ctx.save and ctx.save.inventory
+      local function yn(v) return v and "Y" or "n" end
+      local base = MapScripts.baseTalk(mapId, textConst)
+      local baseKind = (type(base) == "function" and "fun")
+        or (type(base) == "table" and "tab") or "nil"
+      require("src.mods.Runtime").reportError("snag_quest", string.format(
+        "%s q%s f%s b%s t%s", tag,
+        yn(questDoneForReal(ctx.game)), yn(fencesEnabled()),
+        badgeId and yn(inv and inv[badgeId]) or "-", baseKind))
+    end)
+    -- a diagnostic must never be the thing that breaks the script
+    if not ok then mod.log:warn("snag_quest: probe failed: %s", tostring(err)) end
+  end)
+
   -- Concatenate row chunks into one flat script. Used to splice fenceRows
   -- into a script that also has other branches (the recruiter's).
   local function concatRows(...)
@@ -734,6 +780,11 @@ return function(mod)
     local talk = {}
     for _, textConst in ipairs(spec.texts) do
       local rows = {
+        -- *** 0.14.2 DIAGNOSTIC, remove before release *** -- see the
+        -- probe command above. First row on purpose: if no [ERRS] line
+        -- appears for this NPC, the talk never reached us at all.
+        { "snag_quest:probe", spec.tag or spec.map:sub(1, 3),
+          spec.map, textConst, spec.badge },
         { "snag_quest:check_fence_open" },
         { "jump_if_false", "base" },
       }
@@ -787,6 +838,7 @@ return function(mod)
   -- reason anyone deals with you.
   registerMerchant({
     map = "GAME_CORNER",
+    tag = "CEL",   -- 0.14.2 diagnostic label
     texts = { "TEXT_GAMECORNER_MIDDLE_AGED_MAN2", "TEXT_GAMECORNER_CLERK2" },
     badge = nil,
     intro = "Heh. I know that\nlook.\fROCKET's new\nerrand runner.\fRelax -- I don't\nwork for them.\vI just like what\nfalls off their\ntrucks.\fGot something\nfor me?",
@@ -820,6 +872,7 @@ return function(mod)
   -- disclaimer about who you run with.
   registerMerchant({
     map = "PEWTER_NIDORAN_HOUSE",
+    tag = "PEW",   -- 0.14.2 diagnostic label
     texts = { "TEXT_PEWTERNIDORANHOUSE_MIDDLE_AGED_MAN" },
     badge = "BOULDERBADGE",
     intro = "I don't care who\nyou run with.\vI care about the\nPOKeMON.\fA traded one won't\nobey without\nBADGES.\fA stolen one obeys\nanybody.\vThat shouldn't be\ntrue.\fI'd like more of\nthem to study.",
@@ -872,6 +925,7 @@ return function(mod)
   ----------------------------------------------------------------------
   registerMerchant({
     map = "VERMILION_CITY",
+    tag = "VER",   -- 0.14.2 diagnostic label
     texts = { "TEXT_VERMILIONCITY_SAILOR1" },
     badge = "THUNDERBADGE",
     intro = "So you're the new\none.\fWord came down the\ndocks before you\ndid.\fForty crates on\nthe manifest.\vI counted\nthirty-eight.\fThat's how this\nworks. You stop\ncounting.\fGot something\naboard nobody\nlogged?",
@@ -1157,6 +1211,8 @@ return function(mod)
     { "jump", "end" },
 
     { "label", "done" },
+    -- *** 0.14.2 DIAGNOSTIC, remove before release ***
+    { "snag_quest:probe", "R24", "ROUTE_24", "TEXT_ROUTE24_COOLTRAINER_M1", nil },
     { "snag_quest:check_fence_open" },
     { "jump_if_false", "done_mart" },
   }, fenceRows(RECRUITER_FENCE, "recruiter"), {
@@ -1298,6 +1354,8 @@ return function(mod)
     { "jump", "end" },
 
     { "label", "done" },
+    -- *** 0.14.2 DIAGNOSTIC, remove before release ***
+    { "snag_quest:probe", "STD", "ROUTE_24", "TEXT_SNAG_ROUTE24_ROCKET", nil },
     { "snag_quest:check_fence_open" },
     { "jump_if_false", "done_mart" },
   }, fenceRows(RECRUITER_FENCE, "standin"), {
@@ -1360,6 +1418,13 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.1"
+  mod.exports.version = "0.14.2"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
+  -- *** 0.14.2 DIAGNOSTIC, remove before release ***
+  -- mod.log:info goes to a console that does not exist on iOS. This puts
+  -- the live version on the [ERRS] screen instead, so "is the fix
+  -- actually running?" stops being guesswork on device.
+  pcall(function()
+    require("src.mods.Runtime").reportError("snag_quest", "load v" .. mod.exports.version)
+  end)
 end

@@ -4,6 +4,42 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.2
+
+- TEST VERSION, not for release. **DIAGNOSTIC BUILD.** It adds no
+  features and fixes nothing new -- it exists to make the fence failure
+  visible on a device with no console. The probe rows and the load stamp
+  are marked in code and must be removed before release.
+- What 0.14.1 established: all three `registerMerchant` fences (CELADON,
+  PEWTER, VERMILION) do nothing on device and write NO entry to [ERRS],
+  while the Nugget Bridge recruiter -- the one fence that does not go
+  through `registerMerchant` -- works. No [ERRS] entry means nothing is
+  throwing, which rules out the swallowed-script-error family.
+- Running the exact registered rows through the engine's real
+  ScriptRunner off device shows all three fences taking the fence path
+  and building their intro text box correctly, with a trace identical to
+  the recruiter's. So the script rows, the gate commands and the badge
+  check are all doing the right thing. The difference is not in the
+  rows, which means it is in dispatch (the talk never reaches our
+  script) or in save state.
+- **Added: `snag_quest:probe`,** the first row of every fence script. It
+  writes one line to [ERRS] through `Runtime.reportError`, the only
+  output channel that exists on iOS:
+  `snag_quest: PEW qY fY bY tnil`
+  - tag: `CEL` / `PEW` / `VER` / `R24` / `STD`
+  - `q` questDoneForReal, `f` fences enabled, `b` badge held (`-` if the
+    fence is ungated), `t` the vanilla handler's type (`fun`/`tab`/`nil`)
+  - **No line at all for an NPC is itself the answer:** the talk never
+    reached this mod, so the TEXT_ constant does not match that NPC on
+    that game version, or something outranks our registration.
+- **Added: a load stamp** -- `snag_quest: load v0.14.2` in [ERRS] on
+  boot. `mod.log:info` goes to a console that does not exist on iOS, so
+  until now "is the new build actually live?" was unanswerable on
+  device. It is the first line to check for every future test.
+- The 0.14.1 badge fix is kept. It was not the cause, but
+  `(inv[badgeId] or 0) > 0` was still the only numeric badge test in the
+  mod or the engine and a latent throw site.
+
 ## 0.14.1
 
 - TEST VERSION, not for release. ONE change from 0.14.0, so the next
