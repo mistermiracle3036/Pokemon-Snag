@@ -7,19 +7,32 @@ Every answer is collapsed. Tap only what you want revealed.
 <details>
 <summary>How do I start the questline?</summary>
 
-Get the Pokédex from Oak first. Then talk to the girl in **Viridian
-City** — she's not who she appears to be. She gives you one Snag Ball and
-your first target. The quest appears in your journal as *Introduction to
-Thievery*.
+Cross **Nugget Bridge** on Route 24 and beat the Team Rocket recruiter
+waiting at the end — the one who offers you the Nugget and asks you to
+join. Beating him *is* the interview. Talk to him again afterwards and
+the offer becomes real: one Snag Ball and your first target. The quest
+appears in your journal as *Introduction to Thievery*.
+
+Saying no costs nothing — he stays there and the offer stands.
 </details>
 
 <details>
-<summary>The girl in Viridian just says her normal line. Why?</summary>
+<summary>The recruiter just says his normal line. Why?</summary>
 
-Two common reasons: you don't have the Pokédex yet, or the mod isn't
-actually loaded (check the load log / F10 mod manager for the Pokemon Snag
-version line). If it's loaded and you have the Pokédex, please open an
-issue with your version number.
+You have to **beat him first**; before that everything he says is
+vanilla, by design. If you've beaten him and he still only laments his
+Team Rocket dreams, check the mod is actually loaded (F10 mod manager),
+then open an issue with your version number.
+</details>
+
+<details>
+<summary>I helped Bill and now the recruiter is gone.</summary>
+
+That's vanilla Gen 1 behaviour — leaving Bill's house with the S.S.
+Ticket removes him from Route 24 permanently, and it has nothing to do
+with whether you beat him. This mod puts a Team Rocket grunt in the same
+spot so the questline stays reachable: same job, same turn-in, and he
+buys from you afterwards. He doesn't require beating anybody.
 </details>
 
 <details>
@@ -33,8 +46,8 @@ the quest with one in stock.
 <details>
 <summary>Can I replay the intro quest?</summary>
 
-Turn on **[DEV] REPLAY INTRO QUEST** in options. Jessie will treat the
-quest as unfinished so you can re-fight the Picnicker and hand Meowth in
+Turn on **[DEV] REPLAY INTRO QUEST** in options. The recruiter will treat
+the quest as unfinished so you can re-fight the Picnicker and hand Meowth in
 again. It doesn't erase your real progress — switch it back off and the
 quest is as completed as it was.
 </details>
@@ -66,7 +79,8 @@ That depends on **GET NEW SNAG BALLS** in options:
 - **MART** — marts only; the fences won't deal.
 - **FENCES** — the black market only; nothing on any shelf.
 
-Jessie's post-quest hint follows whichever you've picked.
+The recruiter's post-quest line follows whichever you've picked, so he
+never points you at a source you've switched off.
 </details>
 
 <details>
@@ -83,14 +97,22 @@ deliberate — it's the cost of the fight continuing correctly.
 <details>
 <summary>Where are the fences? (spoilers)</summary>
 
-- **Celadon Game Corner** — a gambler on the floor buys snagged mons.
+- **Nugget Bridge (Route 24)** — the recruiter who gave you the job buys
+  from you once it's done. No badge needed; finishing the job is the
+  credential.
+- **Celadon Game Corner** — a gambler on the floor. No badge needed. He
+  doesn't work for Rocket and will tell you so.
 - **Pewter City** — the middle-aged man in the Nidoran house, but only
-  once you have the **Boulder Badge** (he has opinions about which
-  Pokémon obey which trainers).
+  once you have the **Boulder Badge**. He has opinions about which
+  Pokémon obey which trainers, and a stolen one obeying anybody is
+  exactly what he wants to study.
+- **Vermilion City** — the sailor at the S.S. Anne gangway, once you have
+  the **Thunder Badge**. He stays at the dock after the ship sails, and
+  he has stopped counting the crates.
 
-Both only open for business after the intro quest is done, and only if
-**GET NEW SNAG BALLS** is set to `BOTH` or `FENCES`. More badge-town
-fences are planned.
+All four only open for business after the intro quest is done, and only
+if **GET NEW SNAG BALLS** is set to `BOTH` or `FENCES`. Otherwise they
+give their ordinary dialogue and nothing looks different.
 </details>
 
 <details>
@@ -142,8 +164,18 @@ you installed.
 <summary>An NPC I expected to be a fence is just saying their normal
 line.</summary>
 
-Check the gate first: every fence needs the intro quest finished, and the
-Pewter one also needs the Boulder Badge. If both are satisfied and they
-still say their vanilla line, that's worth an issue — include your game
+Check the gates in this order — the first two catch almost everything:
+
+1. **GET NEW SNAG BALLS is set to `MART`.** That closes every fence
+   deliberately, and a closed fence just gives its ordinary line. This is
+   the single most common cause.
+2. **The intro quest isn't finished.** Every fence requires it.
+3. **The badge.** Pewter needs the Boulder Badge, Vermilion the Thunder
+   Badge. Celadon and the recruiter need none.
+4. **Another mod claims the same character.** Only one mod's dialogue can
+   win for a given NPC, and the loser's silently never runs. Try
+   disabling other NPC-editing mods.
+
+If all four are ruled out, that's worth an issue — include your game
 version, since NPC internal names can differ between Red/Blue and Yellow.
 </details>

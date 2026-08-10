@@ -4,6 +4,68 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.3
+
+- TEST VERSION, not for release. Clean-up pass: the 0.14.2 diagnostics
+  come out, the docs catch up with the 0.13.x redesign, and the Yellow
+  question is closed.
+
+### Removed
+
+- All 0.14.2 diagnostics: the `snag_quest:probe` command and its rows on
+  every fence script, and the `load v<version>` stamp on boot. Nothing
+  writes to [ERRS] any more. They did their job -- the probe line
+  `f=n` on all five NPCs is what identified the cause in one round.
+
+### Fixed
+
+- The `base_talk` fallback could print a raw `TEXT_` constant into a
+  dialogue box. `Commands.show_text`'s last resort is to print whatever
+  string it was handed, which is right for the hand-ported scripts that
+  pass literal dialogue but wrong here, where it is handed a constant.
+  It now resolves first and stays silent if nothing resolves, which is
+  what `showMapText`'s own miss path does.
+
+### Verified
+
+- **Yellow: closed, no rename.** Every NPC this mod takes over was
+  checked against the engine's own symbol tables
+  (`tools/rom_manifest.json` and `tools/rom_manifest_yellow.json`).
+  `maps.VERMILION_CITY.objects` carries
+  `{ name = "VERMILIONCITY_SAILOR1", text = "TEXT_VERMILIONCITY_SAILOR1" }`
+  in BOTH, so the new fence needs no second constant. The same pass
+  re-confirmed the Route 24 recruiter (never previously checked for
+  Yellow) and the Pewter man as identical, and the Game Corner
+  coin-giver as genuinely renamed -- which is why that one alone
+  registers two constants. All six mart clerk constants match too.
+- **Team Rocket Returns does not conflict.** Tested on device with both
+  mods enabled: this mod's dialogue wins normally on every fence.
+
+### Corrected
+
+- 0.14.2's entry claimed the 0.14.1 badge fix "was not the cause". That
+  is very likely wrong and is withdrawn. With the source option set to
+  `MART` the gate closes at row 2 and `check_badge` never runs at all,
+  so the observations that looked like they cleared it never exercised
+  it. The most probable sequence is: the first PEWTER test ran while the
+  option was still `BOTH`, `check_badge` threw on a non-numeric badge
+  value, and the [ERRS] check that came back empty happened after a
+  relaunch -- `Runtime.errors` is rebuilt per boot, so the evidence was
+  already gone. Marked as inferred, not proven: distinguishing a stored
+  `true` from `1` was not worth another device round, and the truthiness
+  check is correct either way.
+
+### Docs
+
+- README, FAQ and `mod.card` rewritten for the Nugget Bridge opening and
+  the four fences. They had still described the pre-0.13 Viridian
+  ("Jessie") opening and two fences.
+- All three now document the NPC-takeover conflict rule: only one mod's
+  dialogue can win for a given character and the loser's silently never
+  runs. The FAQ's troubleshooting entry now leads with the actual most
+  common cause -- GET NEW SNAG BALLS set to `MART`, which closes every
+  fence by design and makes them look broken.
+
 ## 0.14.2
 
 - TEST VERSION, not for release. **DIAGNOSTIC BUILD.** It adds no
