@@ -663,6 +663,16 @@ return function(mod)
     ctx.lastCheck = questDoneForReal(ctx.game) and fencesEnabled()
   end)
 
+  -- Concatenate row chunks into one flat script. Used to splice fenceRows
+  -- into a script that also has other branches (the recruiter's).
+  local function concatRows(...)
+    local out = {}
+    for _, chunk in ipairs({ ... }) do
+      for _, row in ipairs(chunk) do out[#out + 1] = row end
+    end
+    return out
+  end
+
   -- The transaction itself, as script rows: offer, pick, pay or decline.
   --
   -- Factored out of registerMerchant in 0.14.0 so the Nugget Bridge
@@ -678,16 +688,6 @@ return function(mod)
   -- ScriptRunner.validate rejects a duplicate label outright, and
   -- scanLabels would otherwise resolve every jump to the first copy.
   --
-  -- Concatenate row chunks into one flat script. Used to splice fenceRows
-  -- into a script that also has other branches (the recruiter's).
-  local function concatRows(...)
-    local out = {}
-    for _, chunk in ipairs({ ... }) do
-      for _, row in ipairs(chunk) do out[#out + 1] = row end
-    end
-    return out
-  end
-
   -- spec = { intro, refuse, sold }
   local function fenceRows(spec, tag)
     local soldLabel = "snagsold_" .. tag
