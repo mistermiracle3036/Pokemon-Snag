@@ -1,21 +1,20 @@
--- Pokemon Snag -- "Jessie's Meowth"
+-- Pokemon Snag -- "Introduction to Thievery"
 --
--- The girl in Viridian City (TEXT_VIRIDIANCITY_GIRL, next to the
--- sleeping man blocking the road) is Grandpa's granddaughter -- yes,
--- THAT grandpa, the OLD MAN who teaches new trainers to catch Pokemon
--- once you have the Pokedex. His SNAG BALLS are his own invention, so
--- he never fluffs the catching demo in front of a trainee -- and she
--- can't believe he wastes them on whatever WEEDLE or RATTATA wanders
--- by. A grunt nearby has swiped one of the Pokemon he was saving --
--- an unusually marked MEOWTH -- and she wants it back.
+-- The TEAM ROCKET recruiter at the end of NUGGET BRIDGE (ROUTE_24,
+-- TEXT_ROUTE24_COOLTRAINER_M1) hands out the NUGGET, asks whether
+-- you'd like to join TEAM ROCKET, and battles you regardless of the
+-- answer -- vanilla ignores it entirely, replying "Arrgh! You are not
+-- convinced?" either way.
 --
--- Gate: EVENT_GOT_POKEDEX. Confirmed from the engine's own
--- data/scripts/story.lua: this single flag is what both gives you the
--- Pokedex AND swaps the sleeping man out for the walking one at the
--- same onEnter call (Commands.hide_object the sleeper, show_object
--- the walker) -- there's no separate "he got up" flag in the real
--- game, the two conditions the story asked for are one and the same
--- here.
+-- This mod leaves all of that untouched and takes over only his
+-- POST-DEFEAT line, which vanilla spends on a single lament about his
+-- dreams of Team Rocket. Beat him and the recruitment becomes real:
+-- your first assignment from the boss is an oddly-coloured MEOWTH a
+-- PICNICKER is holding.
+--
+-- Gate: beating him. Because he stays talkable forever once defeated
+-- (confirmed from data/scripts/story4.lua's battleOrDone branch),
+-- declining costs nothing -- the offer is still there next time.
 --
 -- Everything below is confirmed against the engine's own dev source
 -- (src/battle/BattleState.lua, src/script/Commands.lua,
@@ -88,7 +87,7 @@ return function(mod)
     local v = snagBallSource()
     return v == "both" or v == "fences"
   end
-  -- Dev toggle: when on, Jessie's dialogue treats the quest as not-done
+  -- Dev toggle: when on, the recruiter's dialogue treats the quest as not-done
   -- regardless of FLAG_DONE's real value, dropping straight into the
   -- "started" branch (the turn-in/rematch loop) rather than replaying
   -- the whole intro every time -- enough to re-fight the picnicker and
@@ -658,7 +657,7 @@ return function(mod)
   end)
 
   -- Fences answer to BOTH the quest gate and the "Get new Snag Balls"
-  -- source setting -- Jessie's own dialogue deliberately does not, so
+  -- source setting -- the questline's own dialogue deliberately does not, so
   -- setting sources to MART never breaks the questline itself.
   mod.content.commands:register("snag_quest:check_fence_open", function(ctx)
     ctx.lastCheck = questDoneForReal(ctx.game) and fencesEnabled()
@@ -691,7 +690,15 @@ return function(mod)
         { "jump", "end" },
 
         { "label", "base" },
-        { "snag_quest:base_talk", spec.map, textConst },
+        -- A vanilla NPC falls back to its own original dialogue. A
+        -- mod-spawned NPC has no vanilla line to fall back TO -- so
+        -- spec.fallback supplies one, otherwise base_talk would find
+        -- nothing and the NPC would just turn and say nothing (the
+        -- classic swallowed-script-error signature, but for a benign
+        -- reason).
+        spec.fallback
+          and { "show_text", spec.fallback }
+          or  { "snag_quest:base_talk", spec.map, textConst },
         { "label", "end" },
       }
       for _, row in ipairs(tail) do rows[#rows + 1] = row end
@@ -743,6 +750,123 @@ return function(mod)
     intro = "A POKeMON traded from\nanother trainer won't\nobey without BADGES.\fSnagged POKeMON, though?\vThey'll listen to\nanybody. Funny, that.\fI take an interest in\nthe... irregularly\nacquired. Show me?",
     refuse = "No? Suit yourself.\fThe offer stands, if\nyou come by something\nwith an interesting\npast.",
     sold = "Fascinating. No BADGES,\nno hesitation.\fBring me another and\nI'll pay the same.",
+  })
+
+  ----------------------------------------------------------------------
+  -- CERULEAN -- a Team Rocket grunt loitering near the robbed house.
+  --
+  -- Unlike the other two, this NPC does not exist in the base game: it's
+  -- spawned by this mod via mod.world:spawnNpc. That means the text key
+  -- is OURS, invented here -- so there is no ROM constant to look up and
+  -- no Red/Blue-vs-Yellow rename risk for this one at all.
+  --
+  -- Runtime spawn rather than a maps:patch on purpose:
+  --   * a rejected map record silently disables the ENTIRE mod while the
+  --     manager still shows it Ready, so patching vanilla map data is the
+  --     riskiest thing available here;
+  --   * runtime objects are trivially repositionable, which matters while
+  --     the exact spot is still being dialled in by walking around.
+  -- The cost is that runtime objects are never serialized -- hence the
+  -- respawn-on-entry handling below.
+  ----------------------------------------------------------------------
+  local CERULEAN_ROCKET = {
+    map   = "CERULEAN_CITY",
+    name  = "SNAG_CERULEAN_ROCKET",
+    text  = "TEXT_SNAG_CERULEAN_ROCKET",
+    -- FIRST-GUESS POSITION, walk-grid cells (not pixels, not blocks).
+    -- Aiming for the street just south-east of the robbed house. This is
+    -- a guess: the map grid isn't readable from the engine repo (map data
+    -- is ROM-extracted), so expect to nudge it. Lower y = further north,
+    -- lower x = further west.
+    x = 32,
+    y = 17,
+    facing = "DOWN",
+  }
+
+  -- An unknown sprite id makes NPC.new assert, and that assert is
+  -- SWALLOWED inside an event handler -- the NPC simply never appears,
+  -- with no error anywhere. So probe for one that actually exists
+  -- instead of hardcoding, and prefer the Rocket look if present.
+  local function rocketSprite(game)
+    local sprites = game and game.data and game.data.sprites
+    if not sprites then return nil end
+    local candidates = {
+      "SPRITE_ROCKET", "SPRITE_ROCKET_GRUNT", "SPRITE_BLACK_HAIR_BOY_1",
+      "SPRITE_GENTLEMAN", "SPRITE_MIDDLE_AGED_MAN",
+    }
+    for _, id in ipairs(candidates) do
+      if sprites[id] then return id end
+    end
+    -- last resort: any sprite at all, so he's at least visible and
+    -- talkable while the right id gets sorted out
+    for id in pairs(sprites) do return id end
+    return nil
+  end
+
+  local function ceruleanRocketWanted(game)
+    return questDoneForReal(game)
+      and fencesEnabled()
+      and (game.save.inventory and (game.save.inventory.CASCADEBADGE or 0) > 0)
+  end
+
+  local function ensureCeruleanRocket(game)
+    if not (game and mod.world and mod.world.spawnNpc) then return end
+    if not ceruleanRocketWanted(game) then return end
+
+    -- don't stack duplicates if this runs twice for one entry
+    if mod.world.npc then
+      local existing = mod.world:npc(CERULEAN_ROCKET.map, CERULEAN_ROCKET.name)
+      if existing then return end
+    end
+
+    local sprite = rocketSprite(game)
+    if not sprite then return end
+
+    mod.world:spawnNpc(CERULEAN_ROCKET.map, {
+      name = CERULEAN_ROCKET.name,
+      sprite = sprite,
+      x = CERULEAN_ROCKET.x,
+      y = CERULEAN_ROCKET.y,
+      movement = "STAY",              -- deliberately stationary for now
+      range = CERULEAN_ROCKET.facing,
+      text = CERULEAN_ROCKET.text,
+    })
+    mod.log:info("spawned Cerulean fence at %d,%d (sprite %s)",
+      CERULEAN_ROCKET.x, CERULEAN_ROCKET.y, tostring(sprite))
+  end
+
+  -- Errors inside an events:on handler are swallowed whole -- no crash,
+  -- no reachable log, nothing on screen. pcall so a failure here can
+  -- never take the rest of the mod's event handling with it.
+  local function safeEnsure(game)
+    local ok, err = pcall(ensureCeruleanRocket, game)
+    if not ok then
+      mod.log:warn("snag_quest: Cerulean spawn failed: %s", tostring(err))
+    end
+  end
+
+  mod.events:on("map.entered", function(payload)
+    local game = (payload and payload.game) or currentGameRef
+    safeEnsure(game)
+  end)
+
+  -- map.entered is skipped entirely on a checkpoint/save restore, so a
+  -- player loading a save while already standing in Cerulean would never
+  -- see him. game.ready covers that case.
+  mod.events:on("game.ready", function(payload)
+    local game = payload and payload.game
+    if game then safeEnsure(game) end
+  end)
+
+  registerMerchant({
+    map = CERULEAN_ROCKET.map,
+    texts = { CERULEAN_ROCKET.text },
+    badge = "CASCADEBADGE",
+    intro = "...You're the one moving\nhot POKeMON, huh.\fWord travels. Show me\nwhat you've got.",
+    refuse = "Nothing worth my time?\fThen quit wasting it.\vI'm supposed to be\nkeeping a low profile.",
+    sold = "Heh. The boss would\nlike you.\fCome back when you've\nlifted another.",
+    -- he is mod-spawned, so there's no vanilla line to fall back to
+    fallback = "...What? Move along.",
   })
 
   ----------------------------------------------------------------------
@@ -808,13 +932,13 @@ return function(mod)
     id          = QUEST_ID,
     title       = "Introduction to Thievery",
     source      = "Pokemon Snag",
-    description = "Jessie wants back the odd MEOWTH a PICNICKER's holding -- Grandpa's, technically, though don't say that too loud.",
+    description = "A TEAM ROCKET recruiter has a first assignment for you: the boss wants the oddly-coloured MEOWTH a PICNICKER is holding.",
     objective   = function(game)
       if hasFlag(game, FLAG_DONE) then return "MEOWTH is home safe." end
       if hasFlag(game, FLAG_STARTED) then return "Bring a MEOWTH back to the girl in Viridian City." end
-      return "Talk to the girl in Viridian City, once you have the Pokedex."
+      return "Beat the TEAM ROCKET recruiter at the end of NUGGET BRIDGE, then hear him out."
     end,
-    location = "Viridian City",
+    location = "Route 24",
     reward   = "A SNAG BALL, and someone who'll sell you more",
     status   = function(game)
       if hasFlag(game, FLAG_DONE) then return "completed" end
@@ -823,11 +947,11 @@ return function(mod)
     end,
     progress = { current = 0, total = 1 },
     markers = {
-      { map = "VIRIDIAN_CITY", text = "TEXT_VIRIDIANCITY_GIRL", kind = "available",
+      { map = "ROUTE_24", text = "TEXT_ROUTE24_COOLTRAINER_M1", kind = "available",
         when = function(game)
-          return hasFlag(game, "EVENT_GOT_POKEDEX") and not hasFlag(game, FLAG_STARTED)
+          return not hasFlag(game, FLAG_STARTED)
         end },
-      { map = "VIRIDIAN_CITY", text = "TEXT_VIRIDIANCITY_GIRL", kind = "turnin",
+      { map = "ROUTE_24", text = "TEXT_ROUTE24_COOLTRAINER_M1", kind = "turnin",
         when = function(game)
           return hasFlag(game, FLAG_STARTED) and not hasFlag(game, FLAG_DONE)
         end },
@@ -835,12 +959,10 @@ return function(mod)
   })
 
   ----------------------------------------------------------------------
-  -- 7. Dialogue: the real TEXT_VIRIDIANCITY_GIRL, repurposed via
-  --    map_scripts (Team Rocket Returns' pattern), gated the same way
-  --    her own vanilla line already is -- EVENT_GOT_POKEDEX -- via a
-  --    base_talk fallback for the pre-Pokedex case so her original
-  --    "hasn't had his coffee" line is untouched. Named "Jessie" in her
-  --    own dialogue per the requested light anime reference.
+  -- 7. Dialogue: the Nugget Bridge recruiter, taken over only AFTER
+  --    he has been beaten. Everything before that -- the NUGGET, the
+  --    recruitment pitch, the battle -- stays vanilla, reached through
+  --    base_talk.
   ----------------------------------------------------------------------
   local function baseTalkCommand(ctx, mapId, textId)
     local base = MapScripts.baseTalk(mapId, textId)
@@ -858,72 +980,216 @@ return function(mod)
     ctx.lastCheck = questDoneForReal(ctx.game)
   end)
 
-  local JESSIE_TALK = {
-    { "check_flag", "EVENT_GOT_POKEDEX" },
-    { "jump_if_false", "base" },
+  -- Was this trainer already beaten? Confirmed from the engine's own
+  -- Route 24 script (data/scripts/story4.lua): it branches on
+  -- ow:trainerDefeated(npc), and the same overworld/npc are on ctx.
+  mod.content.commands:register("snag_quest:check_defeated", function(ctx)
+    local ow, npc = ctx.overworld, ctx.npc
+    ctx.lastCheck = (ow and npc and ow:trainerDefeated(npc)) and true or false
+  end)
+
+  ----------------------------------------------------------------------
+  -- The recruiter at the end of Nugget Bridge (ROUTE_24).
+  --
+  -- Vanilla (data/scripts/story4.lua): first talk hands over the NUGGET,
+  -- asks "would you like to join TEAM ROCKET?", then battles you --
+  -- and IGNORES the answer, replying "Arrgh! You are not convinced?"
+  -- either way. After he's beaten he just laments his dreams of Team
+  -- Rocket forever.
+  --
+  -- All of that is left completely untouched: until he's defeated, this
+  -- delegates straight to the vanilla handler via base_talk. The mod
+  -- only takes over his POST-DEFEAT line, which vanilla wastes on a
+  -- one-liner. Beating him is the interview; the offer comes after.
+  --
+  -- That also solves "what if I say no": he is talkable forever once
+  -- beaten, so declining just leaves the offer open. Come back and
+  -- talk again.
+  ----------------------------------------------------------------------
+  local ROUTE24_TALK = {
+    { "snag_quest:check_defeated" },
+    { "jump_if_false", "vanilla" },
+
     { "snag_quest:check_quest_done" },
     { "jump_if_true", "done" },
     { "check_flag", FLAG_STARTED },
     { "jump_if_true", "started" },
 
-    { "ask", "...Grandpa. Little Miss\nDo-Gooder, teaching\ntrainers to catch right.\fLike he's never once\ncut a corner in his\nlife.\fI lifted a few bills\nfrom his wallet and had\na SNAG BALL made. Don't\ntell him.\fThere's a PICNICKER close\nby with a MEOWTH that's...\nnot quite normal-looking.\vGrab it for me?" },
+    { "ask", "Hah! You floored me.\fTEAM ROCKET could use\nsomeone who hits like\nthat.\f...I'm serious.\vStill interested?" },
     { "jump_if_false", "declined" },
     { "set_flag", FLAG_STARTED },
     { "give_item", "SNAG_BALL", QUEST_BALL_COUNT, false },
-    { "show_text", "Here. One SNAG BALL,\ncourtesy of Grandpa's\nwallet.\fThat's all the cash I\ncould lift, so make it\ncount.\fBring MEOWTH back safe,\nokay?" },
+    { "show_text", "Then consider the\ninterview passed.\fFirst mission, straight\nfrom the boss.\fThere's a PICNICKER near\nhere with a MEOWTH that\ncame out... wrong.\vWrong colour.\fThe boss wants to see it.\fHere. One SNAG BALL.\nDon't ask where we get\nthem." },
     { "start_battle", "trainer", TRAINER_CLASS, PARTY_INDEX },
     { "jump", "started" },
 
-    -- Reusable loop for every later visit: try the turn-in first (this
-    -- covers a Meowth caught just now, an older stray Meowth, or one
-    -- from a completely different catch), and only offer a rematch
-    -- against the picnicker if that comes up empty. The rematch hands
-    -- over another ball, since the catch consumed the last one and the
-    -- player would otherwise be stuck with a fight they can't finish.
     { "label", "started" },
-    { "show_text", "Well? Did you get\nMEOWTH?" },
+    { "show_text", "Well? Where's the\nMEOWTH?" },
     { "snag_quest:turn_in_meowth" },
     { "jump_if_true", "success" },
-    { "ask", "Still no MEOWTH? Want\nanother shot at that\nPICNICKER?" },
+    { "ask", "No MEOWTH, no promotion.\fWant another crack at\nthat PICNICKER?" },
     { "jump_if_false", "end" },
     { "give_item", "SNAG_BALL", QUEST_BALL_COUNT, false },
-    { "show_text", "Here, one more BALL.\fGrandpa's wallet is\ngetting suspiciously\nlight..." },
+    { "show_text", "Another BALL. These\naren't free, you know." },
     { "start_battle", "trainer", TRAINER_CLASS, PARTY_INDEX },
     { "jump", "started" },
 
     { "label", "success" },
-    { "show_text", "There you are! Come here,\nyou." },
-    { "show_text", "...Huh. Its coloring looks\na little unique, doesn't\nit? Never mind that.\fI think we'll be friends\nfor a long time." },
-    { "give_item", "SNAG_BALL", QUEST_REWARD_BALLS, false },
-    { "show_text", "Keep this one. You've\nearned it.\fJust... don't ask me\nwhere the money came\nfrom." },
+    { "show_text", "...That's the one.\fLook at the colour on it.\vThe boss will want to see\nthis personally." },
+    { "show_text", "First mission, clean work.\fKeep the spare BALL.\fAnd word gets around.\nCertain people will trade\nyou more of them...\vif you bring them the\nright kind of POKeMON." },
     { "snag_quest:complete" },
     { "jump", "end" },
 
     { "label", "done" },
-    -- Two versions of the tip: point at the fences only if they're
-    -- actually open under the current "Get new Snag Balls" setting,
-    -- otherwise send them to the marts. Sending a player to a Game
-    -- Corner gambler who won't deal would be a small but real lie.
     { "snag_quest:check_fence_open" },
     { "jump_if_false", "done_mart" },
-    { "show_text", "Thanks again for MEOWTH.\fOh -- if you ever need\nmore SNAG BALLs...\vthere's a gambler at the\nCELADON GAME CORNER who\npays in them.\fDon't ask what he wants\nin return. And don't\ntell Grandpa." },
+    { "show_text", "The boss remembers good\nwork.\fThere's a gambler at the\nCELADON GAME CORNER who\npays in SNAG BALLs.\fDon't ask what he does\nwith what you bring him." },
     { "jump", "end" },
 
     { "label", "done_mart" },
-    { "show_text", "Thanks again for MEOWTH.\fOh -- if you ever need\nmore SNAG BALLs, the\nbigger MARTS stock them\nnow.\fThey aren't cheap. Don't\ntell Grandpa where you\ngot the idea." },
+    { "show_text", "The boss remembers good\nwork.\fThe bigger MARTS stock\nSNAG BALLs now, if you\ncan afford them." },
     { "jump", "end" },
 
     { "label", "declined" },
-    { "show_text", "Oh... okay. Let me know\nif you change your mind." },
+    { "show_text", "Heh. Think it over.\fI'm not going anywhere." },
     { "jump", "end" },
 
-    { "label", "base" },
-    { "snag_quest:base_talk", "VIRIDIAN_CITY", "TEXT_VIRIDIANCITY_GIRL" },
+    { "label", "vanilla" },
+    { "snag_quest:base_talk", "ROUTE_24", "TEXT_ROUTE24_COOLTRAINER_M1" },
     { "label", "end" },
   }
 
-  mod.content.map_scripts:register("VIRIDIAN_CITY", {
-    talk = { TEXT_VIRIDIANCITY_GIRL = JESSIE_TALK },
+  mod.content.map_scripts:register("ROUTE_24", {
+    talk = { TEXT_ROUTE24_COOLTRAINER_M1 = ROUTE24_TALK },
+    priority = 500,
+  })
+
+  ----------------------------------------------------------------------
+  -- Keeping the recruiter around.
+  --
+  -- The vanilla recruiter is NOT removed by beating him -- he stays and
+  -- laments his dreams of Team Rocket. What removes him is BILL:
+  -- data/scripts/story.lua hides ROUTE24_COOLTRAINER_M1 permanently on
+  -- EVENT_LEFT_BILLS_HOUSE_AFTER_HELPING (leaving Bill's house with the
+  -- S.S. Ticket), which is vanilla Gen 1 behaviour and has nothing to do
+  -- with the battle.
+  --
+  -- That leaves two populations: players who still have him, and players
+  -- past Bill for whom he is gone forever -- including anyone who never
+  -- fought him, since he has no trainer header and sight never engages
+  -- him. So once the vanilla object is hidden, this mod spawns its own
+  -- Rocket in the same spot, permanently, with its own text key.
+  --
+  -- The stand-in does NOT require beating him: that fight is either
+  -- already done or no longer possible. He is otherwise the same
+  -- contact -- mission giver, turn-in, and post-quest hint -- and is a
+  -- natural home for a future fence.
+  ----------------------------------------------------------------------
+  local ROUTE24_ROCKET = {
+    map   = "ROUTE_24",
+    name  = "SNAG_ROUTE24_ROCKET",
+    text  = "TEXT_SNAG_ROUTE24_ROCKET",
+    -- His vanilla tile. story4.lua's onStep fires when the player stands
+    -- on (10,15) "in front of the recruiter", so he stands at (10,14).
+    -- Nudge if he ends up misplaced.
+    x = 10,
+    y = 14,
+    facing = "DOWN",
+  }
+
+  local function route24RocketWanted(game)
+    -- only once vanilla has removed its own copy, so the two never
+    -- coexist and the original keeps its nugget/battle content
+    return game and game.save and game.save.flags
+      and game.save.flags.EVENT_LEFT_BILLS_HOUSE_AFTER_HELPING == true
+  end
+
+  local function ensureRoute24Rocket(game)
+    if not (game and mod.world and mod.world.spawnNpc) then return end
+    if not route24RocketWanted(game) then return end
+    if mod.world.npc then
+      local existing = mod.world:npc(ROUTE24_ROCKET.map, ROUTE24_ROCKET.name)
+      if existing then return end
+    end
+    local sprite = rocketSprite(game)
+    if not sprite then return end
+    mod.world:spawnNpc(ROUTE24_ROCKET.map, {
+      name = ROUTE24_ROCKET.name,
+      sprite = sprite,
+      x = ROUTE24_ROCKET.x,
+      y = ROUTE24_ROCKET.y,
+      movement = "STAY",
+      range = ROUTE24_ROCKET.facing,
+      text = ROUTE24_ROCKET.text,
+    })
+    mod.log:info("spawned Route 24 recruiter stand-in at %d,%d",
+      ROUTE24_ROCKET.x, ROUTE24_ROCKET.y)
+  end
+
+  local function safeEnsureRoute24(game)
+    local ok, err = pcall(ensureRoute24Rocket, game)
+    if not ok then
+      mod.log:warn("snag_quest: Route 24 spawn failed: %s", tostring(err))
+    end
+  end
+
+  mod.events:on("map.entered", function(payload)
+    safeEnsureRoute24((payload and payload.game) or currentGameRef)
+  end)
+  mod.events:on("game.ready", function(payload)
+    local game = payload and payload.game
+    if game then safeEnsureRoute24(game) end
+  end)
+
+  -- Same script as the vanilla takeover, minus the beat-him-first gate.
+  local ROUTE24_STANDIN_TALK = {
+    { "snag_quest:check_quest_done" },
+    { "jump_if_true", "done" },
+    { "check_flag", FLAG_STARTED },
+    { "jump_if_true", "started" },
+
+    { "ask", "...You're the one who\ncame over the bridge.\fTEAM ROCKET's been\nwatching. We could use\nsomeone like you.\vInterested?" },
+    { "jump_if_false", "declined" },
+    { "set_flag", FLAG_STARTED },
+    { "give_item", "SNAG_BALL", QUEST_BALL_COUNT, false },
+    { "show_text", "Then here's your first\njob, straight from the\nboss.\fThere's a PICNICKER near\nhere with a MEOWTH that\ncame out... wrong.\vWrong colour.\fThe boss wants to see it.\fHere. One SNAG BALL.\nDon't ask where we get\nthem." },
+    { "start_battle", "trainer", TRAINER_CLASS, PARTY_INDEX },
+    { "jump", "started" },
+
+    { "label", "started" },
+    { "show_text", "Well? Where's the\nMEOWTH?" },
+    { "snag_quest:turn_in_meowth" },
+    { "jump_if_true", "success" },
+    { "ask", "No MEOWTH, no promotion.\fWant another crack at\nthat PICNICKER?" },
+    { "jump_if_false", "end" },
+    { "give_item", "SNAG_BALL", QUEST_BALL_COUNT, false },
+    { "show_text", "Another BALL. These\naren't free, you know." },
+    { "start_battle", "trainer", TRAINER_CLASS, PARTY_INDEX },
+    { "jump", "started" },
+
+    { "label", "success" },
+    { "show_text", "...That's the one.\fLook at the colour on it.\vThe boss will want to see\nthis personally." },
+    { "show_text", "First job, clean work.\fKeep the spare BALL.\fAnd word gets around.\nCertain people will trade\nyou more of them...\vif you bring them the\nright kind of POKeMON." },
+    { "snag_quest:complete" },
+    { "jump", "end" },
+
+    { "label", "done" },
+    { "snag_quest:check_fence_open" },
+    { "jump_if_false", "done_mart" },
+    { "show_text", "The boss remembers good\nwork.\fThere's a gambler at the\nCELADON GAME CORNER who\npays in SNAG BALLs.\fDon't ask what he does\nwith what you bring him." },
+    { "jump", "end" },
+
+    { "label", "done_mart" },
+    { "show_text", "The boss remembers good\nwork.\fThe bigger MARTS stock\nSNAG BALLs now, if you\ncan afford them." },
+    { "jump", "end" },
+
+    { "label", "declined" },
+    { "show_text", "Heh. Think it over.\fI'm not going anywhere." },
+    { "label", "end" },
+  }
+
+  mod.content.map_scripts:register(ROUTE24_ROCKET.map, {
+    talk = { [ROUTE24_ROCKET.text] = ROUTE24_STANDIN_TALK },
     priority = 500,
   })
 
@@ -970,6 +1236,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.11.7"
+  mod.exports.version = "0.13.1"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end

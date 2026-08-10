@@ -4,6 +4,92 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.13.1
+
+- TEST VERSION. Fixes the recruiter being missing entirely on an
+  established save.
+- Cause, confirmed from data/scripts/story.lua: the vanilla recruiter
+  is NOT removed by beating him -- he stays and laments his dreams of
+  Team Rocket. BILL removes him. Leaving Bill's house with the S.S.
+  Ticket sets EVENT_LEFT_BILLS_HOUSE_AFTER_HELPING, which hides
+  ROUTE24_COOLTRAINER_M1 permanently. That's vanilla Gen 1 behaviour
+  and unrelated to the battle. (0.13.0 was built on the assumption he
+  sticks around, which was wrong.)
+- Once that flag is set, this mod now spawns its own Rocket in his
+  vanilla spot (ROUTE_24, cell 10,14) with its own text key, and keeps
+  him there permanently -- mission giver, turn-in, post-quest hint,
+  and a natural home for a future fence.
+- The stand-in deliberately does NOT require beating the recruiter:
+  by then that fight is either already done or impossible, since he
+  has no trainer header and sight never engages him, so he can be
+  walked past entirely.
+- The two never coexist: the stand-in only appears once vanilla has
+  hidden its own copy, so the original keeps its nugget and battle.
+- Position (10,14) is derived from story4.lua's onStep, which triggers
+  when the player stands on (10,15) "in front of the recruiter" --
+  worth confirming in game.
+
+## 0.13.0
+
+- TEST VERSION, not for release. Replaced the quest opening: the intro
+  is no longer given by the girl in Viridian City. She reverts to
+  fully vanilla and this mod no longer touches VIRIDIAN_CITY at all.
+- The questline now starts with the TEAM ROCKET recruiter at the end
+  of NUGGET BRIDGE (ROUTE_24 / TEXT_ROUTE24_COOLTRAINER_M1). Beat him,
+  and he offers you the job for real -- your first mission from the
+  boss. He is also the turn-in and the post-quest hint.
+- Everything before the battle stays vanilla, reached through
+  base_talk: the NUGGET, the recruitment pitch, the fight. Only his
+  POST-DEFEAT line is taken over, which vanilla spends on one lament
+  about his dreams of Team Rocket.
+- Declining is safe: confirmed from data/scripts/story4.lua that he
+  stays talkable forever once beaten (the battleOrDone branch), so the
+  offer stays open. Come back and talk to him again.
+- Note on the vanilla ask: the base game's "would you like to join
+  TEAM ROCKET?" IGNORES the answer -- it replies "Arrgh! You are not
+  convinced?" either way. So the real choice is now the one after the
+  battle, which also fits "beat him first" better than hooking the
+  vanilla prompt would have.
+- The Picnicker, the guaranteed shiny MEOWTH, the one-ball-in /
+  one-ball-out economy and all three fences are unchanged.
+- Save flags are deliberately REUSED (MOD_SNAG_QUEST_GIRL_STARTED /
+  _DONE) so an in-progress save keeps its state while this is being
+  tried out. Worth renaming if this sticks.
+
+## 0.12.1
+
+- Testing only, not for release. Moved the Cerulean Rocket 2 cells
+  right, 2 cells down: (30,15) -> (32,17).
+
+## 0.12.0
+
+- New fence in **Cerulean City**: a Team Rocket grunt loitering near the
+  robbed house. Gated on the quest, the CASCADEBADGE, and the fence
+  supply option, same as the others.
+- This is the first NPC this mod CREATES rather than takes over.
+  Spawned with mod.world:spawnNpc, so its text key is ours
+  (TEXT_SNAG_CERULEAN_ROCKET) -- no ROM constant to look up and no
+  Red/Blue-vs-Yellow rename risk for this one.
+- Runtime spawn rather than a maps:patch, deliberately: a rejected map
+  record silently disables the WHOLE mod while the manager still shows
+  it Ready, so patching vanilla map data is the riskiest option here.
+  Runtime objects are also trivially repositionable while the exact
+  spot is still being worked out.
+- He stands still (movement = "STAY") for now.
+- Handled two documented traps: runtime objects aren't serialized and
+  map.entered is skipped on a save restore, so the spawn runs from BOTH
+  map.entered and game.ready; and errors inside event handlers are
+  swallowed whole, so the spawn is wrapped in pcall.
+- The sprite id is probed against game.data.sprites rather than
+  hardcoded -- an unknown sprite makes NPC.new assert, and that assert
+  is swallowed inside a handler, producing an invisible NPC with no
+  error anywhere.
+- registerMerchant gained a `fallback` line, used when a merchant is
+  mod-spawned and so has no vanilla dialogue to fall back to.
+
+**Position is a first guess** (cell 30,15). Map grids aren't readable
+from the engine repo, so expect to nudge it.
+
 ## 0.11.7
 
 - Releases are now fully automatic: bump `version` in `manifest.json`,

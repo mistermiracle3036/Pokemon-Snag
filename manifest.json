@@ -1,7 +1,7 @@
 {
   "id": "snag_quest",
   "name": "Pokemon Snag",
-  "version": "0.11.7",
+  "version": "0.13.1",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -20,6 +20,6 @@
     "pokeball_colors"
   ],
   "conflicts": [],
-  "description": "Steal Pokemon from other trainers. The SNAG BALL works in trainer battles, so any Pokemon an opponent sends out is one you can take. Earn them from Jessie's questline or fence stolen Pokemon to black-market buyers across Kanto. Requires Quest System.",
+  "description": "Steal Pokemon from other trainers. The SNAG BALL works in trainer battles, so any Pokemon an opponent sends out is one you can take. Beat the TEAM ROCKET recruiter at Nugget Bridge to earn your first, or fence stolen Pokemon to black-market buyers across Kanto. Requires Quest System.",
   "github": "mistermiracle3036/Pokemon-Snag"
 }
