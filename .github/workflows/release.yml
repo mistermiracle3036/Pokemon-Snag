@@ -93,18 +93,22 @@ jobs:
         run: |
           MOD_ID="${{ steps.info.outputs.mod_id }}"
           VERSION="${{ steps.info.outputs.version }}"
-          # The engine expects the mod folder to be named after the mod id,
-          # NOT after the repo -- those differ (repo Pokemon-Snag, id
-          # snag_quest) and getting it wrong makes the launcher's updater
-          # fall back to picking an arbitrary zip.
+          # The ASSET is named after the mod id, NOT the repo -- those differ
+          # (repo Pokemon-Snag, id snag_quest) and getting it wrong makes the
+          # launcher's updater fall back to picking an arbitrary zip.
+          #
+          # The archive INTERIOR is flat: manifest.json sits at the root, not
+          # inside a "$MOD_ID/" folder. LauncherMods.locateRoot accepts both
+          # shapes, and the install folder is named from manifest.id either
+          # way -- but the community mod index requires files at the root.
           mkdir -p build/"$MOD_ID"
           cp -r ./* build/"$MOD_ID"/ 2>/dev/null || true
           cp .modkitignore build/"$MOD_ID"/ 2>/dev/null || true
           rm -rf build/"$MOD_ID"/build build/"$MOD_ID"/tests build/"$MOD_ID"/.github
           rm -f  build/"$MOD_ID"/.gitignore
-          cd build
-          zip -r "../$MOD_ID-$VERSION.zip" "$MOD_ID" -x '*.DS_Store'
-          cd ..
+          cd build/"$MOD_ID"
+          zip -r "../../$MOD_ID-$VERSION.zip" . -x '*.DS_Store'
+          cd ../..
           ASSET="$MOD_ID-$VERSION.zip"
           echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
           echo "sha256=$(sha256sum "$ASSET" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
