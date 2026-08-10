@@ -4,6 +4,35 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.1
+
+- TEST VERSION, not for release. ONE change from 0.14.0, so the next
+  device test isolates it.
+- **Fixes both badge-gated fences saying nothing at all.** Reported on
+  0.14.0: the PEWTER man turns to face you and no text box appears, and
+  the VERMILION sailor shows no fence dialogue -- while the CELADON
+  gambler and the Nugget Bridge recruiter, the two fences with NO badge
+  gate, work. That split is a single script row: `snag_quest:check_badge`
+  is the only command the failing scripts run that the working ones
+  don't, and it runs before their first text row.
+- Cause: the check read `(inv[badgeId] or 0) > 0`, which assumes the
+  stored badge value is a number. If it is anything else, `> 0` raises
+  "attempt to compare <type> with number", the script runner swallows
+  it, and the talk aborts before printing anything -- the classic
+  face-the-player-and-say-nothing signature. It now tests truthiness,
+  which is what every badge check in the engine does
+  (src/inventory/Badges.lua's Badges.count, OverworldController:1561 and
+  :2067, data/scripts/flavor/viridian_city.lua). This mod was the only
+  place comparing numerically.
+- PRE-EXISTING, not from the 0.14.0 fence work: this row is unchanged
+  since the PEWTER fence was added. It most likely means that fence has
+  never worked post-BOULDERBADGE, and the failure being silent is why it
+  went unnoticed.
+- If a fence is STILL silent on this build, the real error is already
+  being written to the mod manager's [ERRS] screen --
+  `ScriptRunner:resume` reports swallowed script errors through
+  `Runtime.reportError` under this mod's id.
+
 ## 0.14.0
 
 - TEST VERSION, not for release. Reworks who buys stolen Pokemon: the

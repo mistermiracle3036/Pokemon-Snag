@@ -651,9 +651,29 @@ return function(mod)
   -- reason to know the word "snag" -- so pre-quest they just say their
   -- ordinary vanilla line via base_talk, same as pre-badge.
   ----------------------------------------------------------------------
+  -- 0.14.1: test the badge by TRUTHINESS, not `> 0`.
+  --
+  -- This used to read `(inv[badgeId] or 0) > 0`, which assumes the stored
+  -- value is a number. Every badge test in the engine instead just checks
+  -- whether the key is set -- Badges.count (src/inventory/Badges.lua),
+  -- the gate guard at OverworldController:1561, the gym statue at :2067,
+  -- data/scripts/flavor/viridian_city.lua. This mod was the only place
+  -- comparing numerically.
+  --
+  -- If the value is anything non-numeric, `value > 0` raises "attempt to
+  -- compare <type> with number". The script runner catches that, the talk
+  -- aborts before its first text row, and the NPC turns to face the player
+  -- and says nothing -- reported on device against 0.14.0 for BOTH
+  -- badge-gated fences (PEWTER, VERMILION) while both ungated ones
+  -- (CELADON, the recruiter) were fine. That split is exactly this row:
+  -- it is the only command the failing scripts run that the working ones
+  -- don't.
+  --
+  -- Truthiness matches the engine everywhere and removes the throw site
+  -- whatever the stored value turns out to be.
   mod.content.commands:register("snag_quest:check_badge", function(ctx, badgeId)
     local inv = ctx.save and ctx.save.inventory
-    ctx.lastCheck = (inv and (inv[badgeId] or 0) > 0) and true or false
+    ctx.lastCheck = (inv and inv[badgeId]) and true or false
   end)
 
   -- Fences answer to BOTH the quest gate and the "Get new Snag Balls"
@@ -1340,6 +1360,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.0"
+  mod.exports.version = "0.14.1"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end
