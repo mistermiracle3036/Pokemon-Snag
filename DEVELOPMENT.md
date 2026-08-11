@@ -188,6 +188,64 @@ option-controlled) is done by wrapping `Data:textEntry` and appending to
 a **copy** of the entry. The underlying table is never mutated, so turning
 the option off cleanly removes the item again.
 
+## Writing dialogue: the two-row rule
+
+The text box is **18 columns** wide (`MAX_COLS` in `src/render/TextBox.lua`)
+and shows **two rows** at a time. `TextBox.paginate` splits on the three
+escapes this mod uses:
+
+| escape | meaning |
+| ------ | ------- |
+| `\f` | new page — clears the box |
+| `\n` | new line on the same page |
+| `\v` | new line on the same page, marked as a **scrolled continuation** (`contBefore`) |
+
+The box holds **exactly two rows**. Read `TextBox:beginLine()` in
+`src/render/TextBox.lua`: before starting a new line it drops the oldest
+one once two are already showing, and sets a pixel offset so the box
+slides up. Its `draw` keeps only two row positions to match.
+
+So a third line on a page throws the first one away. Whether that is
+polite or not depends entirely on the separator: a line introduced by
+`\v` sets `waiting`/`contAdvance`, prints ▼ and waits for A first; a line
+introduced by `\n` just scrolls. On screen the unprompted version reads
+as the previous line *repeating itself* — the surviving row moves from
+position 2 to position 1 while you are still reading it.
+
+**Two traps, not one.** The second is easy to miss: an authored line
+*wider than 18 columns* is soft-wrapped by `paginate` into extra rows,
+and those inherit no continuation marker. So a page can bust the two-row
+budget even when it looks like it has only two lines in the source.
+
+That is exactly the artifact visible on the vanilla Route 24 recruiter's
+own "Congratulations!\nYou beat our 5\ncontest trainers!" page in
+`data/scripts/story4.lua` — engine text, three `\n` lines, no `\v`. This
+mod passes it through untouched, so the artifact reproduces with the mod
+disabled.
+
+**Rule for this mod's own strings: at most two `\n` lines per page; every
+further line on that page must be introduced with `\v`.** Lines stay
+within 18 columns — longer ones soft-wrap on glyph boundaries and quietly
+push the page over two rows again, which reintroduces the same problem.
+
+All of this mod's dialogue is checked against the engine's own
+`TextBox.paginate`. When adding a line, re-run that check rather than
+eyeballing it: extract the literals from `main.lua`, expand the escapes,
+feed each through `paginate`, and assert that no row past index 2 has
+`contBefore` false.
+
+Verify by *running the paginator*, not by counting characters in the
+source — the soft-wrap trap above is invisible to inspection, and an
+earlier version of this check silently passed everything because the
+string never reached the interpreter. A check that cannot fail is worse
+than no check: make sure it reports a known-bad string as bad before
+trusting a clean run.
+
+One string is deliberately exempt: `"All right!\n%s was\ncaught!"` is the
+engine's own wild-catch message, reproduced verbatim so a snag reads
+exactly like a normal catch. It has vanilla's own three-row page, and
+matching vanilla matters more here than the scroll.
+
 ## Releasing
 
 Releases are automatic. Bump `version` in `manifest.json`, make the top

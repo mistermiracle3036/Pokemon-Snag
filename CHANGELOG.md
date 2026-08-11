@@ -4,6 +4,601 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.11
+
+### Updating from 0.11.7?
+
+That is the last version that was published, so everything below is new
+to you.
+
+**The questline starts somewhere else now** -- **trikus's** idea, from
+the gen1recomp Discord: rather than invent a character to hand out the
+quest, use the Team Rocket grunt who already asks whether you want to
+join, and let saying yes mean something.
+
+It used to be the girl in Viridian City. It is now the **TEAM ROCKET
+recruiter at the end of Nugget Bridge** on Route 24 -- the one who offers you the Nugget and asks
+if you want to join. Beat him, then talk to him again and the offer
+becomes real. Viridian City is untouched by this mod again; that girl is
+back to her ordinary self.
+
+If Bill has already sent you on your way, that recruiter is gone from the
+map -- that is normal Gen 1 behaviour, not a bug. A Team Rocket grunt now
+stands in his spot instead so the questline is never locked out.
+
+**Your save is fine either way.** A quest already started or finished
+under the old opening carries over: the recruiter picks up wherever you
+left off, and finished quests stay finished.
+
+**Four fences instead of two.** They buy snagged Pokemon for Snag Balls:
+
+- the **Nugget Bridge recruiter** himself, once you have done his job
+- the **Celadon Game Corner** gambler
+- the **Pewter City** man in the Nidoran house (Boulder Badge)
+- the **Vermilion City** sailor at the S.S. Anne gangway (Thunder Badge)
+
+They are deliberately not one organisation. Two are Rocket, two are
+independents who just like what falls off the back of a truck, and they
+all have their own opinion of you. Their dialogue has been rewritten to
+match.
+
+**Turning in MEOWTH now pays 5 Snag Balls**, up from 1. One was too
+tight: every snag after the quest rolls ordinary catch odds, so a single
+ball was one failed throw away from having none. Five is a starting
+float, not a stockpile -- you will still want the fences.
+
+**Fixes you will notice:**
+
+- The Pewter fence said nothing at all before you had the Boulder Badge.
+  He now gives his ordinary line, like everyone else behind a gate.
+- Dialogue no longer scrolls lines away before you can read them.
+- The quest journal pointed at Viridian City and at an NPC that Bill
+  removes. Both corrected.
+
+All of this works on Red, Blue and Yellow.
+
+### Also in this version
+
+- The quest journal marker now follows the recruiter after Bill removes
+  the original. It only ever pointed at the vanilla NPC, so once he was
+  gone the marker pointed at nobody -- which is the situation every
+  player ends up in eventually.
+- Corrected this entry's own claim that the turn-in used to pay nothing.
+  That was true only of unreleased test builds; v0.11.7 paid 1.
+
+## 0.14.8
+
+- TEST VERSION, not for release.
+
+### Fixed
+
+- **Restored `mon.shiny` on the quest MEOWTH.** 0.14.6 removed it and the
+  MEOWTH lost its shiny colours on device -- the name marker still drew,
+  so detection was fine, but the recolour never baked. Reported with the
+  Shiny Pokemon mod's own settings confirmed correct (SHINY ON, SHINY
+  COLORS ON, SHINY INTRO ON), so this was a regression here, not a
+  misconfiguration.
+- 0.14.6's reasoning was half right and its conclusion was wrong.
+  `mon.shiny` genuinely is not an engine field -- nothing in the engine's
+  `src/` or `data/` reads or writes it, and the engine's own truth is
+  `Stats.isShiny(mon.dvs)`. But not-engine-native does not mean private.
+  Their detector READS it off arbitrary Pokemon --
+  `isShinyMon(mon) = mon.shiny or Stats.isShiny(mon.dvs)` -- which makes
+  it part of that mod's **input contract**, the supported way for another
+  mod to say "this one is shiny", not internal state to keep out of.
+- The distinction that actually matters, and the rule this mod follows
+  now: write engine-native truth (`mon.dvs`/`stats`/`hp`), write the
+  input marker other mods read (`mon.shiny`), call published exports
+  (`makeShinyDVs`) -- and never write battler-scoped internals
+  (`battler.shiny`, `battler._shinySpriteApplied`) that only their own
+  code maintains. 0.14.6's refusal to patch around their missing
+  `newTrainer` path still stands.
+
+### Docs
+
+- Removed the FAQ entry about a stray square during the Meowth fight. It
+  was a conflict with an unrelated mod, already fixed by that mod's
+  author, and never involved this mod -- no reason to carry a
+  troubleshooting entry for something resolved between releases.
+- README's Shiny Pokemon note corrected: it claimed this mod never writes
+  any of that mod's fields, which is no longer true and was the wrong
+  framing anyway. It now just records that the marker and the recolour
+  are separate options.
+
+## 0.14.7
+
+- TEST VERSION, not for release.
+
+### Fixed
+
+- **The intro quest paid nothing.** `QUEST_REWARD_BALLS` was declared and
+  then never used -- neither success branch had a `give_item` row -- so
+  turning MEOWTH in awarded **zero** SNAG BALLs, not the one the constant
+  claimed. The quest ball is spent on MEOWTH, so the quest ended with an
+  empty bag: nothing to snag with, and no route to a fence either, since
+  fences only pay for snagged Pokemon. The mod's entire loop was
+  unreachable without first buying a 10,000 ball. NOTE: this only ever
+  existed in unreleased versions -- v0.11.7, the last public release,
+  paid its reward correctly. The give_item row was dropped during the
+  0.13.x questline rewrite, so no player outside these test builds was
+  ever affected.
+- The dialogue made it worse by saying *"Keep the spare BALL"* about a
+  ball that had already been spent. Rewritten on both the vanilla
+  recruiter and the post-BILL stand-in.
+
+### Changed
+
+- **The turn-in reward is now 5 SNAG BALLs**, handed over with the new
+  line. Deliberately a starting float rather than a stockpile: every snag
+  after the quest rolls normal catch odds -- `snagAttempt` just calls
+  `ctx.vanillaAttempt`, and the guaranteed catch is scoped to this quest's
+  own trainer class and species -- so one ball would be a single failed
+  roll from stuck again. Five is still tight enough that the fences and
+  the marts matter.
+- Quest journal reward line updated to match.
+
+### Docs
+
+- FAQ, `mod.card` and the journal entry all said one ball. Corrected.
+- **FAQ troubleshooting entry for the battle artifact rewritten -- the
+  previous one was wrong.** It blamed the Shiny Pokemon mod. The artifact
+  was actually a conflict with an unrelated mod (Blackjack Corner), found
+  by the developer bisecting the mod list, and has since been fixed by
+  that mod's author. Nothing in this mod changed. The entry now leads
+  with the bisect method instead of naming a suspect, since that is what
+  actually found it.
+- Added a note that the Shiny Pokemon mod's marker and recolour are
+  separate options: a Meowth showing the marker but the wrong colour
+  means that mod's SHINY COLORS toggle is off, not a fault here.
+
+## 0.14.6
+
+- TEST VERSION, not for release. One change: this mod no longer writes a
+  field belonging to another author's mod.
+
+### Changed
+
+- **Stopped setting `mon.shiny`.** Shininess is engine-native --
+  `Stats.isShiny(mon.dvs)`, defense/speed/special == 10 with attack in a
+  fixed set -- and the DVs this mod assigns to the quest MEOWTH already
+  satisfy it. `mon.shiny` is **not an engine field at all**: nothing in
+  the engine's `src/` or `data/` reads or writes it. It belongs entirely
+  to the Shiny Pokemon mod (`SHINY_POKEMON`) as a cache flag.
+- Writing it was this mod reaching across a **cross-author boundary**.
+  Ownership between this project's own mods can be declared and honoured
+  through `mod.exports.owns`; with a third-party mod none of that
+  applies -- we cannot declare on their behalf and their internals may
+  change in any release. The correct posture, already used with
+  `pokeball_colors`, is: write engine-native state, call their published
+  exports, let them derive the rest. `exports.makeShinyDVs` is still used
+  when that mod is present.
+- It was also actively unhelpful, not merely impolite. Their detector is
+  `isShinyMon(mon) = mon.shiny or Stats.isShiny(mon.dvs)`, and their
+  `ensureShinyBattler` sets the pair together -- `battler.mon.shiny` AND
+  `battler.shiny`. Pre-setting only `mon.shiny` handed them a half-set
+  state: mon flagged, battler never marked. Setting only the DVs lets
+  their own code detect the MEOWTH and mark both halves in its own order.
+
+### Open: the square artifact in the MEOWTH fight
+
+- Diagnosed against SHINY_POKEMON 1.0.8, not guessed. That mod wraps
+  `Pokemon.new` and `BattleState.newWild` but **never `newTrainer`**. Its
+  wild path carries an explicit late-shiny fixup --
+  `result.enemy._shinySpriteApplied = false; result.enemy.shiny = true` --
+  precisely because a Pokemon can become shiny after its battler was
+  built. There is no trainer equivalent, because a trainer's Pokemon
+  being shiny is a case that mod was never written for. This mod is the
+  only thing that creates it, which matches the report exactly: the
+  artifact appears for this fight and for no other shiny.
+- The colours still work because `syncBattleShinies` re-bakes every frame
+  from a `drawPicsLayer` wrap; only the one-shot/HUD decorations are left
+  half-set.
+- This version may or may not resolve it -- it removes the half-set state
+  this mod was contributing, which is worth testing, but the missing
+  `newTrainer` path is theirs. Two option flips narrow it with no build:
+  turning off their SHINY INTRO toggle separates the sparkle FX from the
+  name-star drawing, and disabling Dramatic Shape separates the voxel
+  `snapHUDs` star path from the plain overlay one.
+- Deliberately NOT worked around by resetting `_shinySpriteApplied` or
+  `battler.shiny` from here. That would be writing their private fields
+  to patch their bug -- the same mistake this version is undoing.
+
+## 0.14.5
+
+- TEST VERSION, not for release. A dialogue presentation pass plus one
+  new line. **No wording was changed anywhere** -- verified mechanically,
+  see below.
+
+### Fixed
+
+- **Dialogue was losing lines off the top of the box.** The text box holds
+  exactly two rows: `TextBox:beginLine()` drops the oldest line once two
+  are already showing, and `draw` keeps only two row positions. A third
+  line on a page therefore discards the first. Whether that is polite depends on the separator --
+  a line introduced by `\v` prints the arrow and waits for A first, a
+  line introduced by `\n` just scrolls. Unprompted, it reads on screen as
+  the previous line repeating itself.
+- 37 pages of this mod's dialogue did that, including the intro mission
+  briefing (a 10-row page) and text added in 0.14.0. All are fixed by
+  changing the separator before row 3+ from `\n` to `\v`. Every authored
+  line break is preserved.
+- A second cause was easy to miss: an authored line wider than 18 columns
+  is soft-wrapped into extra rows that inherit no continuation marker, so
+  a page can bust the two-row budget while looking like two lines in the
+  source. Those lines are re-wrapped -- again without changing words.
+- One string is deliberately left alone: `"All right!\n%s was\ncaught!"`
+  is the engine's own wild-catch message, reproduced verbatim so a snag
+  reads like a normal catch. Vanilla's own page is three rows and
+  matching vanilla wins here.
+- **Verification:** the word stream of every dialogue literal was compared
+  before and after -- identical. The pagination audit goes from 37
+  offending pages to 1 (the vanilla-copy above).
+
+### Added
+
+- The pre-BILL recruiter now signs off with *"One more thing. My bridge
+  shift is done... I can finally get out of these civilian clothes.
+  You'll know me when you see me."* -- said once, after the mission is
+  turned in.
+  Reported from the first pre-BILL playthrough: the quest-giver never
+  looks like a TEAM ROCKET grunt, and the change of appearance after BILL
+  removes him reads as a different NPC appearing rather than the same man
+  in uniform. This is on the VANILLA recruiter only -- it is the last
+  thing he says before BILL removes him for good, so the grunt standing
+  in his spot afterwards pays it off. It cannot go on the stand-in, whose
+  own lines are written as a different grunt anyway.
+
+### Not fixed, on purpose
+
+- The vanilla recruiter's own pre-battle lines still appear to repeat.
+  **Confirmed this build cycle with every mod disabled** -- it is engine
+  text (`data/scripts/story4.lua`) hitting the exact two-row behaviour
+  above, three `\n` lines on one page. Nothing this mod can fix; it
+  belongs upstream in gen1recomp.
+
+### Corrected
+
+- 0.14.4 claimed "all 29 of this mod's own dialogue strings were checked
+  against `TextBox.paginate` and pass". That was wrong. The check shelled
+  out per string and the string never reached the interpreter, so it was
+  validating empty input and could not fail. The rebuilt check reports
+  known-bad strings as bad before it is trusted, and DEVELOPMENT.md now
+  says so.
+
+## 0.14.4
+
+- TEST VERSION, not for release. **Documentation only -- no code or
+  behaviour change.** Records what the first pre-BILL playthrough turned
+  up. Nothing here needs re-testing in game.
+
+### Not our bugs (both confirmed against engine source)
+
+- **The recruiter's vanilla lines appear to repeat before the battle.**
+  Engine text, passed through untouched. `data/scripts/story4.lua` builds
+  the page `"Congratulations!\nYou beat our 5\ncontest trainers!"` --
+  three lines, joined with `\n`, in a box that shows two. Running that
+  exact string through the engine's own `TextBox.paginate` returns one
+  page of 3 lines with `contBefore` false on all of them, so the third
+  scrolls in unprompted and reads as the previous line repeating.
+  Reproducible with this mod disabled; belongs upstream.
+- **Stray square artifact during the Meowth fight.** The Shiny Pokemon
+  mod's. This mod sets the shiny DVs (data, engine-native) and draws
+  nothing whatsoever; the engine has no shiny visuals of its own. The
+  marker beside the name and the sparkles are both that mod's. Disabling
+  it leaves the MEOWTH just as shiny, undecorated -- which is also how to
+  confirm the source of any artifact around a shiny.
+
+### Working as designed
+
+- **The quest-giver doesn't look like a TEAM ROCKET grunt pre-BILL.**
+  Correct. Pre-BILL he is the untouched vanilla NPC and this mod does not
+  change sprites -- and vanilla already gives that object
+  `trainerClass = OPP_ROCKET`, so he fights as a Rocket while looking
+  like a Cooltrainer. After BILL hides him, the stand-in this mod spawns
+  probes for `SPRITE_ROCKET` (confirmed present in the engine's sprite
+  table) and does look the part. The two therefore differ on purpose, and
+  the stand-in's dialogue is written as a different grunt who has been
+  watching, not as the same man.
+
+### Docs
+
+- README, FAQ and `mod.card` now state the Shiny Pokemon division of
+  labour explicitly: **this mod supplies the data, that mod supplies the
+  picture.** Added to Compatibility, with the disable-to-confirm step.
+- FAQ gained troubleshooting entries for both artifacts above.
+- DEVELOPMENT.md gained a "Writing dialogue: the two-row rule" section --
+  18 columns, two rows, and the rule that any line past row 2 on a page
+  must be introduced with `\v` rather than `\n`, or it scrolls
+  unprompted and looks like a repeat. All 29 of this mod's own dialogue
+  strings were checked against `TextBox.paginate` and pass.
+
+## 0.14.3
+
+- TEST VERSION, not for release. Clean-up pass: the 0.14.2 diagnostics
+  come out, the docs catch up with the 0.13.x redesign, and the Yellow
+  question is closed.
+
+### Removed
+
+- All 0.14.2 diagnostics: the `snag_quest:probe` command and its rows on
+  every fence script, and the `load v<version>` stamp on boot. Nothing
+  writes to [ERRS] any more. They did their job -- the probe line
+  `f=n` on all five NPCs is what identified the cause in one round.
+
+### Fixed
+
+- The `base_talk` fallback could print a raw `TEXT_` constant into a
+  dialogue box. `Commands.show_text`'s last resort is to print whatever
+  string it was handed, which is right for the hand-ported scripts that
+  pass literal dialogue but wrong here, where it is handed a constant.
+  It now resolves first and stays silent if nothing resolves, which is
+  what `showMapText`'s own miss path does.
+
+### Verified
+
+- **Yellow: closed, no rename.** Every NPC this mod takes over was
+  checked against the engine's own symbol tables
+  (`tools/rom_manifest.json` and `tools/rom_manifest_yellow.json`).
+  `maps.VERMILION_CITY.objects` carries
+  `{ name = "VERMILIONCITY_SAILOR1", text = "TEXT_VERMILIONCITY_SAILOR1" }`
+  in BOTH, so the new fence needs no second constant. The same pass
+  re-confirmed the Route 24 recruiter (never previously checked for
+  Yellow) and the Pewter man as identical, and the Game Corner
+  coin-giver as genuinely renamed -- which is why that one alone
+  registers two constants. All six mart clerk constants match too.
+- **Team Rocket Returns does not conflict.** Tested on device with both
+  mods enabled: this mod's dialogue wins normally on every fence.
+
+### Corrected
+
+- 0.14.2's entry claimed the 0.14.1 badge fix "was not the cause". That
+  is very likely wrong and is withdrawn. With the source option set to
+  `MART` the gate closes at row 2 and `check_badge` never runs at all,
+  so the observations that looked like they cleared it never exercised
+  it. The most probable sequence is: the first PEWTER test ran while the
+  option was still `BOTH`, `check_badge` threw on a non-numeric badge
+  value, and the [ERRS] check that came back empty happened after a
+  relaunch -- `Runtime.errors` is rebuilt per boot, so the evidence was
+  already gone. Marked as inferred, not proven: distinguishing a stored
+  `true` from `1` was not worth another device round, and the truthiness
+  check is correct either way.
+
+### Docs
+
+- README, FAQ and `mod.card` rewritten for the Nugget Bridge opening and
+  the four fences. They had still described the pre-0.13 Viridian
+  ("Jessie") opening and two fences.
+- All three now document the NPC-takeover conflict rule: only one mod's
+  dialogue can win for a given character and the loser's silently never
+  runs. The FAQ's troubleshooting entry now leads with the actual most
+  common cause -- GET NEW SNAG BALLS set to `MART`, which closes every
+  fence by design and makes them look broken.
+
+## 0.14.2
+
+- TEST VERSION, not for release. **DIAGNOSTIC BUILD.** It adds no
+  features and fixes nothing new -- it exists to make the fence failure
+  visible on a device with no console. The probe rows and the load stamp
+  are marked in code and must be removed before release.
+- What 0.14.1 established: all three `registerMerchant` fences (CELADON,
+  PEWTER, VERMILION) do nothing on device and write NO entry to [ERRS],
+  while the Nugget Bridge recruiter -- the one fence that does not go
+  through `registerMerchant` -- works. No [ERRS] entry means nothing is
+  throwing, which rules out the swallowed-script-error family.
+- Running the exact registered rows through the engine's real
+  ScriptRunner off device shows all three fences taking the fence path
+  and building their intro text box correctly, with a trace identical to
+  the recruiter's. So the script rows, the gate commands and the badge
+  check are all doing the right thing. The difference is not in the
+  rows, which means it is in dispatch (the talk never reaches our
+  script) or in save state.
+- **Added: `snag_quest:probe`,** the first row of every fence script. It
+  writes one line to [ERRS] through `Runtime.reportError`, the only
+  output channel that exists on iOS:
+  `snag_quest: PEW qY fY bY tnil`
+  - tag: `CEL` / `PEW` / `VER` / `R24` / `STD`
+  - `q` questDoneForReal, `f` fences enabled, `b` badge held (`-` if the
+    fence is ungated), `t` the vanilla handler's type (`fun`/`tab`/`nil`)
+  - **No line at all for an NPC is itself the answer:** the talk never
+    reached this mod, so the TEXT_ constant does not match that NPC on
+    that game version, or something outranks our registration.
+- **Added: a load stamp** -- `snag_quest: load v0.14.2` in [ERRS] on
+  boot. `mod.log:info` goes to a console that does not exist on iOS, so
+  until now "is the new build actually live?" was unanswerable on
+  device. It is the first line to check for every future test.
+- The 0.14.1 badge fix is kept. It was not the cause, but
+  `(inv[badgeId] or 0) > 0` was still the only numeric badge test in the
+  mod or the engine and a latent throw site.
+
+## 0.14.1
+
+- TEST VERSION, not for release. ONE change from 0.14.0, so the next
+  device test isolates it.
+- **Fixes both badge-gated fences saying nothing at all.** Reported on
+  0.14.0: the PEWTER man turns to face you and no text box appears, and
+  the VERMILION sailor shows no fence dialogue -- while the CELADON
+  gambler and the Nugget Bridge recruiter, the two fences with NO badge
+  gate, work. That split is a single script row: `snag_quest:check_badge`
+  is the only command the failing scripts run that the working ones
+  don't, and it runs before their first text row.
+- Cause: the check read `(inv[badgeId] or 0) > 0`, which assumes the
+  stored badge value is a number. If it is anything else, `> 0` raises
+  "attempt to compare <type> with number", the script runner swallows
+  it, and the talk aborts before printing anything -- the classic
+  face-the-player-and-say-nothing signature. It now tests truthiness,
+  which is what every badge check in the engine does
+  (src/inventory/Badges.lua's Badges.count, OverworldController:1561 and
+  :2067, data/scripts/flavor/viridian_city.lua). This mod was the only
+  place comparing numerically.
+- PRE-EXISTING, not from the 0.14.0 fence work: this row is unchanged
+  since the PEWTER fence was added. It most likely means that fence has
+  never worked post-BOULDERBADGE, and the failure being silent is why it
+  went unnoticed.
+- If a fence is STILL silent on this build, the real error is already
+  being written to the mod manager's [ERRS] screen --
+  `ScriptRunner:resume` reports swallowed script errors through
+  `Runtime.reportError` under this mod's id.
+
+## 0.14.0
+
+- TEST VERSION, not for release. Reworks who buys stolen Pokemon: the
+  fences go from three to four, and the Nugget Bridge recruiter becomes
+  one of them.
+
+### Fences
+
+- **Cut the Cerulean grunt entirely.** The mod-spawned Rocket in
+  CERULEAN_CITY, his dialogue and his CASCADEBADGE-gated merchant
+  registration are gone. His position (cell 32,17) had been verified in
+  game and he worked -- this is a design cut, not a bug fix. The Nugget
+  Bridge recruiter replaces him, and one fewer spawned NPC is one fewer
+  thing that can fail silently. The Route 24 stand-in still spawns and
+  still uses the shared sprite-probing helper.
+- **The Nugget Bridge recruiter is now a fence.** No badge gate --
+  finishing the first job is the credential, and it already lands later
+  than CASCADEBADGE in practice. Standard payout, no VIP bonus of his
+  own. He buys in BOTH of his forms (the vanilla NPC pre-BILL and this
+  mod's stand-in after BILL hides him), because they are the same
+  character and which one you meet is an accident of progress.
+- His post-quest hint pointing at the CELADON gambler is gone rather
+  than kept alongside: with him buying, sending the player to another
+  city to sell was redundant. The MART hint still stands in when the
+  GET NEW SNAG BALLS option has fences switched off, so that branch
+  never points at a closed door.
+- **New fourth fence: the VERMILION CITY sailor** guarding the S.S.
+  ANNE gangway (TEXT_VERMILIONCITY_SAILOR1), gated on the
+  THUNDERBADGE. Verified against engine source before writing: his
+  `onStep` ticket check at cell (18,30) is a separate hook from his
+  `talk` entry and is untouched, so boarding the ship still works
+  pre-departure; and the engine's own comment that "the sailor himself
+  never hides" still reads true, so he persists as a permanent fence
+  after the ship sails.
+  - **TODO/CONFIRM (Yellow):** the text constant is the Red/Blue name
+    and has NOT been verified on a Yellow save. Yellow renames objects
+    per map, so this needs reading off a running Yellow game with the
+    NPC Inspector before it ships.
+
+### Fixed
+
+- **`base_talk` only ever handled one of the three shapes a vanilla
+  talk can take.** A talk entry can be a Lua handler, a row list, or
+  absent entirely (confirmed from OverworldState:showMapText). It
+  handled the handler case; a row list was called as if it were a
+  function, and an absent entry returned with no text at all. Both
+  failures look identical in game -- the NPC turns to face you and says
+  nothing. This mattered immediately, because the Vermilion sailor's
+  base talk is a row list, and it had been silently eating the PEWTER
+  man's vanilla line for every player who had not yet earned the
+  BOULDERBADGE. All three shapes are handled now.
+- The quest journal's in-progress objective still read "Bring a MEOWTH
+  back to the girl in Viridian City" -- left over from the pre-0.13.0
+  opening and wrong since. It now names the Nugget Bridge recruiter.
+
+### Internal
+
+- The fence transaction is factored into shared script rows so the
+  recruiter can use it without going through `registerMerchant`. He
+  can't: he already owns a talk entry for his own text constant, and
+  two contributions for one map + constant do not merge -- MapScripts
+  picks a single winner per constant and drops the loser silently. The
+  rows are shared instead of the registration, with per-copy label
+  suffixes so two copies can coexist in one script.
+- All six registered talk scripts were run through the engine's own
+  `ScriptRunner.validate`: every command resolves, every jump target
+  has a matching label, no duplicate labels.
+
+### Known stale
+
+- README, FAQ and `mod.card` still describe the pre-0.13 Jessie opening
+  and say there are two fences. Deliberately left for a docs pass once
+  this design is confirmed to stick.
+
+## 0.13.1
+
+- TEST VERSION. Fixes the recruiter being missing entirely on an
+  established save.
+- Cause, confirmed from data/scripts/story.lua: the vanilla recruiter
+  is NOT removed by beating him -- he stays and laments his dreams of
+  Team Rocket. BILL removes him. Leaving Bill's house with the S.S.
+  Ticket sets EVENT_LEFT_BILLS_HOUSE_AFTER_HELPING, which hides
+  ROUTE24_COOLTRAINER_M1 permanently. That's vanilla Gen 1 behaviour
+  and unrelated to the battle. (0.13.0 was built on the assumption he
+  sticks around, which was wrong.)
+- Once that flag is set, this mod now spawns its own Rocket in his
+  vanilla spot (ROUTE_24, cell 10,14) with its own text key, and keeps
+  him there permanently -- mission giver, turn-in, post-quest hint,
+  and a natural home for a future fence.
+- The stand-in deliberately does NOT require beating the recruiter:
+  by then that fight is either already done or impossible, since he
+  has no trainer header and sight never engages him, so he can be
+  walked past entirely.
+- The two never coexist: the stand-in only appears once vanilla has
+  hidden its own copy, so the original keeps its nugget and battle.
+- Position (10,14) is derived from story4.lua's onStep, which triggers
+  when the player stands on (10,15) "in front of the recruiter" --
+  worth confirming in game.
+
+## 0.13.0
+
+- TEST VERSION, not for release. Replaced the quest opening: the intro
+  is no longer given by the girl in Viridian City. She reverts to
+  fully vanilla and this mod no longer touches VIRIDIAN_CITY at all.
+- The questline now starts with the TEAM ROCKET recruiter at the end
+  of NUGGET BRIDGE (ROUTE_24 / TEXT_ROUTE24_COOLTRAINER_M1). Beat him,
+  and he offers you the job for real -- your first mission from the
+  boss. He is also the turn-in and the post-quest hint.
+- Everything before the battle stays vanilla, reached through
+  base_talk: the NUGGET, the recruitment pitch, the fight. Only his
+  POST-DEFEAT line is taken over, which vanilla spends on one lament
+  about his dreams of Team Rocket.
+- Declining is safe: confirmed from data/scripts/story4.lua that he
+  stays talkable forever once beaten (the battleOrDone branch), so the
+  offer stays open. Come back and talk to him again.
+- Note on the vanilla ask: the base game's "would you like to join
+  TEAM ROCKET?" IGNORES the answer -- it replies "Arrgh! You are not
+  convinced?" either way. So the real choice is now the one after the
+  battle, which also fits "beat him first" better than hooking the
+  vanilla prompt would have.
+- The Picnicker, the guaranteed shiny MEOWTH, the one-ball-in /
+  one-ball-out economy and all three fences are unchanged.
+- Save flags are deliberately REUSED (MOD_SNAG_QUEST_GIRL_STARTED /
+  _DONE) so an in-progress save keeps its state while this is being
+  tried out. Worth renaming if this sticks.
+
+## 0.12.1
+
+- Testing only, not for release. Moved the Cerulean Rocket 2 cells
+  right, 2 cells down: (30,15) -> (32,17).
+
+## 0.12.0
+
+- New fence in **Cerulean City**: a Team Rocket grunt loitering near the
+  robbed house. Gated on the quest, the CASCADEBADGE, and the fence
+  supply option, same as the others.
+- This is the first NPC this mod CREATES rather than takes over.
+  Spawned with mod.world:spawnNpc, so its text key is ours
+  (TEXT_SNAG_CERULEAN_ROCKET) -- no ROM constant to look up and no
+  Red/Blue-vs-Yellow rename risk for this one.
+- Runtime spawn rather than a maps:patch, deliberately: a rejected map
+  record silently disables the WHOLE mod while the manager still shows
+  it Ready, so patching vanilla map data is the riskiest option here.
+  Runtime objects are also trivially repositionable while the exact
+  spot is still being worked out.
+- He stands still (movement = "STAY") for now.
+- Handled two documented traps: runtime objects aren't serialized and
+  map.entered is skipped on a save restore, so the spawn runs from BOTH
+  map.entered and game.ready; and errors inside event handlers are
+  swallowed whole, so the spawn is wrapped in pcall.
+- The sprite id is probed against game.data.sprites rather than
+  hardcoded -- an unknown sprite makes NPC.new assert, and that assert
+  is swallowed inside a handler, producing an invisible NPC with no
+  error anywhere.
+- registerMerchant gained a `fallback` line, used when a merchant is
+  mod-spawned and so has no vanilla dialogue to fall back to.
+
+**Position is a first guess** (cell 30,15). Map grids aren't readable
+from the engine repo, so expect to nudge it.
+
 ## 0.11.7
 
 - Releases are now fully automatic: bump `version` in `manifest.json`,

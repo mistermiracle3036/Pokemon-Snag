@@ -5,9 +5,10 @@ adds the Snag Ball to **gen1recomp** (Red / Blue / Yellow): a real,
 reusable ball that works in trainer battles, so any Pokémon an opponent
 sends out is a Pokémon you can walk away with.
 
-Jessie recruits you into the business in Viridian City, and a network of
-black-market "fences" across Kanto will pay you in Snag Balls for the
-goods — so the better your thefts, the more you can steal.
+A Team Rocket recruiter at the end of Nugget Bridge brings you into the
+business, and a network of black-market "fences" across Kanto will pay
+you in Snag Balls for the goods — so the better your thefts, the more you
+can steal.
 
 > **Development Preview:** Pokemon Snag is in active development. Bug reports
 > and feature ideas are welcome in
@@ -20,10 +21,11 @@ collapsed so you only reveal what you want.
 
 ## Features
 
-- **The intro quest.** After you've received the Pokédex, find Jessie in
-  Viridian City. She'll set you up with your first Snag Ball and a target:
-  a Picnicker with a very special Meowth. The snag is guaranteed — and so
-  is a surprise about that Meowth.
+- **The intro quest.** Beat the Team Rocket recruiter at the end of
+  Nugget Bridge, then hear him out. He'll set you up with your first Snag
+  Ball and a target: a Picnicker with a very special Meowth. The snag is
+  guaranteed — and so is a surprise about that Meowth. Say no and the
+  offer stays open; come back any time.
 - **The Snag Ball.** A custom ball that works in *trainer* battles. Throw
   it at an opponent's Pokémon and it's yours. It throws with the
   Ultra/Master-tier arc and flicker, because a ball that costs ₽10,000 or
@@ -33,10 +35,12 @@ collapsed so you only reveal what you want.
 - **Keep fighting.** By default the battle continues after a successful
   snag (the trainer sends out their next Pokémon). This can be turned off
   in options if you prefer the snag to end the battle.
-- **Fences.** Certain NPCs around Kanto quietly buy snagged Pokémon,
+- **Four fences.** Certain NPCs around Kanto quietly buy snagged Pokémon,
   paying **1–5 Snag Balls** depending on the mon's level, rarity and who
   you stole it from. VIP targets — a certain rival, gym leaders, the
-  Elite Four — fetch top price.
+  Elite Four — fetch top price. They are not one organisation: two are
+  Rocket, two are independents who simply like what falls off the back of
+  a truck, and they each have their own opinion of you.
 - **Choose your supply.** One setting decides where new Snag Balls come
   from: the marts (they are *not* cheap), the fences, or both.
 
@@ -74,8 +78,16 @@ load log prints the running version so you can confirm what's live.
 - **[kanto_ribbons](https://github.com/mistermiracle3036/kanto_ribbons)** —
   supported. Reads the snag marker on stolen Pokémon and awards a ribbon.
 - **[Shiny Pokémon](https://github.com/masterwebx/gen1recomp-shiny-pokemon)** —
-  optional integration for shiny visuals; shininess itself is
-  engine-native, so the guaranteed shiny snag works without it.
+  optional, and the division of labour matters: **this mod supplies the
+  data, that mod supplies the picture.** The quest Meowth's shiny DVs are
+  set here and are engine-native (`Stats.isShiny`), so it is genuinely
+  shiny whether or not that mod is installed. Every *visual* — the ◆
+  marker beside the name, the sparkle animation on send-out — is drawn
+  entirely by Shiny Pokémon. The engine draws no shiny effects of its
+  own and Pokemon Snag draws nothing at all. Turning that mod off leaves
+  the Meowth just as shiny, only undecorated. Note its marker and its
+  recolour are separate options, so a Meowth showing the ◆ but the wrong
+  colour means **SHINY COLORS** is switched off.
 - **[Pokéball Colors](https://github.com/mistermiracle3036/Pokeball-Colors)** —
   optional. Gives the Snag Ball its own colours.
 - **[NPC Inspector](https://github.com/mistermiracle3036/npc_inspector)** —
@@ -83,9 +95,18 @@ load log prints the running version so you can confirm what's live.
   correctly across Red, Blue and Yellow.
 - **Dramatic Shape (voxel mode)** — played and tested in voxel mode.
 - **Red, Blue and Yellow all supported.** Where an NPC's internal name
-  differs between versions, both are registered. Jessie and the Pewter
-  fence were verified identical across Red and Yellow on real saves; the
-  Celadon fence genuinely differs and both names ship.
+  differs between versions, both names are registered. Every NPC this mod
+  takes over was checked against the engine's Red and Yellow symbol
+  tables: the Nugget Bridge recruiter, the Pewter fence and the Vermilion
+  fence are identical across versions; the Celadon fence genuinely
+  differs, so that one ships both names.
+- **Other mods that change the same NPCs.** This mod takes over specific
+  vanilla characters. If another mod claims the same character, only one
+  of them wins and the other's dialogue silently never runs — that is how
+  the engine resolves the conflict, not a bug in either mod. If a fence
+  only ever gives their ordinary line, try disabling other NPC-editing
+  mods to see which one is winning. (Team Rocket Returns was tested
+  alongside this mod and does **not** conflict.)
 
 ## How snag payouts work
 
@@ -106,4 +127,12 @@ read.
 Built for [gen1recomp](https://github.com/bryanthaboi/gen1recomp).
 By **Mister Miracle**
 ([@mistermiracle3036](https://github.com/mistermiracle3036)).
+
+The Nugget Bridge opening was **trikus's** idea, suggested in the
+gen1recomp Discord: instead of inventing a character to hand out the
+quest, use the Team Rocket grunt who already asks whether you want to
+join — and let saying yes actually mean something. Vanilla asks the
+question and then ignores your answer, so the hook was already there.
+It replaced an earlier opening built around the Viridian City girl.
+
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
