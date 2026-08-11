@@ -32,6 +32,7 @@ return {
   },
 
   credits = {
+    { who = "trikus (gen1recomp Discord)", for_ = "the Nugget Bridge opening -- use the TEAM ROCKET grunt who already asks you to join, and let saying yes mean something" },
     { who = "Quest System", for_ = "the journal, NPC markers and quest state this mod registers into" },
     { who = "Custom Pokeballs", for_ = "the item+ball registry pattern this mod's Snag Ball follows, and the mart list its shop unlock reuses" },
     { who = "Team Rocket Returns", for_ = "the map_scripts/Flags/base_talk dialogue pattern and custom trainer-class registration this mod follows" },

@@ -1,5 +1,13 @@
 -- Pokemon Snag -- "Introduction to Thievery"
 --
+-- The Nugget Bridge opening is trikus's idea, suggested in the
+-- gen1recomp Discord: rather than inventing a character to hand out the
+-- quest, use the TEAM ROCKET grunt who already asks whether you want to
+-- join, and let saying yes actually mean something. That is the whole
+-- design -- vanilla asks the question and then ignores the answer, so
+-- the hook was already written and just needed following through. It
+-- replaced an earlier opening built around the VIRIDIAN_CITY girl.
+--
 -- The TEAM ROCKET recruiter at the end of NUGGET BRIDGE (ROUTE_24,
 -- TEXT_ROUTE24_COOLTRAINER_M1) hands out the NUGGET, asks whether
 -- you'd like to join TEAM ROCKET, and battles you regardless of the
@@ -1469,6 +1477,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.10"
+  mod.exports.version = "0.14.11"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end

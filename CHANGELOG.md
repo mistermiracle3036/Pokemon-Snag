@@ -4,16 +4,20 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
-## 0.14.10
+## 0.14.11
 
 ### Updating from 0.11.7?
 
 That is the last version that was published, so everything below is new
 to you.
 
-**The questline starts somewhere else now.** It used to be the girl in
-Viridian City. It is now the **TEAM ROCKET recruiter at the end of
-Nugget Bridge** on Route 24 -- the one who offers you the Nugget and asks
+**The questline starts somewhere else now** -- **trikus's** idea, from
+the gen1recomp Discord: rather than invent a character to hand out the
+quest, use the Team Rocket grunt who already asks whether you want to
+join, and let saying yes mean something.
+
+It used to be the girl in Viridian City. It is now the **TEAM ROCKET
+recruiter at the end of Nugget Bridge** on Route 24 -- the one who offers you the Nugget and asks
 if you want to join. Beat him, then talk to him again and the offer
 becomes real. Viridian City is untouched by this mod again; that girl is
 back to her ordinary self.

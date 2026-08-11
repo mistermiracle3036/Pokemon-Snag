@@ -127,4 +127,12 @@ read.
 Built for [gen1recomp](https://github.com/bryanthaboi/gen1recomp).
 By **Mister Miracle**
 ([@mistermiracle3036](https://github.com/mistermiracle3036)).
+
+The Nugget Bridge opening was **trikus's** idea, suggested in the
+gen1recomp Discord: instead of inventing a character to hand out the
+quest, use the Team Rocket grunt who already asks whether you want to
+join — and let saying yes actually mean something. Vanilla asks the
+question and then ignores your answer, so the hook was already there.
+It replaced an earlier opening built around the Viridian City girl.
+
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
