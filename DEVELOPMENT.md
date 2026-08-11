@@ -200,16 +200,10 @@ escapes this mod uses:
 | `\n` | new line on the same page |
 | `\v` | new line on the same page, marked as a **scrolled continuation** (`contBefore`) |
 
-The box holds **exactly two rows**. `TextBox:beginLine()` is explicit:
-
-```lua
-if #self.shown >= 2 then
-  table.remove(self.shown, 1)   -- row 1 is DISCARDED
-  self.scrollPx = 8             -- and the box slides up
-end
-```
-
-and `draw` only has two row positions (`ys = { line1Y, line2Y }`).
+The box holds **exactly two rows**. Read `TextBox:beginLine()` in
+`src/render/TextBox.lua`: before starting a new line it drops the oldest
+one once two are already showing, and sets a pixel offset so the box
+slides up. Its `draw` keeps only two row positions to match.
 
 So a third line on a page throws the first one away. Whether that is
 polite or not depends entirely on the separator: a line introduced by

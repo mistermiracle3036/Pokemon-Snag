@@ -1046,12 +1046,28 @@ return function(mod)
       return "available"
     end,
     progress = { current = 0, total = 1 },
+    -- Markers are registered for BOTH of the recruiter's forms (0.14.9).
+    -- Only the vanilla object was listed before, so once BILL hid it the
+    -- journal pointed at an NPC that is no longer on the map -- and that
+    -- is the majority case, since every player eventually passes BILL.
+    -- The stand-in carries this mod's own text key, so it needs its own
+    -- entries. Listing a constant whose object is absent is harmless:
+    -- the other pair simply never resolves, the same way registering
+    -- both the Red/Blue and Yellow names of a renamed NPC is harmless.
     markers = {
       { map = "ROUTE_24", text = "TEXT_ROUTE24_COOLTRAINER_M1", kind = "available",
         when = function(game)
           return not hasFlag(game, FLAG_STARTED)
         end },
       { map = "ROUTE_24", text = "TEXT_ROUTE24_COOLTRAINER_M1", kind = "turnin",
+        when = function(game)
+          return hasFlag(game, FLAG_STARTED) and not hasFlag(game, FLAG_DONE)
+        end },
+      { map = "ROUTE_24", text = "TEXT_SNAG_ROUTE24_ROCKET", kind = "available",
+        when = function(game)
+          return not hasFlag(game, FLAG_STARTED)
+        end },
+      { map = "ROUTE_24", text = "TEXT_SNAG_ROUTE24_ROCKET", kind = "turnin",
         when = function(game)
           return hasFlag(game, FLAG_STARTED) and not hasFlag(game, FLAG_DONE)
         end },
@@ -1453,6 +1469,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.8"
+  mod.exports.version = "0.14.9"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end

@@ -4,6 +4,63 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.9
+
+### Updating from 0.11.7?
+
+That is the last version that was published, so everything below is new
+to you.
+
+**The questline starts somewhere else now.** It used to be the girl in
+Viridian City. It is now the **TEAM ROCKET recruiter at the end of
+Nugget Bridge** on Route 24 -- the one who offers you the Nugget and asks
+if you want to join. Beat him, then talk to him again and the offer
+becomes real. Viridian City is untouched by this mod again; that girl is
+back to her ordinary self.
+
+If Bill has already sent you on your way, that recruiter is gone from the
+map -- that is normal Gen 1 behaviour, not a bug. A Team Rocket grunt now
+stands in his spot instead so the questline is never locked out.
+
+**Your save is fine either way.** A quest already started or finished
+under the old opening carries over: the recruiter picks up wherever you
+left off, and finished quests stay finished.
+
+**Four fences instead of two.** They buy snagged Pokemon for Snag Balls:
+
+- the **Nugget Bridge recruiter** himself, once you have done his job
+- the **Celadon Game Corner** gambler
+- the **Pewter City** man in the Nidoran house (Boulder Badge)
+- the **Vermilion City** sailor at the S.S. Anne gangway (Thunder Badge)
+
+They are deliberately not one organisation. Two are Rocket, two are
+independents who just like what falls off the back of a truck, and they
+all have their own opinion of you. Their dialogue has been rewritten to
+match.
+
+**Turning in MEOWTH now pays 5 Snag Balls.** It previously paid none at
+all -- a bug -- which left you with an empty bag and no way to snag
+anything or reach a fence. Five is a starting float, not a stockpile:
+every snag after the quest rolls ordinary catch odds, so expect to spend
+some.
+
+**Fixes you will notice:**
+
+- The Pewter fence said nothing at all before you had the Boulder Badge.
+  He now gives his ordinary line, like everyone else behind a gate.
+- Dialogue no longer scrolls lines away before you can read them.
+- The quest journal pointed at Viridian City and at an NPC that Bill
+  removes. Both corrected.
+
+All of this works on Red, Blue and Yellow.
+
+### New in 0.14.9
+
+- The quest journal marker now follows the recruiter after Bill removes
+  the original. It only ever pointed at the vanilla NPC, so once he was
+  gone the marker pointed at nobody -- which is the situation every
+  player ends up in eventually.
+
 ## 0.14.8
 
 - TEST VERSION, not for release.
@@ -147,10 +204,9 @@ matches the version in `manifest.json`.
 ### Fixed
 
 - **Dialogue was losing lines off the top of the box.** The text box holds
-  exactly two rows: `TextBox:beginLine()` does
-  `if #self.shown >= 2 then table.remove(self.shown, 1) ... end`, and
-  `draw` has only two row positions. A third line on a page therefore
-  discards the first. Whether that is polite depends on the separator --
+  exactly two rows: `TextBox:beginLine()` drops the oldest line once two
+  are already showing, and `draw` keeps only two row positions. A third
+  line on a page therefore discards the first. Whether that is polite depends on the separator --
   a line introduced by `\v` prints the arrow and waits for A first, a
   line introduced by `\n` just scrolls. Unprompted, it reads on screen as
   the previous line repeating itself.
