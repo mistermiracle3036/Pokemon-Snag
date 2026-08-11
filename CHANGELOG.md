@@ -4,6 +4,69 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.5
+
+- TEST VERSION, not for release. A dialogue presentation pass plus one
+  new line. **No wording was changed anywhere** -- verified mechanically,
+  see below.
+
+### Fixed
+
+- **Dialogue was losing lines off the top of the box.** The text box holds
+  exactly two rows: `TextBox:beginLine()` does
+  `if #self.shown >= 2 then table.remove(self.shown, 1) ... end`, and
+  `draw` has only two row positions. A third line on a page therefore
+  discards the first. Whether that is polite depends on the separator --
+  a line introduced by `\v` prints the arrow and waits for A first, a
+  line introduced by `\n` just scrolls. Unprompted, it reads on screen as
+  the previous line repeating itself.
+- 37 pages of this mod's dialogue did that, including the intro mission
+  briefing (a 10-row page) and text added in 0.14.0. All are fixed by
+  changing the separator before row 3+ from `\n` to `\v`. Every authored
+  line break is preserved.
+- A second cause was easy to miss: an authored line wider than 18 columns
+  is soft-wrapped into extra rows that inherit no continuation marker, so
+  a page can bust the two-row budget while looking like two lines in the
+  source. Those lines are re-wrapped -- again without changing words.
+- One string is deliberately left alone: `"All right!\n%s was\ncaught!"`
+  is the engine's own wild-catch message, reproduced verbatim so a snag
+  reads like a normal catch. Vanilla's own page is three rows and
+  matching vanilla wins here.
+- **Verification:** the word stream of every dialogue literal was compared
+  before and after -- identical. The pagination audit goes from 37
+  offending pages to 1 (the vanilla-copy above).
+
+### Added
+
+- The pre-BILL recruiter now signs off with *"One more thing. My bridge
+  shift is done... I can finally get out of these civilian clothes.
+  You'll know me when you see me."* -- said once, after the mission is
+  turned in.
+  Reported from the first pre-BILL playthrough: the quest-giver never
+  looks like a TEAM ROCKET grunt, and the change of appearance after BILL
+  removes him reads as a different NPC appearing rather than the same man
+  in uniform. This is on the VANILLA recruiter only -- it is the last
+  thing he says before BILL removes him for good, so the grunt standing
+  in his spot afterwards pays it off. It cannot go on the stand-in, whose
+  own lines are written as a different grunt anyway.
+
+### Not fixed, on purpose
+
+- The vanilla recruiter's own pre-battle lines still appear to repeat.
+  **Confirmed this build cycle with every mod disabled** -- it is engine
+  text (`data/scripts/story4.lua`) hitting the exact two-row behaviour
+  above, three `\n` lines on one page. Nothing this mod can fix; it
+  belongs upstream in gen1recomp.
+
+### Corrected
+
+- 0.14.4 claimed "all 29 of this mod's own dialogue strings were checked
+  against `TextBox.paginate` and pass". That was wrong. The check shelled
+  out per string and the string never reached the interpreter, so it was
+  validating empty input and could not fail. The rebuilt check reports
+  known-bad strings as bad before it is trusted, and DEVELOPMENT.md now
+  says so.
+
 ## 0.14.4
 
 - TEST VERSION, not for release. **Documentation only -- no code or

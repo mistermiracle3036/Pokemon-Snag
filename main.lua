@@ -616,7 +616,7 @@ return function(mod)
       local n = snagPayout(ctx.game, picked)
       local name = picked.nickname or ctx.game.data.pokemon[picked.species].name
       Commands.ask(ctx, string.format(
-        "Heh... that %s.\fHot goods, right? I can\ntell. For that one:\v%d SNAG BALL%s.\fDeal?",
+        "Heh... that\n%s.\fHot goods, right?\nI can\vtell. For that\vone:\v%d SNAG\vBALL%s.\fDeal?",
         name, n, n == 1 and "" or "s"))
       if not ctx.lastCheck then
         return
@@ -789,9 +789,9 @@ return function(mod)
     map = "GAME_CORNER",
     texts = { "TEXT_GAMECORNER_MIDDLE_AGED_MAN2", "TEXT_GAMECORNER_CLERK2" },
     badge = nil,
-    intro = "Heh. I know that\nlook.\fROCKET's new\nerrand runner.\fRelax -- I don't\nwork for them.\vI just like what\nfalls off their\ntrucks.\fGot something\nfor me?",
-    refuse = "No deal? Fine, fine.\fBut only POKeMON with...\na certain history.\vYou know the kind.",
-    sold = "Heh heh... pleasure\ndoing business.\fBring me more like that\nand we'll talk again.",
+    intro = "Heh. I know that\nlook.\fROCKET's new\nerrand runner.\fRelax -- I don't\nwork for them.\vI just like what\vfalls off their\vtrucks.\fGot something\nfor me?",
+    refuse = "No deal? Fine,\nfine.\fBut only POKeMON\nwith...\va certain history.\vYou know the kind.",
+    sold = "Heh heh...\npleasure\vdoing business.\fBring me more like\nthat\vand we'll talk\vagain.",
   })
 
   -- PEWTER -- the man who explains that traded Pokemon disobey without
@@ -822,9 +822,9 @@ return function(mod)
     map = "PEWTER_NIDORAN_HOUSE",
     texts = { "TEXT_PEWTERNIDORANHOUSE_MIDDLE_AGED_MAN" },
     badge = "BOULDERBADGE",
-    intro = "I don't care who\nyou run with.\vI care about the\nPOKeMON.\fA traded one won't\nobey without\nBADGES.\fA stolen one obeys\nanybody.\vThat shouldn't be\ntrue.\fI'd like more of\nthem to study.",
-    refuse = "No? Suit yourself.\fThe offer stands, if\nyou come by something\nwith an interesting\npast.",
-    sold = "Fascinating. No BADGES,\nno hesitation.\fBring me another and\nI'll pay the same.",
+    intro = "I don't care who\nyou run with.\vI care about the\vPOKeMON.\fA traded one won't\nobey without\vBADGES.\fA stolen one obeys\nanybody.\vThat shouldn't be\vtrue.\fI'd like more of\nthem to study.",
+    refuse = "No? Suit yourself.\fThe offer stands,\nif\vyou come by\vsomething\vwith an\vinteresting\vpast.",
+    sold = "Fascinating. No\nBADGES,\vno hesitation.\fBring me another\nand\vI'll pay the same.",
   })
 
   ----------------------------------------------------------------------
@@ -875,9 +875,9 @@ return function(mod)
     map = "VERMILION_CITY",
     texts = { "TEXT_VERMILIONCITY_SAILOR1" },
     badge = "THUNDERBADGE",
-    intro = "So you're the new\none.\fWord came down the\ndocks before you\ndid.\fForty crates on\nthe manifest.\vI counted\nthirty-eight.\fThat's how this\nworks. You stop\ncounting.\fGot something\naboard nobody\nlogged?",
-    refuse = "Then don't waste\nmy shift, rookie.\fCome back when\nyou're carrying\nsomething without\npaperwork.",
-    sold = "No name, no\ntrainer, no\nquestions.\fManifest says it\nwas never here.\v...Tell your boss\nthe docks are\nstill quiet.",
+    intro = "So you're the new\none.\fWord came down the\ndocks before you\vdid.\fForty crates on\nthe manifest.\vI counted\vthirty-eight.\fThat's how this\nworks. You stop\vcounting.\fGot something\naboard nobody\vlogged?",
+    refuse = "Then don't waste\nmy shift, rookie.\fCome back when\nyou're carrying\vsomething without\vpaperwork.",
+    sold = "No name, no\ntrainer, no\vquestions.\fManifest says it\nwas never here.\v...Tell your boss\vthe docks are\vstill quiet.",
   })
 
   ----------------------------------------------------------------------
@@ -1132,11 +1132,11 @@ return function(mod)
   -- redundant. The MART hint still stands in when fences are switched
   -- off, so the branch never points at a closed door.
   local RECRUITER_FENCE = {
-    intro = "The boss remembers\ngood work.\fI'm still posted\nhere. I still pay.\vCarrying anything\nthat isn't yours?",
-    refuse = "Nothing? Then get\nback out there.\fThe BALLs don't\nrestock\nthemselves.",
-    sold = "Good. I'll log it\nas never arriving.\fKeep this up and\nthe boss learns\nyour name.",
+    intro = "The boss remembers\ngood work.\fI'm still posted\nhere. I still pay.\vCarrying anything\vthat isn't yours?",
+    refuse = "Nothing? Then get\nback out there.\fThe BALLs don't\nrestock\vthemselves.",
+    sold = "Good. I'll log it\nas never arriving.\fKeep this up and\nthe boss learns\vyour name.",
   }
-  local DONE_MART_HINT = "The boss remembers\ngood work.\fThe bigger MARTS\nstock SNAG BALLs\nnow, if you can\nafford them."
+  local DONE_MART_HINT = "The boss remembers\ngood work.\fThe bigger MARTS\nstock SNAG BALLs\vnow, if you can\vafford them."
 
   local ROUTE24_TALK = concatRows({
     { "snag_quest:check_defeated" },
@@ -1147,11 +1147,11 @@ return function(mod)
     { "check_flag", FLAG_STARTED },
     { "jump_if_true", "started" },
 
-    { "ask", "Hah! You floored me.\fTEAM ROCKET could use\nsomeone who hits like\nthat.\f...I'm serious.\vStill interested?" },
+    { "ask", "Hah! You floored\nme.\fTEAM ROCKET could\nuse\vsomeone who hits\vlike\vthat.\f...I'm serious.\nStill interested?" },
     { "jump_if_false", "declined" },
     { "set_flag", FLAG_STARTED },
     { "give_item", "SNAG_BALL", QUEST_BALL_COUNT, false },
-    { "show_text", "Then consider the\ninterview passed.\fFirst mission, straight\nfrom the boss.\fThere's a PICNICKER near\nhere with a MEOWTH that\ncame out... wrong.\vWrong colour.\fThe boss wants to see it.\fHere. One SNAG BALL.\nDon't ask where we get\nthem." },
+    { "show_text", "Then consider the\ninterview passed.\fFirst mission,\nstraight\vfrom the boss.\fThere's a\nPICNICKER near\vhere with a MEOWTH\vthat\vcame out... wrong.\vWrong colour.\fThe boss wants to\nsee it.\fHere. One SNAG\nBALL.\vDon't ask where we\vget\vthem." },
     { "start_battle", "trainer", TRAINER_CLASS, PARTY_INDEX },
     { "jump", "started" },
 
@@ -1159,16 +1159,27 @@ return function(mod)
     { "show_text", "Well? Where's the\nMEOWTH?" },
     { "snag_quest:turn_in_meowth" },
     { "jump_if_true", "success" },
-    { "ask", "No MEOWTH, no promotion.\fWant another crack at\nthat PICNICKER?" },
+    { "ask", "No MEOWTH, no\npromotion.\fWant another crack\nat\vthat PICNICKER?" },
     { "jump_if_false", "end" },
     { "give_item", "SNAG_BALL", QUEST_BALL_COUNT, false },
-    { "show_text", "Another BALL. These\naren't free, you know." },
+    { "show_text", "Another BALL.\nThese\varen't free, you\vknow." },
     { "start_battle", "trainer", TRAINER_CLASS, PARTY_INDEX },
     { "jump", "started" },
 
     { "label", "success" },
-    { "show_text", "...That's the one.\fLook at the colour on it.\vThe boss will want to see\nthis personally." },
-    { "show_text", "First mission, clean work.\fKeep the spare BALL.\fAnd word gets around.\nCertain people will trade\nyou more of them...\vif you bring them the\nright kind of POKeMON." },
+    { "show_text", "...That's the one.\fLook at the colour\non it.\vThe boss will want\vto see this\vpersonally." },
+    { "show_text", "First mission,\nclean work.\fKeep the spare\nBALL.\fAnd word gets\naround.\vCertain people\vwill trade you\vmore of them...\vif you bring them\vthe right kind of\vPOKeMON." },
+    -- Sets up the sprite change (0.14.5). This branch is on the VANILLA
+    -- recruiter only, and it is the last thing he says before BILL removes
+    -- him for good -- so the grunt standing in his spot afterwards, in
+    -- actual TEAM ROCKET colours, reads as him keeping his word rather
+    -- than as a different NPC appearing from nowhere.
+    --
+    -- It cannot go on the stand-in: by then the change has already
+    -- happened, and the stand-in's own lines are written as a different
+    -- grunt regardless. Deliberately placed AFTER the mission is turned
+    -- in rather than at recruitment, so it lands as a parting beat.
+    { "show_text", "One more thing.\nMy bridge shift is\vdone.\fI can finally get\nout of these\vcivilian clothes.\fYou'll know me\nwhen you see me." },
     { "snag_quest:complete" },
     { "jump", "end" },
 
@@ -1183,7 +1194,7 @@ return function(mod)
     { "jump", "end" },
 
     { "label", "declined" },
-    { "show_text", "Heh. Think it over.\fI'm not going anywhere." },
+    { "show_text", "Heh. Think it\nover.\fI'm not going\nanywhere." },
     { "jump", "end" },
 
     { "label", "vanilla" },
@@ -1288,11 +1299,11 @@ return function(mod)
     { "check_flag", FLAG_STARTED },
     { "jump_if_true", "started" },
 
-    { "ask", "...You're the one who\ncame over the bridge.\fTEAM ROCKET's been\nwatching. We could use\nsomeone like you.\vInterested?" },
+    { "ask", "...You're the one\nwho\vcame over the\vbridge.\fTEAM ROCKET's been\nwatching. We could\vuse\vsomeone like you.\vInterested?" },
     { "jump_if_false", "declined" },
     { "set_flag", FLAG_STARTED },
     { "give_item", "SNAG_BALL", QUEST_BALL_COUNT, false },
-    { "show_text", "Then here's your first\njob, straight from the\nboss.\fThere's a PICNICKER near\nhere with a MEOWTH that\ncame out... wrong.\vWrong colour.\fThe boss wants to see it.\fHere. One SNAG BALL.\nDon't ask where we get\nthem." },
+    { "show_text", "Then here's your\nfirst\vjob, straight from\vthe\vboss.\fThere's a\nPICNICKER near\vhere with a MEOWTH\vthat\vcame out... wrong.\vWrong colour.\fThe boss wants to\nsee it.\fHere. One SNAG\nBALL.\vDon't ask where we\vget\vthem." },
     { "start_battle", "trainer", TRAINER_CLASS, PARTY_INDEX },
     { "jump", "started" },
 
@@ -1300,16 +1311,16 @@ return function(mod)
     { "show_text", "Well? Where's the\nMEOWTH?" },
     { "snag_quest:turn_in_meowth" },
     { "jump_if_true", "success" },
-    { "ask", "No MEOWTH, no promotion.\fWant another crack at\nthat PICNICKER?" },
+    { "ask", "No MEOWTH, no\npromotion.\fWant another crack\nat\vthat PICNICKER?" },
     { "jump_if_false", "end" },
     { "give_item", "SNAG_BALL", QUEST_BALL_COUNT, false },
-    { "show_text", "Another BALL. These\naren't free, you know." },
+    { "show_text", "Another BALL.\nThese\varen't free, you\vknow." },
     { "start_battle", "trainer", TRAINER_CLASS, PARTY_INDEX },
     { "jump", "started" },
 
     { "label", "success" },
-    { "show_text", "...That's the one.\fLook at the colour on it.\vThe boss will want to see\nthis personally." },
-    { "show_text", "First job, clean work.\fKeep the spare BALL.\fAnd word gets around.\nCertain people will trade\nyou more of them...\vif you bring them the\nright kind of POKeMON." },
+    { "show_text", "...That's the one.\fLook at the colour\non it.\vThe boss will want\vto see this\vpersonally." },
+    { "show_text", "First job, clean\nwork.\fKeep the spare\nBALL.\fAnd word gets\naround.\vCertain people\vwill trade you\vmore of them...\vif you bring them\vthe right kind of\vPOKeMON." },
     { "snag_quest:complete" },
     { "jump", "end" },
 
@@ -1324,7 +1335,7 @@ return function(mod)
     { "jump", "end" },
 
     { "label", "declined" },
-    { "show_text", "Heh. Think it over.\fI'm not going anywhere." },
+    { "show_text", "Heh. Think it\nover.\fI'm not going\nanywhere." },
     { "label", "end" },
   })
 
@@ -1376,6 +1387,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.4"
+  mod.exports.version = "0.14.5"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end
