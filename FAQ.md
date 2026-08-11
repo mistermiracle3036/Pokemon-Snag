@@ -153,6 +153,36 @@ helps enormously.
 </details>
 
 <details>
+<summary>There's a stray square or sparkle artifact on screen during the
+Meowth fight.</summary>
+
+That's the **Shiny Pokémon** mod, not this one. Pokemon Snag makes the
+quest Meowth shiny in *data* (the DVs, which the engine reads natively) —
+it draws nothing on screen at all, and the engine has no shiny visuals of
+its own. The ◆ beside the name and the sparkle animation are both drawn
+by Shiny Pokémon, so any artifact around them is that mod's to fix.
+
+To confirm: disable Shiny Pokémon and re-run the fight. The Meowth stays
+genuinely shiny — you just lose the marker and sparkles.
+</details>
+
+<details>
+<summary>The recruiter's vanilla lines repeat themselves before the
+battle.</summary>
+
+Known, and it isn't this mod. The "Congratulations! You beat our 5
+contest trainers!" sequence is the engine's own vanilla text, which this
+mod passes through untouched. That page is three lines long in a
+two-line box, and the third line is joined with a plain newline instead
+of a scroll marker — so it scrolls in without waiting and looks like the
+previous line repeating.
+
+You can confirm it by disabling Pokemon Snag entirely and talking to him
+on the same save: the repeat still happens. It's worth reporting to
+gen1recomp rather than here.
+</details>
+
+<details>
 <summary>I updated the mod but it's acting like the old version.</summary>
 
 Fully quit and relaunch the game. Hot-reload can keep stale code in

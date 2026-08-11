@@ -26,6 +26,8 @@ return {
       "with that option off, a snag ends the trainer battle immediately even if they had other Pokemon left",
       "the fences take over vanilla NPCs. If another mod claims the same character, the engine picks one winner per NPC and the loser's dialogue silently never runs -- if a fence only ever gives its ordinary line, check GET NEW SNAG BALLS is not set to MART, then try disabling other NPC-editing mods",
       "the Vermilion sailor's vanilla S.S. ANNE ticket check is a separate step trigger, not his talk, so taking over his dialogue does not affect boarding the ship",
+      "shiny presentation is NOT this mod's: the quest MEOWTH's shiny DVs are set here and are engine-native, but the marker beside the name and the sparkle animation are drawn entirely by the Shiny Pokemon mod. The engine has no shiny visuals and this mod draws nothing, so a rendering artifact around a shiny belongs to that mod -- disabling it leaves the MEOWTH just as shiny, undecorated",
+      "the vanilla recruiter's own pre-battle lines (\"Congratulations! You beat our 5 contest trainers!\") are engine text passed through untouched. That page is three lines in a two-line box with no scroll marker on the third, so it scrolls unprompted and looks like it repeats -- reproducible with this mod disabled",
     },
   },
 

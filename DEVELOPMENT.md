@@ -188,6 +188,40 @@ option-controlled) is done by wrapping `Data:textEntry` and appending to
 a **copy** of the entry. The underlying table is never mutated, so turning
 the option off cleanly removes the item again.
 
+## Writing dialogue: the two-row rule
+
+The text box is **18 columns** wide (`MAX_COLS` in `src/render/TextBox.lua`)
+and shows **two rows** at a time. `TextBox.paginate` splits on the three
+escapes this mod uses:
+
+| escape | meaning |
+| ------ | ------- |
+| `\f` | new page — clears the box |
+| `\n` | new line on the same page |
+| `\v` | new line on the same page, marked as a **scrolled continuation** (`contBefore`) |
+
+The trap: a page may hold more than two lines, and `paginate` will happily
+build one. A third line joined with `\n` is not marked as a continuation,
+so it scrolls in without waiting — on screen that reads as the previous
+line *repeating itself*, not as new text.
+
+That is exactly the artifact visible on the vanilla Route 24 recruiter's
+own "Congratulations!\nYou beat our 5\ncontest trainers!" page in
+`data/scripts/story4.lua` — engine text, three `\n` lines, no `\v`. This
+mod passes it through untouched, so the artifact reproduces with the mod
+disabled.
+
+**Rule for this mod's own strings: at most two `\n` lines per page; every
+further line on that page must be introduced with `\v`.** Lines stay
+within 18 columns — longer ones soft-wrap on glyph boundaries and quietly
+push the page over two rows again, which reintroduces the same problem.
+
+All of this mod's dialogue was checked against the engine's own
+`TextBox.paginate` and passes. When adding a line, re-run that check
+rather than eyeballing it: extract the literals from `main.lua`, feed
+each through `paginate`, and assert no row past index 2 has
+`contBefore` false and no line exceeds 18 columns.
+
 ## Releasing
 
 Releases are automatic. Bump `version` in `manifest.json`, make the top

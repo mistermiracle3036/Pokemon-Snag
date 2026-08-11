@@ -78,8 +78,16 @@ load log prints the running version so you can confirm what's live.
 - **[kanto_ribbons](https://github.com/mistermiracle3036/kanto_ribbons)** —
   supported. Reads the snag marker on stolen Pokémon and awards a ribbon.
 - **[Shiny Pokémon](https://github.com/masterwebx/gen1recomp-shiny-pokemon)** —
-  optional integration for shiny visuals; shininess itself is
-  engine-native, so the guaranteed shiny snag works without it.
+  optional, and the division of labour matters: **this mod supplies the
+  data, that mod supplies the picture.** The quest Meowth's shiny DVs are
+  set here and are engine-native (`Stats.isShiny`), so it is genuinely
+  shiny whether or not that mod is installed. Every *visual* — the ◆
+  marker beside the name, the sparkle animation on send-out — is drawn
+  entirely by Shiny Pokémon. The engine draws no shiny effects of its
+  own and Pokemon Snag draws nothing at all. So any rendering oddity
+  around a shiny (stray tiles, sparkle artifacts) belongs to that mod;
+  turning it off leaves the Meowth just as shiny, only undecorated,
+  which is also the way to confirm where an artifact came from.
 - **[Pokéball Colors](https://github.com/mistermiracle3036/Pokeball-Colors)** —
   optional. Gives the Snag Ball its own colours.
 - **[NPC Inspector](https://github.com/mistermiracle3036/npc_inspector)** —

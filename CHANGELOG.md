@@ -4,6 +4,53 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.4
+
+- TEST VERSION, not for release. **Documentation only -- no code or
+  behaviour change.** Records what the first pre-BILL playthrough turned
+  up. Nothing here needs re-testing in game.
+
+### Not our bugs (both confirmed against engine source)
+
+- **The recruiter's vanilla lines appear to repeat before the battle.**
+  Engine text, passed through untouched. `data/scripts/story4.lua` builds
+  the page `"Congratulations!\nYou beat our 5\ncontest trainers!"` --
+  three lines, joined with `\n`, in a box that shows two. Running that
+  exact string through the engine's own `TextBox.paginate` returns one
+  page of 3 lines with `contBefore` false on all of them, so the third
+  scrolls in unprompted and reads as the previous line repeating.
+  Reproducible with this mod disabled; belongs upstream.
+- **Stray square artifact during the Meowth fight.** The Shiny Pokemon
+  mod's. This mod sets the shiny DVs (data, engine-native) and draws
+  nothing whatsoever; the engine has no shiny visuals of its own. The
+  marker beside the name and the sparkles are both that mod's. Disabling
+  it leaves the MEOWTH just as shiny, undecorated -- which is also how to
+  confirm the source of any artifact around a shiny.
+
+### Working as designed
+
+- **The quest-giver doesn't look like a TEAM ROCKET grunt pre-BILL.**
+  Correct. Pre-BILL he is the untouched vanilla NPC and this mod does not
+  change sprites -- and vanilla already gives that object
+  `trainerClass = OPP_ROCKET`, so he fights as a Rocket while looking
+  like a Cooltrainer. After BILL hides him, the stand-in this mod spawns
+  probes for `SPRITE_ROCKET` (confirmed present in the engine's sprite
+  table) and does look the part. The two therefore differ on purpose, and
+  the stand-in's dialogue is written as a different grunt who has been
+  watching, not as the same man.
+
+### Docs
+
+- README, FAQ and `mod.card` now state the Shiny Pokemon division of
+  labour explicitly: **this mod supplies the data, that mod supplies the
+  picture.** Added to Compatibility, with the disable-to-confirm step.
+- FAQ gained troubleshooting entries for both artifacts above.
+- DEVELOPMENT.md gained a "Writing dialogue: the two-row rule" section --
+  18 columns, two rows, and the rule that any line past row 2 on a page
+  must be introduced with `\v` rather than `\n`, or it scrolls
+  unprompted and looks like a repeat. All 29 of this mod's own dialogue
+  strings were checked against `TextBox.paginate` and pass.
+
 ## 0.14.3
 
 - TEST VERSION, not for release. Clean-up pass: the 0.14.2 diagnostics
