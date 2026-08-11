@@ -61,8 +61,15 @@ Open **MODS → POKEMON SNAG → OPTIONS** (F10 mod manager):
 2. In the launcher: **MODS → Import mod .zip**. On iOS, delete any older
    downloaded copy of the zip from Files first.
 3. Fully quit and relaunch.
-4. Requires gen1recomp **0.1.38 or newer** and the **Quest System** mod
-   (hard dependency — quest journal entries live there).
+4. Requires gen1recomp **0.1.38 or newer** and the **Quest System** mod —
+   a hard dependency, since the quest journal entries live there. Pokemon
+   Snag will not load without it.
+
+**Getting Quest System:** download `quest_system_v<version>.zip` from the
+root of [FAFF0x/gen1recomp](https://github.com/FAFF0x/gen1recomp) and
+import it the same way. Note it is committed directly in that repo rather
+than published under Releases, so grab the zip from the file list, not
+from a releases page — and the launcher's auto-update won't cover it.
 
 **Updating:** once installed, the launcher checks this repo for new
 releases. The mod's entry shows "vX.Y.Z available" → tap → **Update** →
@@ -73,8 +80,11 @@ load log prints the running version so you can confirm what's live.
 
 ## Compatibility
 
-- **quest_system** — required. Pokemon Snag registers its questline in the
-  journal (objectives, tracking, markers).
+- **[quest_system](https://github.com/FAFF0x/gen1recomp)** by FAFF0x —
+  **required.** Pokemon Snag registers its questline in the journal
+  (objectives, tracking, markers). Grab `quest_system_v<version>.zip`
+  from that repo's file list; it is committed there rather than released,
+  so there is no releases page for it. See Installation above.
 - **[kanto_ribbons](https://github.com/mistermiracle3036/kanto_ribbons)** —
   supported. Reads the snag marker on stolen Pokémon and awards a ribbon.
 - **[Shiny Pokémon](https://github.com/masterwebx/gen1recomp-shiny-pokemon)** —

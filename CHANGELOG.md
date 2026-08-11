@@ -4,6 +4,72 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.12
+
+### Docs
+
+- **The README named a required dependency with no way to get it.**
+  `quest_system` is a hard dependency -- the manifest declares it and the
+  mod asserts on it at load, so Pokemon Snag simply will not run without
+  it -- but both places the README mentioned it were bare text while every
+  optional mod beside them was a link. A new player had no path to it.
+  Raised by the cross-repo checker agent.
+- It ships from **[FAFF0x/gen1recomp](https://github.com/FAFF0x/gen1recomp)**,
+  as `quest_system_v<version>.zip` committed at the repo root. That repo
+  publishes no GitHub Releases, so the README deliberately points at the
+  file list and the filename pattern rather than pinning a version or a
+  releases page -- and says plainly that the launcher's auto-update does
+  not cover it. Installation and Compatibility both updated, and
+  `mod.card` now names the source too, since that renders in the mod
+  manager.
+
+### Verified against gen1recomp 0.1.77
+
+- Engine 0.1.77 changes nothing this mod depends on. Checked function by
+  function rather than by file, since several files changed for unrelated
+  reasons:
+  - `BattleState.throwBall`, `newTrainer`, `storeCaughtMon` and `onFaint`
+    are byte-identical. That matters most for `throwBall`, whose
+    wild-catch body this mod reproduces verbatim to reach it in a trainer
+    battle -- a silent change there would have been the dangerous kind.
+  - `TextBox.paginate` and `TextBox:beginLine` identical, so the two-row
+    behaviour the dialogue is authored against still holds.
+  - `Commands.show_text` / `ask` / `give_item`, and
+    `OverworldState.showMapText` / `talkTo` identical.
+  - The vanilla scripts this mod delegates to or takes over are
+    identical: `ROUTE_24` (the recruiter's own dialogue, reached through
+    base_talk), `VERMILION_CITY` (the sailor, including the S.S. ANNE
+    step trigger) and `ROUTE_25` (Bill hiding the recruiter).
+  - `MapScripts`, `ScriptRunner`, `Stats`, `Badges`, `Data`, `Runtime`,
+    `Screens` and the Game Corner / Pewter flavor scripts are unchanged
+    files outright.
+- What did change nearby is additive and irrelevant here: a
+  `battle.bottom_ui_visible` hook, per-category game speed flags, A/B
+  press sounds in the battle menus, data-driven item effects, and
+  optional sprite-sheet geometry fields in the mod schema.
+- `game_version` stays `>=0.1.38 <2.0.0`, which 0.1.77 satisfies. No
+  manifest change needed.
+
+### Closed a long-standing open item
+
+- **`modkit validate --strict` cannot pass for this mod, and now we know
+  why.** It has been recorded for months as an environment problem --
+  "put snag_quest and quest_system in mods/ and it should work". It
+  cannot: `run_loader` in `tools/modkit.py` mounts exactly ONE mod,
+  building a virtual file table from that directory alone, so a sibling
+  mod on disk is never visible to the loader. `MK003 missing dependency`
+  is therefore structural for any mod with a hard dependency, not a
+  missing install.
+- Confirmed by validating a copy with the dependency list emptied: it
+  gets past MK003 and stops at this mod's own
+  `assert(mod.find("quest_system"), "Quest System is required")`. So the
+  headless validator can never run this mod's code as long as that
+  assert stands.
+- `lint` still passes and is unaffected. Script rows are validated
+  instead against the engine's own `ScriptRunner.validate`, and dialogue
+  against `TextBox.paginate`, both run directly against 0.1.77 for this
+  release.
+
 ## 0.14.11
 
 ### Updating from 0.11.7?
