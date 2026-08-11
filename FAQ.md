@@ -39,8 +39,9 @@ buys from you afterwards. He doesn't require beating anybody.
 <summary>What do I get from the intro quest? (big spoiler)</summary>
 
 The Picnicker's Meowth is a **guaranteed shiny**, and the snag is
-guaranteed to succeed. You also get a Snag Ball as a reward, so you end
-the quest with one in stock.
+guaranteed to succeed. Handing Meowth over pays **5 Snag Balls**, which
+is your starting float — every snag after this one rolls normal catch
+odds, so expect to spend a few before the fences start paying you back.
 </details>
 
 <details>
@@ -153,17 +154,26 @@ helps enormously.
 </details>
 
 <details>
-<summary>There's a stray square or sparkle artifact on screen during the
-Meowth fight.</summary>
+<summary>There's a stray square or graphical artifact on screen during a
+battle.</summary>
 
-That's the **Shiny Pokémon** mod, not this one. Pokemon Snag makes the
-quest Meowth shiny in *data* (the DVs, which the engine reads natively) —
-it draws nothing on screen at all, and the engine has no shiny visuals of
-its own. The ◆ beside the name and the sparkle animation are both drawn
-by Shiny Pokémon, so any artifact around them is that mod's to fix.
+Almost certainly a conflict with another mod, not this one — **Pokemon
+Snag contains no drawing code at all.** One such artifact during the
+Meowth fight was tracked down to an unrelated mod and fixed by its
+author; nothing in this mod changed.
 
-To confirm: disable Shiny Pokémon and re-run the fight. The Meowth stays
-genuinely shiny — you just lose the marker and sparkles.
+The fastest way to find it: enable **only Pokemon Snag and Quest System**
+and reproduce. If the artifact is gone, re-enable the rest in halves,
+relaunching fully each time, until it comes back. That usually finds the
+culprit in three or four goes.
+
+Worth knowing for shinies specifically: this mod supplies the shiny
+*data* (the DVs, which the engine reads natively) and the **Shiny
+Pokémon** mod supplies every *visual* — the ◆ marker and the sparkles.
+Disabling that mod leaves the Meowth just as shiny, only undecorated.
+If the Meowth has its ◆ marker but is the wrong colour, check that mod's
+**SHINY COLORS** option: the marker and the recolour are separate
+toggles.
 </details>
 
 <details>

@@ -4,6 +4,49 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.7
+
+- TEST VERSION, not for release.
+
+### Fixed
+
+- **The intro quest paid nothing.** `QUEST_REWARD_BALLS` was declared and
+  then never used -- neither success branch had a `give_item` row -- so
+  turning MEOWTH in awarded **zero** SNAG BALLs, not the one the constant
+  claimed. The quest ball is spent on MEOWTH, so the quest ended with an
+  empty bag: nothing to snag with, and no route to a fence either, since
+  fences only pay for snagged Pokemon. The mod's entire loop was
+  unreachable without first buying a 10,000 ball. Shipped broken since
+  the reward was written.
+- The dialogue made it worse by saying *"Keep the spare BALL"* about a
+  ball that had already been spent. Rewritten on both the vanilla
+  recruiter and the post-BILL stand-in.
+
+### Changed
+
+- **The turn-in reward is now 5 SNAG BALLs**, handed over with the new
+  line. Deliberately a starting float rather than a stockpile: every snag
+  after the quest rolls normal catch odds -- `snagAttempt` just calls
+  `ctx.vanillaAttempt`, and the guaranteed catch is scoped to this quest's
+  own trainer class and species -- so one ball would be a single failed
+  roll from stuck again. Five is still tight enough that the fences and
+  the marts matter.
+- Quest journal reward line updated to match.
+
+### Docs
+
+- FAQ, `mod.card` and the journal entry all said one ball. Corrected.
+- **FAQ troubleshooting entry for the battle artifact rewritten -- the
+  previous one was wrong.** It blamed the Shiny Pokemon mod. The artifact
+  was actually a conflict with an unrelated mod (Blackjack Corner), found
+  by the developer bisecting the mod list, and has since been fixed by
+  that mod's author. Nothing in this mod changed. The entry now leads
+  with the bisect method instead of naming a suspect, since that is what
+  actually found it.
+- Added a note that the Shiny Pokemon mod's marker and recolour are
+  separate options: a Meowth showing the marker but the wrong colour
+  means that mod's SHINY COLORS toggle is off, not a fault here.
+
 ## 0.14.6
 
 - TEST VERSION, not for release. One change: this mod no longer writes a

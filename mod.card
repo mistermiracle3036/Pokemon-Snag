@@ -13,7 +13,7 @@ return {
     added = {
       "new item + ball: SNAG BALL (10,000 to buy once unlocked), thrown with the Ultra/Master-tier toss arc and flicker",
       "new trainer class: a PICNICKER (OPP_SNAG_QUEST_PICNICKER, real sprite/data class OPP_JR_TRAINER_F) holding a single Meowth",
-      "a short questline via Quest System: one Snag Ball in, a guaranteed catch on the quest Meowth only, one Snag Ball back as the reward, with a real turn-in step (party picker, any Meowth qualifies)",
+      "a short questline via Quest System: one Snag Ball in, a guaranteed catch on the quest Meowth only, 5 SNAG BALLs as the reward for turning it in (a starting float -- every later snag rolls normal odds), with a real turn-in step (party picker, any Meowth qualifies)",
       "optional shiny integration: the quest's Meowth is genuinely shiny by data always, and visually shiny too if the Shiny Pokemon mod is installed",
       "a GET NEW SNAG BALLS option (BOTH / MART / FENCES, default BOTH) choosing where post-quest Snag Balls come from -- marts stock them at 10,000 at the same shops Custom Pokeballs uses for GREAT/ULTRA BALL",
       "a [DEV] option to replay the Meowth quest for testing (default off)",

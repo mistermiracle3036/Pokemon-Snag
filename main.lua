@@ -37,13 +37,28 @@ return function(mod)
   local TRAINER_CLASS  = "OPP_SNAG_QUEST_PICNICKER"
   local PARTY_INDEX    = 1
   local MEOWTH_LEVEL   = 8
-  -- Intro quest ball economy: exactly one ball to do the job with
-  -- (the catch is guaranteed, so one is genuinely enough), and exactly
-  -- one more as the reward for handing MEOWTH over -- so you finish
-  -- the quest holding a single Snag Ball and have to earn any more
-  -- from the fence or the marts.
+  -- Intro quest ball economy: exactly one ball to do the job with -- the
+  -- catch is guaranteed, so one is genuinely enough -- and a starting
+  -- float handed over when MEOWTH is turned in.
+  --
+  -- 0.14.7 fixed two things here. QUEST_REWARD_BALLS was declared and
+  -- then never used: neither success branch had a give_item row, so the
+  -- reward was silently ZERO and the player finished the quest with an
+  -- empty bag. The quest ball is spent on MEOWTH, so they were left with
+  -- no way to snag anything and no way to reach a fence (fences only pay
+  -- for snagged Pokemon), i.e. the mod's whole loop was unreachable
+  -- without buying a 10,000 ball first. The dialogue made it worse by
+  -- saying "keep the spare BALL" about a ball that no longer existed.
+  --
+  -- The float is 5 rather than 1 because every snag AFTER the quest rolls
+  -- normal odds (snagAttempt just calls ctx.vanillaAttempt; the
+  -- guaranteed catch is scoped to this quest's own trainer class and
+  -- species), so a single ball is one failed roll away from stuck again.
+  -- Five is still tight enough that the fences and the marts matter.
+  --
+  -- NOTE: the success dialogue names this number in words. Change both.
   local QUEST_BALL_COUNT  = 1
-  local QUEST_REWARD_BALLS = 1
+  local QUEST_REWARD_BALLS = 5
 
   -- Snagging mid-trainer-battle: what happens after the catch lands.
   -- Confirmed schema shape from src/mods/ManagerState.lua's
@@ -1017,7 +1032,7 @@ return function(mod)
       return "Beat the TEAM ROCKET recruiter at the end of NUGGET BRIDGE, then hear him out."
     end,
     location = "Route 24",
-    reward   = "A SNAG BALL, and someone who'll sell you more",
+    reward   = "5 SNAG BALLs, and people who'll trade you more",
     status   = function(game)
       if hasFlag(game, FLAG_DONE) then return "completed" end
       if hasFlag(game, FLAG_STARTED) then return "active" end
@@ -1205,7 +1220,11 @@ return function(mod)
 
     { "label", "success" },
     { "show_text", "...That's the one.\fLook at the colour\non it.\vThe boss will want\vto see this\vpersonally." },
-    { "show_text", "First mission,\nclean work.\fKeep the spare\nBALL.\fAnd word gets\naround.\vCertain people\vwill trade you\vmore of them...\vif you bring them\vthe right kind of\vPOKeMON." },
+    -- The reward. 0.14.7: this give_item did not exist, so the payout was
+    -- zero -- see the QUEST_BALL_COUNT note at the top of the file. The
+    -- count is named in words in the line below; keep the two in step.
+    { "give_item", "SNAG_BALL", QUEST_REWARD_BALLS, false },
+    { "show_text", "First mission,\nclean work.\fThe boss pays\nhis people.\fTake these. Five\nSNAG BALLs.\vThey don't come\vcheap, so don't\vwaste them.\fAnd word gets\naround.\vCertain people\vwill trade you\vmore of them...\vif you bring them\vthe right kind of\vPOKeMON." },
     -- Sets up the sprite change (0.14.5). This branch is on the VANILLA
     -- recruiter only, and it is the last thing he says before BILL removes
     -- him for good -- so the grunt standing in his spot afterwards, in
@@ -1357,7 +1376,10 @@ return function(mod)
 
     { "label", "success" },
     { "show_text", "...That's the one.\fLook at the colour\non it.\vThe boss will want\vto see this\vpersonally." },
-    { "show_text", "First job, clean\nwork.\fKeep the spare\nBALL.\fAnd word gets\naround.\vCertain people\vwill trade you\vmore of them...\vif you bring them\vthe right kind of\vPOKeMON." },
+    -- Same reward as the vanilla recruiter's branch (0.14.7); it was
+    -- missing here too. Count named in words below -- keep in step.
+    { "give_item", "SNAG_BALL", QUEST_REWARD_BALLS, false },
+    { "show_text", "First job, clean\nwork.\fThe boss pays\nhis people.\fTake these. Five\nSNAG BALLs.\vThey don't come\vcheap, so don't\vwaste them.\fAnd word gets\naround.\vCertain people\vwill trade you\vmore of them...\vif you bring them\vthe right kind of\vPOKeMON." },
     { "snag_quest:complete" },
     { "jump", "end" },
 
@@ -1424,6 +1446,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.6"
+  mod.exports.version = "0.14.7"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end
