@@ -33,7 +33,7 @@ return {
 
   credits = {
     { who = "trikus (gen1recomp Discord)", for_ = "the Nugget Bridge opening -- use the TEAM ROCKET grunt who already asks you to join, and let saying yes mean something" },
-    { who = "Quest System by FAFF0x (github.com/FAFF0x/gen1recomp -- committed zip, not a release)", for_ = "the journal, NPC markers and quest state this mod registers into; a REQUIRED dependency, this mod will not load without it" },
+    { who = "Quest System by FAFF0x (github.com/FAFF0x/gen1recomp -- committed zip, not a release)", for_ = "the journal, NPC markers and quest state this mod registers into when present; OPTIONAL as of 0.14.13 -- without it the questline plays identically, just with no journal entry" },
     { who = "Custom Pokeballs", for_ = "the item+ball registry pattern this mod's Snag Ball follows, and the mart list its shop unlock reuses" },
     { who = "Team Rocket Returns", for_ = "the map_scripts/Flags/base_talk dialogue pattern and custom trainer-class registration this mod follows" },
     { who = "Shiny Pokemon", for_ = "the optional shiny-DV generator this mod's Meowth uses when that mod is installed" },

@@ -36,8 +36,53 @@ local MapScripts = require("src.script.MapScripts")
 local Flags = require("src.script.Flags")
 
 return function(mod)
-  local journal = assert(mod.find("quest_system"), "Quest System is required")
-  local quests = journal.exports
+  ----------------------------------------------------------------------
+  -- quest_system is OPTIONAL as of 0.14.13. It used to be a hard
+  -- dependency with an assert here, which meant the whole mod refused to
+  -- load without it -- the Snag Ball, the fences, the questline, all of
+  -- it -- for a mod that only supplies the JOURNAL ENTRY. Everything
+  -- this mod actually does runs on its own save flags; the journal is
+  -- presentation.
+  --
+  -- That mattered more than it looks: quest_system ships as a zip
+  -- committed to FAFF0x/gen1recomp with no GitHub releases, so the
+  -- launcher cannot auto-update it and a player has to fetch it by hand.
+  -- Refusing to boot without it made a hand-installed third-party mod a
+  -- hard gate on everything here.
+  --
+  -- Declared in optional_dependencies rather than dropped entirely,
+  -- because that STILL ORDERS THE LOAD -- src/mods/Loader.lua builds a
+  -- dependency edge for optional specs too ("optional dependencies order
+  -- without requiring anything"), so quest_system is loaded before this
+  -- mod whenever it is installed and the lookup below is reliable at
+  -- load time rather than needing to wait for game.ready.
+  --
+  -- Calls are routed through a shim so the four call sites read exactly
+  -- as they did. Each one re-reads the export at call time and pcalls
+  -- it, so a missing mod, a missing function, or a future API change in
+  -- someone else's mod degrades to "no journal entry" instead of taking
+  -- the questline down with it.
+  ----------------------------------------------------------------------
+  local journal = mod.find("quest_system")
+  local function journalCall(name)
+    return function(...)
+      local api = journal and journal.exports
+      local fn = api and api[name]
+      if type(fn) ~= "function" then return end
+      local ok, err = pcall(fn, ...)
+      if not ok then
+        mod.log:warn("snag_quest: quest_system.%s failed: %s", name, tostring(err))
+      end
+    end
+  end
+  local quests = {
+    register = journalCall("register"),
+    advance  = journalCall("advance"),
+    complete = journalCall("complete"),
+  }
+  if not journal then
+    mod.log:info("Quest System not installed; running without a journal entry")
+  end
 
   local QUEST_ID       = "snag_quest.jessies_meowth"
   local FLAG_STARTED   = "MOD_SNAG_QUEST_GIRL_STARTED"
@@ -1477,6 +1522,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.12"
+  mod.exports.version = "0.14.13"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end

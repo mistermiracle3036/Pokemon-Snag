@@ -4,6 +4,51 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.13
+
+### Changed
+
+- **Quest System is now OPTIONAL.** It was a hard dependency with an
+  `assert` at load, so the whole mod refused to start without it -- the
+  Snag Ball, the fences, the questline, all of it -- for a mod that only
+  supplies the JOURNAL ENTRY. Everything here runs on its own save flags;
+  the journal is presentation. Without Quest System the questline now
+  plays identically, you simply track it yourself.
+- That mattered more than it looks. Quest System ships as a zip committed
+  to FAFF0x/gen1recomp with no GitHub releases, so the launcher cannot
+  auto-update it and it has to be fetched by hand. Making a
+  hand-installed third-party mod a hard gate on everything here was the
+  wrong trade.
+- It is declared in `optional_dependencies` rather than dropped, because
+  that STILL ORDERS THE LOAD -- `src/mods/Loader.lua` builds a dependency
+  edge for optional specs too ("optional dependencies order without
+  requiring anything"). So it is loaded before this mod whenever it is
+  installed, and the lookup stays reliable at load time instead of having
+  to wait for `game.ready`.
+- The three journal calls now route through a shim that re-reads the
+  export at call time and pcalls it. A missing mod, a missing function,
+  or a future API change in someone else's mod degrades to "no journal
+  entry" rather than taking the questline down.
+
+### Verified
+
+- **`modkit validate --strict` completes for the first time.** 0.14.12
+  established that MK003 was structural -- modkit mounts exactly one mod,
+  so a hard dependency can never resolve. With the dependency optional
+  the loader runs the mod's code end to end under gen1recomp 0.1.77.
+- The only findings are two `MK102 unresolved reference` errors, for
+  `MEOWTH` and `OPP_JR_TRAINER_F`. Both are the known ROM-free-fixture
+  artifact, not real: both ids are present in `tools/rom_manifest.json`
+  AND `rom_manifest_yellow.json`, and this tree ships no imported cache
+  to validate against instead. Checked rather than assumed.
+- Compile, script-row validation and the dialogue audit re-run clean.
+
+### Docs
+
+- README Installation and Compatibility, `mod.card` and the manifest
+  description all now describe Quest System as optional and say exactly
+  what is lost without it.
+
 ## 0.14.12
 
 ### Docs
