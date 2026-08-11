@@ -4,6 +4,58 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.6
+
+- TEST VERSION, not for release. One change: this mod no longer writes a
+  field belonging to another author's mod.
+
+### Changed
+
+- **Stopped setting `mon.shiny`.** Shininess is engine-native --
+  `Stats.isShiny(mon.dvs)`, defense/speed/special == 10 with attack in a
+  fixed set -- and the DVs this mod assigns to the quest MEOWTH already
+  satisfy it. `mon.shiny` is **not an engine field at all**: nothing in
+  the engine's `src/` or `data/` reads or writes it. It belongs entirely
+  to the Shiny Pokemon mod (`SHINY_POKEMON`) as a cache flag.
+- Writing it was this mod reaching across a **cross-author boundary**.
+  Ownership between this project's own mods can be declared and honoured
+  through `mod.exports.owns`; with a third-party mod none of that
+  applies -- we cannot declare on their behalf and their internals may
+  change in any release. The correct posture, already used with
+  `pokeball_colors`, is: write engine-native state, call their published
+  exports, let them derive the rest. `exports.makeShinyDVs` is still used
+  when that mod is present.
+- It was also actively unhelpful, not merely impolite. Their detector is
+  `isShinyMon(mon) = mon.shiny or Stats.isShiny(mon.dvs)`, and their
+  `ensureShinyBattler` sets the pair together -- `battler.mon.shiny` AND
+  `battler.shiny`. Pre-setting only `mon.shiny` handed them a half-set
+  state: mon flagged, battler never marked. Setting only the DVs lets
+  their own code detect the MEOWTH and mark both halves in its own order.
+
+### Open: the square artifact in the MEOWTH fight
+
+- Diagnosed against SHINY_POKEMON 1.0.8, not guessed. That mod wraps
+  `Pokemon.new` and `BattleState.newWild` but **never `newTrainer`**. Its
+  wild path carries an explicit late-shiny fixup --
+  `result.enemy._shinySpriteApplied = false; result.enemy.shiny = true` --
+  precisely because a Pokemon can become shiny after its battler was
+  built. There is no trainer equivalent, because a trainer's Pokemon
+  being shiny is a case that mod was never written for. This mod is the
+  only thing that creates it, which matches the report exactly: the
+  artifact appears for this fight and for no other shiny.
+- The colours still work because `syncBattleShinies` re-bakes every frame
+  from a `drawPicsLayer` wrap; only the one-shot/HUD decorations are left
+  half-set.
+- This version may or may not resolve it -- it removes the half-set state
+  this mod was contributing, which is worth testing, but the missing
+  `newTrainer` path is theirs. Two option flips narrow it with no build:
+  turning off their SHINY INTRO toggle separates the sparkle FX from the
+  name-star drawing, and disabling Dramatic Shape separates the voxel
+  `snapHUDs` star path from the plain overlay one.
+- Deliberately NOT worked around by resetting `_shinySpriteApplied` or
+  `battler.shiny` from here. That would be writing their private fields
+  to patch their bug -- the same mistake this version is undoing.
+
 ## 0.14.5
 
 - TEST VERSION, not for release. A dialogue presentation pass plus one

@@ -84,7 +84,9 @@ load log prints the running version so you can confirm what's live.
   shiny whether or not that mod is installed. Every *visual* — the ◆
   marker beside the name, the sparkle animation on send-out — is drawn
   entirely by Shiny Pokémon. The engine draws no shiny effects of its
-  own and Pokemon Snag draws nothing at all. So any rendering oddity
+  own and Pokemon Snag draws nothing at all. The contract is one-way by
+  design: Pokemon Snag writes only engine-native data and calls that
+  mod's published exports — it never writes that mod's own fields. So any rendering oddity
   around a shiny (stray tiles, sparkle artifacts) belongs to that mod;
   turning it off leaves the Meowth just as shiny, only undecorated,
   which is also the way to confirm where an artifact came from.

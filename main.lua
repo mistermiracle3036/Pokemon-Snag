@@ -190,6 +190,19 @@ return function(mod)
   --    the mon the same way they would any other shiny; if it's not
   --    installed, the Pokemon is still genuinely shiny by data, just
   --    undecorated.
+  --
+  --    CROSS-AUTHOR BOUNDARY (0.14.6). SHINY_POKEMON is another author's
+  --    mod, so field ownership cannot be negotiated the way it can
+  --    between this project's own mods -- there is no shared exports.owns
+  --    to declare, and their internals may change in any release. So the
+  --    rule here is strictly one-way: this mod writes ENGINE-NATIVE state
+  --    only (mon.dvs, and the stats/hp the engine derives from it), calls
+  --    their PUBLISHED exports (makeShinyDVs), and never touches their
+  --    own fields -- not mon.shiny, not battler.shiny, not
+  --    _shinySpriteApplied. Same posture as with pokeball_colors, where
+  --    this mod registers into exports.colors rather than writing that
+  --    mod's records directly. See the note at the DV assignment below
+  --    for why writing mon.shiny was actively harmful, not just impolite.
   ----------------------------------------------------------------------
   local function shinyDVs()
     local shinyMod = mod.find("SHINY_POKEMON")
@@ -258,11 +271,35 @@ return function(mod)
             mon.dvs = shinyDVs()
             mon.stats = Stats.calc(g.data.pokemon[mon.species], mon.level, mon.dvs)
             mon.hp = mon.stats.hp
-            -- the data-truth check is Stats.isShiny(mon.dvs), which the
-            -- DVs above already satisfy; mon.shiny is the cached flag
-            -- the Shiny Pokemon mod's own visuals read, set here the
-            -- same way that mod sets it at its own hook points
-            mon.shiny = true
+            -- DELIBERATELY NOT setting mon.shiny here (0.14.6).
+            --
+            -- Shininess is engine-native: Stats.isShiny(mon.dvs), which
+            -- the DVs above satisfy. `mon.shiny` is NOT an engine field
+            -- at all -- nothing in src/ or data/ reads or writes it. It
+            -- belongs entirely to the Shiny Pokemon mod (SHINY_POKEMON),
+            -- a different author's mod, as a cache flag.
+            --
+            -- Earlier versions set it here. That was this mod writing a
+            -- field it does not own, across a boundary where ownership
+            -- cannot be negotiated -- we can't declare on their behalf
+            -- and their internals can change in any release. The right
+            -- posture is the same one used with pokeball_colors: write
+            -- engine-native state, use the other mod's published exports
+            -- (exports.makeShinyDVs, above), and let it derive the rest.
+            --
+            -- It is also actively unhelpful. Their detector is
+            -- isShinyMon(mon) = mon.shiny or Stats.isShiny(mon.dvs), and
+            -- their ensureShinyBattler sets the pair together:
+            --     battler.mon.shiny = true
+            --     battler.shiny     = true
+            -- Pre-setting only mon.shiny handed them a half-set state --
+            -- the mon flagged, the battler never marked -- for a case
+            -- they never handle anyway, since they wrap Pokemon.new and
+            -- BattleState.newWild but NOT newTrainer (their wild path
+            -- resets _shinySpriteApplied and battler.shiny explicitly;
+            -- there is no trainer equivalent). Setting only the DVs lets
+            -- their own code detect and mark both halves in its own
+            -- order. Verified against SHINY_POKEMON 1.0.8.
           end
         end
       end
@@ -1387,6 +1424,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.5"
+  mod.exports.version = "0.14.6"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end
