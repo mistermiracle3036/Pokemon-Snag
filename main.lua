@@ -206,18 +206,26 @@ return function(mod)
   --    installed, the Pokemon is still genuinely shiny by data, just
   --    undecorated.
   --
-  --    CROSS-AUTHOR BOUNDARY (0.14.6). SHINY_POKEMON is another author's
-  --    mod, so field ownership cannot be negotiated the way it can
+  --    CROSS-AUTHOR BOUNDARY (revised 0.14.8). SHINY_POKEMON is another
+  --    author's mod, so ownership cannot be negotiated the way it can
   --    between this project's own mods -- there is no shared exports.owns
-  --    to declare, and their internals may change in any release. So the
-  --    rule here is strictly one-way: this mod writes ENGINE-NATIVE state
-  --    only (mon.dvs, and the stats/hp the engine derives from it), calls
-  --    their PUBLISHED exports (makeShinyDVs), and never touches their
-  --    own fields -- not mon.shiny, not battler.shiny, not
-  --    _shinySpriteApplied. Same posture as with pokeball_colors, where
-  --    this mod registers into exports.colors rather than writing that
-  --    mod's records directly. See the note at the DV assignment below
-  --    for why writing mon.shiny was actively harmful, not just impolite.
+  --    to declare, and their internals may change in any release. The
+  --    line that matters is not "engine field vs their field", which is
+  --    what 0.14.6 got wrong; it is INPUT CONTRACT vs INTERNAL STATE:
+  --
+  --      write  mon.dvs / mon.stats / mon.hp -- engine-native truth
+  --      write  mon.shiny -- their detector reads it off arbitrary mons,
+  --             so it is how a mod declares "this one is shiny"
+  --      call   exports.makeShinyDVs -- their published API
+  --      NEVER  battler.shiny, battler._shinySpriteApplied -- battler-
+  --             scoped internals only their own code writes
+  --
+  --    0.14.6 dropped mon.shiny on the theory that anything not
+  --    engine-native was off limits, and the quest MEOWTH lost its
+  --    colours on device. Restored in 0.14.8. Same posture as with
+  --    pokeball_colors, where this mod registers into exports.colors --
+  --    a table that mod exposes for the purpose -- rather than writing
+  --    its records directly.
   ----------------------------------------------------------------------
   local function shinyDVs()
     local shinyMod = mod.find("SHINY_POKEMON")
@@ -286,35 +294,34 @@ return function(mod)
             mon.dvs = shinyDVs()
             mon.stats = Stats.calc(g.data.pokemon[mon.species], mon.level, mon.dvs)
             mon.hp = mon.stats.hp
-            -- DELIBERATELY NOT setting mon.shiny here (0.14.6).
+            -- mon.shiny is the Shiny Pokemon mod's INPUT MARKER, and this
+            -- mod is expected to set it. Restored in 0.14.8 after 0.14.6
+            -- removed it and the quest MEOWTH lost its colours on device
+            -- (the name marker still drew, so detection was fine; the
+            -- recolour bake was not happening).
             --
-            -- Shininess is engine-native: Stats.isShiny(mon.dvs), which
-            -- the DVs above satisfy. `mon.shiny` is NOT an engine field
-            -- at all -- nothing in src/ or data/ reads or writes it. It
-            -- belongs entirely to the Shiny Pokemon mod (SHINY_POKEMON),
-            -- a different author's mod, as a cache flag.
+            -- 0.14.6's reasoning was half right and the conclusion was
+            -- wrong. `mon.shiny` is genuinely not an engine field --
+            -- nothing in src/ or data/ reads or writes it, and the
+            -- engine's own truth is Stats.isShiny(mon.dvs), which the
+            -- DVs above already satisfy. But "not an engine field" does
+            -- not make it private to that mod. Their detector READS it
+            -- off arbitrary Pokemon:
+            --     isShinyMon(mon) = mon.shiny or Stats.isShiny(mon.dvs)
+            -- A field another mod reads as input is part of its input
+            -- contract, not its internal state -- so setting it is how a
+            -- mod is supposed to say "this one is shiny", and it is the
+            -- documented integration point for exactly this.
             --
-            -- Earlier versions set it here. That was this mod writing a
-            -- field it does not own, across a boundary where ownership
-            -- cannot be negotiated -- we can't declare on their behalf
-            -- and their internals can change in any release. The right
-            -- posture is the same one used with pokeball_colors: write
-            -- engine-native state, use the other mod's published exports
-            -- (exports.makeShinyDVs, above), and let it derive the rest.
+            -- The fields that ARE theirs alone stay untouched:
+            -- battler.shiny and battler._shinySpriteApplied, both
+            -- underscore/battler-scoped and written only by their own
+            -- ensureShinyBattler. This mod never writes those, and the
+            -- 0.14.6 note about not patching around their missing
+            -- newTrainer path still stands.
             --
-            -- It is also actively unhelpful. Their detector is
-            -- isShinyMon(mon) = mon.shiny or Stats.isShiny(mon.dvs), and
-            -- their ensureShinyBattler sets the pair together:
-            --     battler.mon.shiny = true
-            --     battler.shiny     = true
-            -- Pre-setting only mon.shiny handed them a half-set state --
-            -- the mon flagged, the battler never marked -- for a case
-            -- they never handle anyway, since they wrap Pokemon.new and
-            -- BattleState.newWild but NOT newTrainer (their wild path
-            -- resets _shinySpriteApplied and battler.shiny explicitly;
-            -- there is no trainer equivalent). Setting only the DVs lets
-            -- their own code detect and mark both halves in its own
-            -- order. Verified against SHINY_POKEMON 1.0.8.
+            -- Verified against SHINY_POKEMON 1.0.8.
+            mon.shiny = true
           end
         end
       end
@@ -1446,6 +1453,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.7"
+  mod.exports.version = "0.14.8"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end

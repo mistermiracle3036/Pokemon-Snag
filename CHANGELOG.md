@@ -4,6 +4,45 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
+## 0.14.8
+
+- TEST VERSION, not for release.
+
+### Fixed
+
+- **Restored `mon.shiny` on the quest MEOWTH.** 0.14.6 removed it and the
+  MEOWTH lost its shiny colours on device -- the name marker still drew,
+  so detection was fine, but the recolour never baked. Reported with the
+  Shiny Pokemon mod's own settings confirmed correct (SHINY ON, SHINY
+  COLORS ON, SHINY INTRO ON), so this was a regression here, not a
+  misconfiguration.
+- 0.14.6's reasoning was half right and its conclusion was wrong.
+  `mon.shiny` genuinely is not an engine field -- nothing in the engine's
+  `src/` or `data/` reads or writes it, and the engine's own truth is
+  `Stats.isShiny(mon.dvs)`. But not-engine-native does not mean private.
+  Their detector READS it off arbitrary Pokemon --
+  `isShinyMon(mon) = mon.shiny or Stats.isShiny(mon.dvs)` -- which makes
+  it part of that mod's **input contract**, the supported way for another
+  mod to say "this one is shiny", not internal state to keep out of.
+- The distinction that actually matters, and the rule this mod follows
+  now: write engine-native truth (`mon.dvs`/`stats`/`hp`), write the
+  input marker other mods read (`mon.shiny`), call published exports
+  (`makeShinyDVs`) -- and never write battler-scoped internals
+  (`battler.shiny`, `battler._shinySpriteApplied`) that only their own
+  code maintains. 0.14.6's refusal to patch around their missing
+  `newTrainer` path still stands.
+
+### Docs
+
+- Removed the FAQ entry about a stray square during the Meowth fight. It
+  was a conflict with an unrelated mod, already fixed by that mod's
+  author, and never involved this mod -- no reason to carry a
+  troubleshooting entry for something resolved between releases.
+- README's Shiny Pokemon note corrected: it claimed this mod never writes
+  any of that mod's fields, which is no longer true and was the wrong
+  framing anyway. It now just records that the marker and the recolour
+  are separate options.
+
 ## 0.14.7
 
 - TEST VERSION, not for release.

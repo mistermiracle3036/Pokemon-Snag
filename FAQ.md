@@ -154,29 +154,6 @@ helps enormously.
 </details>
 
 <details>
-<summary>There's a stray square or graphical artifact on screen during a
-battle.</summary>
-
-Almost certainly a conflict with another mod, not this one — **Pokemon
-Snag contains no drawing code at all.** One such artifact during the
-Meowth fight was tracked down to an unrelated mod and fixed by its
-author; nothing in this mod changed.
-
-The fastest way to find it: enable **only Pokemon Snag and Quest System**
-and reproduce. If the artifact is gone, re-enable the rest in halves,
-relaunching fully each time, until it comes back. That usually finds the
-culprit in three or four goes.
-
-Worth knowing for shinies specifically: this mod supplies the shiny
-*data* (the DVs, which the engine reads natively) and the **Shiny
-Pokémon** mod supplies every *visual* — the ◆ marker and the sparkles.
-Disabling that mod leaves the Meowth just as shiny, only undecorated.
-If the Meowth has its ◆ marker but is the wrong colour, check that mod's
-**SHINY COLORS** option: the marker and the recolour are separate
-toggles.
-</details>
-
-<details>
 <summary>The recruiter's vanilla lines repeat themselves before the
 battle.</summary>
 
