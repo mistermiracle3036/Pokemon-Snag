@@ -1469,6 +1469,6 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.9"
+  mod.exports.version = "0.14.10"
   mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
 end

@@ -4,7 +4,7 @@ All notable changes to Snag Quest are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com); the top heading always
 matches the version in `manifest.json`.
 
-## 0.14.9
+## 0.14.10
 
 ### Updating from 0.11.7?
 
@@ -38,11 +38,10 @@ independents who just like what falls off the back of a truck, and they
 all have their own opinion of you. Their dialogue has been rewritten to
 match.
 
-**Turning in MEOWTH now pays 5 Snag Balls.** It previously paid none at
-all -- a bug -- which left you with an empty bag and no way to snag
-anything or reach a fence. Five is a starting float, not a stockpile:
-every snag after the quest rolls ordinary catch odds, so expect to spend
-some.
+**Turning in MEOWTH now pays 5 Snag Balls**, up from 1. One was too
+tight: every snag after the quest rolls ordinary catch odds, so a single
+ball was one failed throw away from having none. Five is a starting
+float, not a stockpile -- you will still want the fences.
 
 **Fixes you will notice:**
 
@@ -54,12 +53,14 @@ some.
 
 All of this works on Red, Blue and Yellow.
 
-### New in 0.14.9
+### Also in this version
 
 - The quest journal marker now follows the recruiter after Bill removes
   the original. It only ever pointed at the vanilla NPC, so once he was
   gone the marker pointed at nobody -- which is the situation every
   player ends up in eventually.
+- Corrected this entry's own claim that the turn-in used to pay nothing.
+  That was true only of unreleased test builds; v0.11.7 paid 1.
 
 ## 0.14.8
 
@@ -112,8 +113,11 @@ All of this works on Red, Blue and Yellow.
   claimed. The quest ball is spent on MEOWTH, so the quest ended with an
   empty bag: nothing to snag with, and no route to a fence either, since
   fences only pay for snagged Pokemon. The mod's entire loop was
-  unreachable without first buying a 10,000 ball. Shipped broken since
-  the reward was written.
+  unreachable without first buying a 10,000 ball. NOTE: this only ever
+  existed in unreleased versions -- v0.11.7, the last public release,
+  paid its reward correctly. The give_item row was dropped during the
+  0.13.x questline rewrite, so no player outside these test builds was
+  ever affected.
 - The dialogue made it worse by saying *"Keep the spare BALL"* about a
   ball that had already been spent. Rewritten on both the vanilla
   recruiter and the post-BILL stand-in.
