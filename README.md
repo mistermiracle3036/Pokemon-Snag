@@ -148,3 +148,51 @@ question and then ignores your answer, so the hook was already there.
 It replaced an earlier opening built around the Viridian City girl.
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+### Gold private test
+
+The Gold path is a separate questline, not a port of the Kanto one — the mod splits on generation at load and the Kanto quest never runs on Gold. Gold marts do **not** stock the SNAG BALL: every ball comes from the questline, starting with the single ball the Cherrygrove sailor hands you.
+
+### Custom trainer VIP compatibility (Gold)
+
+Pokemon Snag exposes a `snag.vip` hook for mods that add important custom trainers.
+The hook receives the built-in VIP verdict plus encounter context and may return `true`
+to mark that trainer as VIP for Snag Ball fence valuation. The verdict is stamped onto
+the stolen Pokemon as `mon.snagVip`, so the bonus remains stable later.
+
+```lua
+mod.hooks:wrap("snag.vip", function(next_, vip, ctx)
+  vip = next_(vip, ctx)
+  if ctx.npc and ctx.npc.def and ctx.npc.def.name == "MY_CUSTOM_BOSS" then
+    return true
+  end
+  return vip
+end)
+```
+
+`ctx` includes `game`, `world`, `npc`, `mapId`, `trainerClass`, `classIndex`,
+`trainerName`, `memberIndex`, `trainerEvent`, and `sight`.
+
+
+## Gold private test: Goldenrod contract
+
+After completing the Cherrygrove introduction and claiming the sailor's five-ball reward, a broker appears in Goldenrod City. He offers one of three leads:
+
+- PSYCHIC -> NATU
+- NORMAL -> AIPOM
+- BUG -> YANMA
+
+This is the first non-tutorial Snag job: no free ball and no guaranteed catch. The selected target can be retried if it is knocked out. Snagging it completes the contract.
+
+
+## Gold private test: Ecruteak archetype contract
+
+After successfully snagging the selected Goldenrod target, an Ecruteak contact offers a second contract based on trainer archetype rather than Pokemon type.
+
+- PERFORMER: Smeargle / easier two-Pokemon party / Dance Theater
+- MYSTIC: Misdreavus / three-Pokemon Ghost party / Burned Tower side of Ecruteak
+- COLLECTOR: Girafarig / stronger rare-species party / west gate
+
+A neutral resident gives Pokedex-flavored gossip that points toward the chosen mark. Only snagging the advertised target completes the job, but other Pokemon in the mark's party remain valid Snag targets.
+
+Returning to the Ecruteak contact after completion awards one HEIST BALL. It doubles the catch rate; it is not sold anywhere and fences do not trade for it. (0.14.37 called this reward the GREAT SNAG BALL at 1.5x — 0.14.38 replaced it with the HEIST BALL from the tier brief.)

@@ -1,3 +1,182 @@
+## 0.14.39 - Reconciliation into the repo
+
+The Gold questline arc (0.14.14-0.14.38) was written outside git and is
+committed here for the first time. Corrections made on intake:
+
+- Removed a hard dependency on `shop_events` that no code referenced. Left
+  in, the loader would have refused to start Pokemon Snag at all on any
+  device without that mod installed — on Red as well as Gold — for zero
+  functional gain.
+- Fixed the version report on Red. 0.14.38 tried to fix a stale
+  `mod.exports.version` by deleting it, but the replacement `VERSION` local
+  lived inside the Gold arm, so a Red boot exported nothing: the load line
+  read "Pokemon Snag nil loaded" and the wrap stamp that answers "which
+  code is live" was stamped nil. `VERSION` is now declared once, above the
+  generation split, and both arms report it.
+- Fixed a crash-in-waiting on Gold: the error reporter `errs` was defined
+  after the one function that calls it, so `snag.vip` hook failures would
+  have thrown from the line meant to report them instead of showing up in
+  [ERRS].
+- Documented at the generation split that everything below it is Gen 1
+  only. `gen2check` cannot see the early return and will report MK402/MK409
+  against those lines on every release; they are unreachable on Gold.
+- README: the Ecruteak reward is the HEIST BALL at 2x, not the GREAT SNAG
+  BALL at 1.5x that 0.14.37 shipped; and Gold marts do not stock the SNAG
+  BALL — the Gold questline is the only source.
+- Added the MIT `LICENSE` file, which the repo never had.
+- No gameplay change on Red. Existing saves and existing Snag Balls behave
+  exactly as they did in v0.14.11.
+
+## 0.14.38 - Tier brief reconciliation
+
+- Fixed the stale end-of-file export that reported version 0.14.13 on newer builds.
+- Unified Gold and Gen 1 fence valuation around one shared payout implementation.
+- Replaced the experimental GREAT SNAG BALL from 0.14.37 with the brief-approved first tier, HEIST BALL.
+- Base SNAG BALL remains unchanged at 1x catch reliability.
+- HEIST BALL uses a 2x catch-rate multiplier on Gold and is awarded as the first Ecruteak upgrade reward.
+- Gold trainer-snag eligibility and caught-Pokemon provenance now use the same `SNAG_BALL_TIERS` membership table.
+- VAULT BALL, KINGPIN BALL, tier colors, and fence exchanges are intentionally deferred to later milestones.
+
+## 0.14.37 - Ecruteak archetype contract + Great Snag Ball
+
+- Added the second real Gold contract, unlocked after the Goldenrod target is successfully snagged.
+- Ecruteak changes the choice from Pokemon type to trainer archetype/risk:
+  - PERFORMER -> SMEARGLE
+  - MYSTIC -> MISDREAVUS
+  - COLLECTOR -> GIRAFARIG
+- Each archetype has a different multi-Pokemon party and a different destination.
+- Added neutral Ecruteak gossip based on unusual Pokedex behavior; the witness never acknowledges the Snag network.
+- The advertised Pokemon must be snagged to complete the contract, but the player may also snag other Pokemon from the mark's party.
+- KOing/defeating the mark without snagging the target keeps the contract active and re-arms the trainer for another attempt.
+- Added GREAT SNAG BALL as a Gold custom ball reward. The first Ecruteak completion awards exactly one.
+- GREAT SNAG BALL uses a 1.5x catch-rate boost, mirroring the Gen II Great Ball tier, and works with the existing trainer-snag continuation system.
+- Initial calibration placements:
+  - Ecruteak contact: ECRUTEAK_CITY (27,24), facing down
+  - neutral witness: ECRUTEAK_CITY (16,23), facing down
+  - Performer: DANCE_THEATER (1,10), facing down
+  - Mystic: ECRUTEAK_CITY (7,8), facing down, near Burned Tower
+  - Collector: ROUTE_38_ECRUTEAK_GATE (4,5), facing down
+
+## 0.14.36 - Goldenrod witness placement
+
+- Moved the neutral Goldenrod rumor witness to the user-calibrated position `GOLDENROD_CITY (8,24)`.
+- Witness remains facing down.
+- No quest, contract, target, or dialogue logic changed.
+
+## 0.14.35 - Neutral Goldenrod rumor clue
+
+- Added a neutral Goldenrod City witness NPC for the first choice contract.
+- The witness never acknowledges the Snag job; the dialogue is ordinary gossip about a strange Pokemon sighting.
+- NATU rumor: an odd little bird stared at the witness and could not properly fly, echoing its Gen II Pokedex behavior.
+- AIPOM rumor: a Pokemon was seen hanging by its tail before following a man downstairs.
+- YANMA rumor: something smashed a nearby window before a large bug headed toward the stairs, echoing its violent-wingbeat lore.
+- Each rumor indirectly points toward the Goldenrod Underground.
+- Initial witness calibration position: GOLDENROD_CITY (14,12), facing down.
+- Every new dialogue page is limited to two lines and every line is checked against the 18-glyph target.
+
+## 0.14.34 - Goldenrod broker placement
+
+- Moved the Magnet Train Station broker one tile up to (4,12).
+- Broker now faces down/south.
+- Contract and clue logic otherwise unchanged.
+
+## 0.14.33 - Calibrated Goldenrod contract locations
+
+- Moved the Goldenrod broker to `GOLDENROD_MAGNET_TRAIN_STATION` at (4,13), facing left.
+- Moved the selected contract trainer to `GOLDENROD_UNDERGROUND` at (2,19), facing down.
+- Split broker and mark reconciliation/interaction logic across their two real maps.
+- Contract choices and mechanics remain PSYCHIC/NATU, NORMAL/AIPOM, BUG/YANMA.
+
+## 0.14.32 - Goldenrod choice contract
+
+- Added the first real Gold Snag contract in Goldenrod City after the Cherrygrove intro reward.
+- A broker offers three lead types through a three-item list: PSYCHIC (NATU), NORMAL (AIPOM), or BUG (YANMA).
+- The chosen lead is durable and spawns one matching trainer mark in Goldenrod.
+- Targets are Lv16 and use normal SNAG BALL catch odds; the Cherrygrove guaranteed-catch exception does not apply.
+- Knocking out the target does not complete the contract; the mark is re-armed so the player can retry.
+- Successfully snagging the chosen species completes the contract. The mark remains for brief aftermath dialogue until Goldenrod is left.
+- Broker follow-up reinforces the keep-versus-fence choice and foreshadows better Snag Balls.
+- Initial calibration coordinates: broker (10,9), mark (24,18).
+
+## 0.14.31 - Dialogue and Route 36 fence placement
+
+- Shortened the lass's Cherrygrove aftermath text so no line exceeds Gold's 18-glyph text width.
+- The sailor now hints that more SNAG BALLs can be earned from a fence on Route 36 near SUDOWOODO.
+- Moved the Route 36 fence four tiles right and one tile up, from (38,11) to (42,10).
+- The fence now uses Gold's STANDING_UP movement so he faces north by default.
+
+## 0.14.30 - Gold sailor dialogue pagination fix
+
+- Reworked the Cherrygrove intro so every mod-authored dialogue command is a single Gold text page of at most two lines.
+- Removed form-feed page chaining from the sailor/lass intro dialogue.
+- Kept the quest, shiny Meowth battle, five-ball reward, VIP bookkeeping, and Route 36 fence logic unchanged.
+
+## 0.14.29 - Route 36 fence test
+
+- Adds the first Gold fence on Route 36 near Sudowoodo.
+- Fence accepts only Pokemon marked `snagged == true`.
+- Preserves the original 1-5 SNAG BALL payout formula using snag-time level, rarity, and persisted Gold VIP status.
+- Refuses a trade that would empty the player's party.
+- Quotes the payout and requires YES/NO confirmation before consuming the Pokemon.
+- Pays first; if the BALL pocket cannot accept the reward, the Pokemon is kept.
+
+## 0.14.28 - Gold VIP provenance compatibility
+
+- Added a conservative Gold VIP list: both rival classes; all 16 Gym Leaders; Will, Koga, Bruno and Karen; Champion Lance; and Red.
+- Gold trainer provenance is now captured from `world.trainer_engaged` and persisted onto snagged Pokemon.
+- Added the `snag.vip` hook so other mods can designate their own custom trainer encounters as VIP without Pokemon Snag hardcoding their trainer ids.
+- VIP status is stamped as `mon.snagVip` at catch time, making later fence value stable even if the source mod is disabled or changes.
+- Preserved the 0.14.27 reward-safe sailor behavior.
+
+## 0.14.27 - Reward-safe sailor cleanup
+
+- The Cherrygrove sailor stays available until the five-SNAG-BALL reward is successfully claimed.
+- Leaving town before collecting the reward no longer forfeits it; the sailor is restored on a later Cherrygrove visit.
+- The lass can still clean up after leaving town once the intro battle is complete.
+
+## 0.14.26 - Cherrygrove intro reward
+
+- After successfully snagging the shiny Meowth, the sailor now gives a one-time reward of 5 SNAG BALLs when spoken to before leaving Cherrygrove.
+- Persist the reward claim separately from quest completion so repeated dialogue cannot duplicate the five-ball payout.
+- Keep the original Snag Quest fence economy as the model for the upcoming Gold fence implementation: stolen Pokemon only, with payout weighted by snag level, rarity, and trainer provenance.
+
+## 0.14.25 - Cherrygrove aftermath dialogue
+
+- Move the fixed Cherrygrove sailor one tile right to `(14, 11)`.
+- After the intro snag battle, the sailor and lass now have dialogue while they remain in town.
+- Preserve the confirmed battle rule: ordinary Balls are still blocked against the trainer Meowth; only the intro SNAG BALL receives the guaranteed-catch exception.
+
+## 0.14.24 - Cherrygrove NPC placement and delayed cleanup
+- Move the intro sailor seven tiles left and one tile up from the 0.14.23 calibration point: (20, 12) -> (13, 11).
+- After the shiny Meowth is successfully snagged, keep both the sailor and the girl visible for the rest of the current Cherrygrove visit.
+- Remove the completed intro NPCs only after the player enters another map; later Cherrygrove visits keep them gone.
+
+## 0.14.23 - Fixed Cherrygrove sailor placement test
+- Replace the entry-relative sailor spawn with a fixed guessed Cherrygrove City coordinate at (20, 12), so device feedback can tune the NPC by exact tile offsets.
+- Leave the working 0.14.22 intro battle, one-ball guarantee, shiny Meowth, and 0.14.21 trainer-continuation behavior unchanged.
+
+## 0.14.22 - Gold Cherrygrove intro quest test
+- Add a Gold-only intro in Cherrygrove City: a sailor gives exactly one SNAG BALL and points the player at a little-girl trainer whose battle auto-engages through Gold's normal trainer sight logic.
+- Replace that intro trainer's party with one real shiny Lv.5 MEOWTH using Gen 2 shiny DVs (14/10/10/10).
+- Cheat the SNAG BALL rules only for this encounter: the single ball is guaranteed to catch the shiny MEOWTH. Normal trainer snagging keeps normal odds.
+- Remove the private-test Gold mart stocking so the intro grants the only SNAG BALL for this quest milestone.
+- Keep the proven 0.14.21 trainer-party continuation fix intact.
+
+## 0.14.21 - Gold trainer continuation roster fix
+- Gold private test: preserve the trainer party roster after a snag by replacing the stolen active mon with a zero-HP battle-only ghost instead of removing its slot. This lets `resolveFaints()` see the trainer's remaining healthy Pokemon and keeps prize-money calculation intact.
+- Fixes the 0.14.20 symptom where a snag incorrectly produced EXP, an immediate trainer victory, and a $0 payout even when another trainer Pokemon remained.
+
+## 0.14.20
+- Gold private test: after a successful SNAG BALL capture in a trainer battle, continue through the trainer's remaining party instead of ending the battle as a wild catch.
+
+## 0.14.19
+- Gold private-test dev pricing is explicitly enabled by default ($1 SNAG BALL) because the current engine menu-settings issue can prevent changing the toggle reliably.
+
+# 0.14.18 — Gold dev test
+
+- Added a `DEV_CHEAP_SNAG_BALL` toggle to make the Gold SNAG BALL cost 1 for testing.
+- Set it back to `false` to restore the normal 10,000 price.
+
 # Changelog
 
 All notable changes to Snag Quest are documented here. Format follows
@@ -1307,3 +1486,11 @@ from the engine repo, so expect to nudge it.
 ## 0.1.0
 
 - Initial skeleton.
+
+## 0.14.17 — Gold private mechanics test
+
+- Added a Gold-only private test path for the SNAG BALL.
+- SNAG BALL is stocked on Gold mart shelves and stamped into the BALL pocket.
+- Gold trainer throws use the native Gold capture pipeline for SNAG BALL instead of the trainer-ball refusal path.
+- Cooperates with Too Many Balls' `requestBallSlots(1)` capacity API when installed.
+- The existing Gen 1 quest/content path is not registered on Gold in this test build.

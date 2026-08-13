@@ -36,6 +36,1513 @@ local MapScripts = require("src.script.MapScripts")
 local Flags = require("src.script.Flags")
 
 return function(mod)
+
+  -- ONE version local for the whole mod, declared before the Gen 1/Gen 2
+  -- split so both arms report the same number. It used to be declared
+  -- inside the `if GEN2` arm only (0.14.17-0.14.38), which left
+  -- `mod.exports.version` NIL on a Red boot -- the load line printed
+  -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
+  -- stamp that answers "which code is live", was stamped nil. Keep this
+  -- at the top; keep it equal to manifest.json.
+  local VERSION = "0.14.39"
+  mod.exports.version = VERSION
+
+  -- Shared fence valuation. Gold stamps snagVip at encounter time; the legacy
+  -- Gen 1 path may still supply a class table for old captured Pokemon.
+  local function computeSnagPayout(game, mon, vipClasses)
+    local n = 1
+    local lv = tonumber(mon and (mon.snagLevel or mon.level)) or 1
+    if lv >= 25 then n = n + 1 end
+    if lv >= 45 then n = n + 1 end
+    local data = game and game.data
+    local def = data and data.pokemon and mon and data.pokemon[mon.species]
+    if def and tonumber(def.catchRate) and def.catchRate <= 45 then n = n + 1 end
+    local vip = mon and mon.snagVip == true
+    if not vip and vipClasses and mon and mon.snagFrom then
+      vip = vipClasses[mon.snagFrom] == true
+    end
+    if vip then n = n + 1 end
+    return math.min(5, n)
+  end
+
+  -- GOLD PRIVATE TEST PATH (0.14.17): keep the existing Kanto quest code
+  -- completely out of a Gold boot. Gold has a parallel BattleState/World
+  -- implementation and, more importantly for this mod, the old Kanto
+  -- trainer/map-script registrations are not meaningful on Gold. The first
+  -- Gold milestone is deliberately much smaller: SNAG BALL in a Gold mart,
+  -- then let Gold's own capture pipeline catch a trainer Pokemon.
+  local GameVersion = require("src.core.GameVersion")
+  local GEN2 = GameVersion.generation() == 2
+
+  if GEN2 then
+    local Runtime = require("src.mods.Runtime")
+    local Bag = require("src.inventory.Bag")
+    local Mon = require("src.battle.gen2.Mon")
+    local ListMenu = require("src.ui.ListMenu")
+
+    local MAP = "CHERRYGROVE_CITY"
+    local FENCE_MAP = "ROUTE_36"
+    local FENCE_NAME = "SNAG_VIOLET_FENCE"
+    -- Sudowoodo itself is at (35,9) in vanilla Gold.  First-pass fence
+    -- placement is a few tiles southeast on the Violet-side approach; tune
+    -- by device feedback if the collision layout wants a neighboring cell.
+    local FENCE_X, FENCE_Y = 42, 10
+    local SAILOR_NAME = "SNAG_INTRO_SAILOR"
+    local GIRL_NAME = "SNAG_INTRO_GIRL"
+
+    -- First real contract: a Goldenrod broker lets the player choose the
+    -- KIND of mark rather than prescribing one Pokemon.  Coordinates are
+    -- deliberately fixed calibration points, like the Cherrygrove/Route 36
+    -- NPCs, so device feedback can tune them by exact tile offsets.
+    local GOLDENROD_MAP = "GOLDENROD_MAGNET_TRAIN_STATION"
+    local GOLDENROD_CITY_MAP = "GOLDENROD_CITY"
+    local MARK_MAP = "GOLDENROD_UNDERGROUND"
+    local BROKER_NAME = "SNAG_GOLDENROD_BROKER"
+    local CLUE_NAME = "SNAG_GOLDENROD_WITNESS"
+    local MARK_NAME = "SNAG_GOLDENROD_MARK"
+    local BROKER_X, BROKER_Y = 4, 12
+    local CLUE_X, CLUE_Y = 8, 24
+    local MARK_X, MARK_Y = 2, 19
+    local CONTRACT_NONE, CONTRACT_ACTIVE, CONTRACT_DONE = 0, 1, 2
+
+    -- Contract #2: Ecruteak changes the player's decision from Pokemon type
+    -- to trainer archetype/risk. Each lead has its own destination.
+    local ECRUTEAK_MAP = "ECRUTEAK_CITY"
+    local ECRUTEAK_CONTACT_NAME = "SNAG_ECRUTEAK_CONTACT"
+    local ECRUTEAK_WITNESS_NAME = "SNAG_ECRUTEAK_WITNESS"
+    local ECRUTEAK_MARK_NAME = "SNAG_ECRUTEAK_MARK"
+    local ECRUTEAK_CONTACT_X, ECRUTEAK_CONTACT_Y = 27, 24
+    local ECRUTEAK_WITNESS_X, ECRUTEAK_WITNESS_Y = 16, 23
+
+    local MOVE_STANDING_DOWN = 6
+    local MOVE_STANDING_UP = 7
+    local MOVE_STANDING_LEFT = 8
+    local INTRO_LEVEL = 5
+    local STAGE_NEW, STAGE_ARMED, STAGE_DONE = 0, 1, 2
+
+    local GIRL_SEEN = "SNAG_G2_GIRL_SEEN"
+    local GIRL_WIN  = "SNAG_G2_GIRL_WIN"
+    local GIRL_LOSS = "SNAG_G2_GIRL_LOSS"
+
+    -- Gold intro quest text.  The sailor is mod-owned dialogue; the girl's
+    -- three rows are VM text keys consumed by the cart's trainer script.
+    mod.content.text:register(GIRL_SEEN,
+      "Hey! Stay away\nfrom my MEOWTH!")
+    mod.content.text:register(GIRL_WIN,
+      "No! MEOWTH!\nGive it back!")
+    mod.content.text:register(GIRL_LOSS,
+      "I told you to\nstay away!")
+
+    local CONTRACTS = {
+      NATU = {
+        key = "NATU", label = "PSYCHIC", species = "NATU", level = 16,
+        class = "PSYCHIC_T", sprite = "SPRITE_SUPER_NERD",
+        seen = "SNAG_G2_NATU_SEEN", win = "SNAG_G2_NATU_WIN",
+        loss = "SNAG_G2_NATU_LOSS",
+        clue1 = "Strange bird.\nStares through ya.",
+        clue2 = "Look around\nGOLDENROD.",
+        gossip = {
+          "Odd little bird.\nJust stared at me.",
+          "Couldn't even fly.\nHopped down below.",
+        },
+        after1 = "I saw that coming.",
+        after2 = "Still hurts.",
+      },
+      AIPOM = {
+        key = "AIPOM", label = "NORMAL", species = "AIPOM", level = 16,
+        class = "POKEFANM", sprite = "SPRITE_POKEFAN_M",
+        seen = "SNAG_G2_AIPOM_SEEN", win = "SNAG_G2_AIPOM_WIN",
+        loss = "SNAG_G2_AIPOM_LOSS",
+        clue1 = "Little thief.\nHandy tail.",
+        clue2 = "Look around\nGOLDENROD.",
+        gossip = {
+          "Saw a POKEMON\nhang by its tail!",
+          "Then it followed\na guy downstairs.",
+        },
+        after1 = "My collection!",
+        after2 = "That was my best!",
+      },
+      YANMA = {
+        key = "YANMA", label = "BUG", species = "YANMA", level = 16,
+        class = "BUG_CATCHER", sprite = "SPRITE_BUG_CATCHER",
+        seen = "SNAG_G2_YANMA_SEEN", win = "SNAG_G2_YANMA_WIN",
+        loss = "SNAG_G2_YANMA_LOSS",
+        clue1 = "Fast wings.\nHard to find.",
+        clue2 = "Look around\nGOLDENROD.",
+        gossip = {
+          "Something smashed\na window nearby!",
+          "Big BUG flew down\ntoward the stairs.",
+        },
+        after1 = "That took weeks",
+        after2 = "to catch!",
+      },
+    }
+
+    mod.content.text:register("SNAG_G2_NATU_SEEN", "I knew you'd\ncome for NATU.")
+    mod.content.text:register("SNAG_G2_NATU_WIN", "I knew you'd\nthrow that BALL.")
+    mod.content.text:register("SNAG_G2_NATU_LOSS", "Just as NATU\nforesaw.")
+    mod.content.text:register("SNAG_G2_AIPOM_SEEN", "You've never seen\none like AIPOM!")
+    mod.content.text:register("SNAG_G2_AIPOM_WIN", "Hey! That's part\nof my collection!")
+    mod.content.text:register("SNAG_G2_AIPOM_LOSS", "AIPOM is one of\nmy best!")
+    mod.content.text:register("SNAG_G2_YANMA_SEEN", "Took me WEEKS\nto catch YANMA!")
+    mod.content.text:register("SNAG_G2_YANMA_WIN", "No! My YANMA!")
+    mod.content.text:register("SNAG_G2_YANMA_LOSS", "Worth the hunt!")
+
+    local ECRUTEAK_CONTRACTS = {
+      SMEARGLE = {
+        key = "SMEARGLE", label = "PERFORMER", target = "SMEARGLE",
+        class = "KIMONO_GIRL", sprite = "SPRITE_KIMONO_GIRL",
+        map = "DANCE_THEATER", x = 1, y = 10,
+        seen = "SNAG_G2_SMEARGLE_SEEN", win = "SNAG_G2_SMEARGLE_WIN",
+        loss = "SNAG_G2_SMEARGLE_LOSS",
+        pitch1 = "PERFORMER.", pitch2 = "Should be easy.",
+        gossip = {
+          "Paint all over\nthe THEATER floor!",
+          "That POKEMON used\nits own tail!",
+        },
+        party = {
+          { species = "SMEARGLE", level = 20 },
+          { species = "CLEFAIRY", level = 18 },
+        },
+        after1 = "My masterpiece!",
+        after2 = "You took it!",
+      },
+      MISDREAVUS = {
+        key = "MISDREAVUS", label = "MYSTIC", target = "MISDREAVUS",
+        class = "SAGE", sprite = "SPRITE_SAGE",
+        map = "ECRUTEAK_CITY", x = 7, y = 8,
+        seen = "SNAG_G2_MISDREAVUS_SEEN", win = "SNAG_G2_MISDREAVUS_WIN",
+        loss = "SNAG_G2_MISDREAVUS_LOSS",
+        pitch1 = "MYSTIC.", pitch2 = "Battles well.",
+        gossip = {
+          "Awful wailing by\nthe BURNED TOWER.",
+          "Some GHOST scared\nhalf the street.",
+        },
+        party = {
+          { species = "GASTLY", level = 20 },
+          { species = "MISDREAVUS", level = 22 },
+          { species = "HAUNTER", level = 21 },
+        },
+        after1 = "The crying ends.",
+        after2 = "So did my luck.",
+      },
+      GIRAFARIG = {
+        key = "GIRAFARIG", label = "COLLECTOR", target = "GIRAFARIG",
+        class = "POKEMANIAC", sprite = "SPRITE_POKEFAN_M",
+        map = "ROUTE_38_ECRUTEAK_GATE", x = 4, y = 5,
+        seen = "SNAG_G2_GIRAFARIG_SEEN", win = "SNAG_G2_GIRAFARIG_WIN",
+        loss = "SNAG_G2_GIRAFARIG_LOSS",
+        pitch1 = "COLLECTOR.", pitch2 = "Guards his finds.",
+        gossip = {
+          "That POKEMON had\nface on its tail!",
+          "It tried to bite\nby the west gate.",
+        },
+        party = {
+          { species = "DUNSPARCE", level = 21 },
+          { species = "GIRAFARIG", level = 23 },
+          { species = "PORYGON", level = 22 },
+        },
+        after1 = "My rarest find!",
+        after2 = "Give it back!",
+      },
+    }
+
+    mod.content.text:register("SNAG_G2_SMEARGLE_SEEN",
+      "Care to see my\nlatest work?")
+    mod.content.text:register("SNAG_G2_SMEARGLE_WIN",
+      "My masterpiece!")
+    mod.content.text:register("SNAG_G2_SMEARGLE_LOSS",
+      "Art wins again!")
+    mod.content.text:register("SNAG_G2_MISDREAVUS_SEEN",
+      "Hear that crying?\nIt likes you.")
+    mod.content.text:register("SNAG_G2_MISDREAVUS_WIN",
+      "The spirits knew.")
+    mod.content.text:register("SNAG_G2_MISDREAVUS_LOSS",
+      "You were warned.")
+    mod.content.text:register("SNAG_G2_GIRAFARIG_SEEN",
+      "Rare, isn't it?\nDon't touch.")
+    mod.content.text:register("SNAG_G2_GIRAFARIG_WIN",
+      "My collection!")
+    mod.content.text:register("SNAG_G2_GIRAFARIG_LOSS",
+      "Hands off!")
+
+    -- Gold item registration.  This build deliberately does NOT stock marts:
+    -- the intro is supposed to hand the player exactly one SNAG BALL.
+    local SNAG_BALL_TIERS = {
+      SNAG_BALL = { name = "SNAG BALL", multiplier = 1.0, price = 10000 },
+      HEIST_BALL = { name = "HEIST BALL", multiplier = 2.0, price = 20000 },
+    }
+    for id, tier in pairs(SNAG_BALL_TIERS) do
+      mod.content.items:register(id, {
+        id = id, name = tier.name, price = tier.price, tossable = true,
+      })
+    end
+
+    local function stage()
+      return tonumber(mod.save:get("g2_intro_stage", STAGE_NEW)) or STAGE_NEW
+    end
+    local function setStage(v) mod.save:set("g2_intro_stage", v) end
+    local function rewardClaimed()
+      return mod.save:get("g2_intro_rewarded", false) == true
+    end
+    local function setRewardClaimed(v)
+      mod.save:set("g2_intro_rewarded", v and true or false)
+    end
+    local function contractStage()
+      return tonumber(mod.save:get("g2_contract1_stage", CONTRACT_NONE)) or CONTRACT_NONE
+    end
+    local function setContractStage(v) mod.save:set("g2_contract1_stage", v) end
+    local function contractChoice()
+      local v = mod.save:get("g2_contract1_choice", "")
+      return CONTRACTS[v] and v or nil
+    end
+    local function setContractChoice(v)
+      mod.save:set("g2_contract1_choice", CONTRACTS[v] and v or "")
+    end
+    local function ecruteakStage()
+      return tonumber(mod.save:get("g2_contract2_stage", CONTRACT_NONE)) or CONTRACT_NONE
+    end
+    local function setEcruteakStage(v) mod.save:set("g2_contract2_stage", v) end
+    local function ecruteakChoice()
+      local v = mod.save:get("g2_contract2_choice", "")
+      return ECRUTEAK_CONTRACTS[v] and v or nil
+    end
+    local function setEcruteakChoice(v)
+      mod.save:set("g2_contract2_choice", ECRUTEAK_CONTRACTS[v] and v or "")
+    end
+    local function ecruteakRewarded()
+      return mod.save:get("g2_contract2_rewarded", false) == true
+    end
+    local function setEcruteakRewarded(v)
+      mod.save:set("g2_contract2_rewarded", v and true or false)
+    end
+
+    local introBattleActive = false
+    local contractBattleActive = false
+    local contractCleanupPending = false
+    local ecruteakBattleActive = false
+    local ecruteakCleanupPending = false
+    local cleanupPending = false
+    local girlClassIx, girlMemberIx
+    local contractCarriers = {}
+    local ecruteakCarriers = {}
+
+    -- Gold VIP provenance.  Keep this list conservative: the rival, all 16
+    -- Gym Leaders, the Elite Four/Champion, and Red.  The value is stamped on
+    -- the Pokemon at snag time so later fence payouts never depend on the
+    -- source trainer still existing.
+    local GOLD_VIP_CLASSES = {
+      RIVAL1 = true, RIVAL2 = true,
+      FALKNER = true, WHITNEY = true, BUGSY = true, MORTY = true,
+      PRYCE = true, JASMINE = true, CHUCK = true, CLAIR = true,
+      BROCK = true, MISTY = true, LT_SURGE = true, ERIKA = true,
+      JANINE = true, SABRINA = true, BLAINE = true, BLUE = true,
+      WILL = true, KOGA = true, BRUNO = true, KAREN = true,
+      CHAMPION = true, RED = true,
+    }
+    local activeTrainer = nil
+
+    local function resolveTrainerClassName(classIx)
+      local classes = mod.game and mod.game.data and mod.game.data.gen2Trainers
+          and mod.game.data.gen2Trainers.classes
+      if type(classes) ~= "table" then return nil end
+      for name, row in pairs(classes) do
+        if type(row) == "table" and row.index == classIx then return name end
+      end
+      return nil
+    end
+
+    local function resolveTrainerMemberName(className, memberIx)
+      local classes = mod.game and mod.game.data and mod.game.data.gen2Trainers
+          and mod.game.data.gen2Trainers.classes
+      local row = classes and className and classes[className]
+      local tr = row and row.trainers and row.trainers[memberIx]
+      return tr and tr.name or nil
+    end
+
+    -- Declared BEFORE its first use. `errs` used to be defined below
+    -- trainerIsVip, which in Lua means the call inside trainerIsVip
+    -- compiled to a GLOBAL read of `errs` (nil) rather than the local --
+    -- so the one line that reports a broken snag.vip hook would itself
+    -- have thrown "attempt to call a nil value". Confirmed from the
+    -- bytecode: it was the only global read in the whole file.
+    local function errs(fmt, ...)
+      local ok, msg = pcall(string.format, fmt, ...)
+      pcall(Runtime.reportError, "snag_quest", ok and msg or tostring(fmt))
+    end
+
+    -- Compatibility seam for mods that create their own important trainers.
+    -- Another mod may:
+    --   mod.hooks:wrap("snag.vip", function(next_, vip, ctx)
+    --     vip = next_(vip, ctx)
+    --     if ctx.npc and ctx.npc.def.name == "MY_BOSS" then return true end
+    --     return vip
+    --   end)
+    -- The answer is captured at encounter time and saved on the stolen mon.
+    local function trainerIsVip(ctx)
+      local base = GOLD_VIP_CLASSES[ctx.trainerClass] == true
+      if Runtime.wantsHook("snag.vip") then
+        local ok, value = pcall(Runtime.call, "snag.vip",
+          function(v) return v end, base, ctx)
+        if ok then return value == true end
+        errs("VIP HOOK ERR")
+      end
+      return base
+    end
+
+    mod.exports.owns = mod.exports.owns or {}
+    mod.exports.owns.monFields = { "snagged", "snagFrom", "snagLevel", "snagVip" }
+    mod.exports.vipClasses = GOLD_VIP_CLASSES
+
+    -- Same valuation function is used by both generations.
+    local function snagPayout(mon)
+      return computeSnagPayout(mod.game, mon, nil)
+    end
+    mod.exports.snagPayout = snagPayout
+
+    local function monName(mon)
+      if not mon then return "POKEMON" end
+      if mon.nickname and mon.nickname ~= "" then return mon.nickname end
+      local data = mod.game and mod.game.data
+      local def = data and data.pokemon and data.pokemon[mon.species]
+      return (def and def.name) or mon.species or "POKEMON"
+    end
+
+    local function objectNamed(world, mapId, name)
+      local def = world and world.maps and world.maps[mapId]
+      for _, obj in ipairs(def and def.objects or {}) do
+        if obj.name == name then return obj end
+      end
+      return nil
+    end
+
+    local function removeNamed(world, mapId, name)
+      local obj = objectNamed(world, mapId, name)
+      if not obj then return end
+      local id = mapId .. "_obj_" .. tostring(obj.index)
+      pcall(function() mod.world:removeNpc(id) end)
+    end
+
+    local function walkable(map, x, y)
+      local ok, res = pcall(map.isWalkableCell, map, x, y)
+      return ok and res == true
+    end
+
+    local function usable(world, x, y)
+      local map = world and world.map
+      if not map or not walkable(map, x, y) then return false end
+      if world:npcAt(x, y) then return false end
+      local okWarp, warp = pcall(map.warpAtCell, map, x, y)
+      if okWarp and warp then return false end
+      local p = world.player
+      if p and p.cellX == x and p.cellY == y then return false end
+      return true
+    end
+
+    -- Fixed placement test for Cherrygrove.  This is intentionally a guessed
+    -- coordinate so device feedback can tune it by exact tile offsets.  Keep
+    -- it away from known vanilla objects, doors, signs, and the rival scene.
+    local SAILOR_X, SAILOR_Y = 14, 11
+    local function sailorCell(world)
+      if not (world and world.map) then return nil end
+      return SAILOR_X, SAILOR_Y
+    end
+
+    local function ensureSailor(world)
+      if objectNamed(world, MAP, SAILOR_NAME) then return true end
+      local x, y = sailorCell(world)
+      if not x then return false end
+      local id, err = mod.world:spawnNpc(MAP, {
+        name = SAILOR_NAME, sprite = "SPRITE_SAILOR",
+        x = x, y = y, movement = MOVE_STANDING_DOWN,
+      })
+      if not id then errs("SAILOR SPAWN\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function ensureFence(world)
+      if objectNamed(world, FENCE_MAP, FENCE_NAME) then return true end
+      local id, err = mod.world:spawnNpc(FENCE_MAP, {
+        name = FENCE_NAME, sprite = "SPRITE_SUPER_NERD",
+        x = FENCE_X, y = FENCE_Y, movement = MOVE_STANDING_UP,
+      })
+      if not id then errs("FENCE SPAWN\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function ensureBroker(world)
+      if objectNamed(world, GOLDENROD_MAP, BROKER_NAME) then return true end
+      local id, err = mod.world:spawnNpc(GOLDENROD_MAP, {
+        name = BROKER_NAME, sprite = "SPRITE_SUPER_NERD",
+        x = BROKER_X, y = BROKER_Y, movement = MOVE_STANDING_DOWN,
+      })
+      if not id then errs("BROKER SPAWN\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function ensureClueNpc(world)
+      if objectNamed(world, GOLDENROD_CITY_MAP, CLUE_NAME) then return true end
+      local id, err = mod.world:spawnNpc(GOLDENROD_CITY_MAP, {
+        name = CLUE_NAME, sprite = "SPRITE_TEACHER",
+        x = CLUE_X, y = CLUE_Y, movement = MOVE_STANDING_DOWN,
+      })
+      if not id then errs("CLUE SPAWN\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function resolveContractCarrier(key)
+      local c = CONTRACTS[key]
+      if not c then return false end
+      local td = mod.game and mod.game.data and mod.game.data.gen2Trainers
+      local cls = td and td.classes and td.classes[c.class]
+      if not (cls and cls.index and cls.trainers and cls.trainers[1]) then
+        return false
+      end
+      contractCarriers[key] = { classIx = cls.index, memberIx = 1 }
+      return true
+    end
+
+    local function armContractMark(world)
+      local key = contractChoice()
+      local c = key and CONTRACTS[key]
+      local carrier = key and contractCarriers[key]
+      local obj = objectNamed(world, MARK_MAP, MARK_NAME)
+      if not (c and carrier and obj) then return false end
+      obj.trainer = {
+        class = carrier.classIx, member = carrier.memberIx,
+        seenText = c.seen, winText = c.win, lossText = c.loss,
+      }
+      return true
+    end
+
+    local function ensureContractMark(world)
+      if contractStage() ~= CONTRACT_ACTIVE then return true end
+      local key = contractChoice()
+      local c = key and CONTRACTS[key]
+      local carrier = key and contractCarriers[key]
+      if not (c and carrier) then return false end
+      local obj = objectNamed(world, MARK_MAP, MARK_NAME)
+      if obj then
+        if not obj.trainer then armContractMark(world) end
+        return true
+      end
+      local id, err = mod.world:spawnNpc(MARK_MAP, {
+        name = MARK_NAME, sprite = c.sprite,
+        x = MARK_X, y = MARK_Y, movement = MOVE_STANDING_DOWN,
+        trainer = {
+          class = carrier.classIx, member = carrier.memberIx,
+          seenText = c.seen, winText = c.win, lossText = c.loss,
+        },
+      })
+      if not id then errs("MARK SPAWN\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function ensureEcruteakContact(world)
+      if objectNamed(world, ECRUTEAK_MAP, ECRUTEAK_CONTACT_NAME) then return true end
+      local id, err = mod.world:spawnNpc(ECRUTEAK_MAP, {
+        name = ECRUTEAK_CONTACT_NAME, sprite = "SPRITE_GENTLEMAN",
+        x = ECRUTEAK_CONTACT_X, y = ECRUTEAK_CONTACT_Y,
+        movement = MOVE_STANDING_DOWN,
+      })
+      if not id then errs("ECR CONTACT\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function ensureEcruteakWitness(world)
+      if objectNamed(world, ECRUTEAK_MAP, ECRUTEAK_WITNESS_NAME) then return true end
+      local id, err = mod.world:spawnNpc(ECRUTEAK_MAP, {
+        name = ECRUTEAK_WITNESS_NAME, sprite = "SPRITE_GRAMPS",
+        x = ECRUTEAK_WITNESS_X, y = ECRUTEAK_WITNESS_Y,
+        movement = MOVE_STANDING_DOWN,
+      })
+      if not id then errs("ECR WITNESS\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function resolveEcruteakCarrier(key)
+      local c = ECRUTEAK_CONTRACTS[key]
+      if not c then return false end
+      local td = mod.game and mod.game.data and mod.game.data.gen2Trainers
+      local cls = td and td.classes and td.classes[c.class]
+      if not (cls and cls.index and cls.trainers and cls.trainers[1]) then
+        return false
+      end
+      ecruteakCarriers[key] = { classIx = cls.index, memberIx = 1 }
+      return true
+    end
+
+    local function armEcruteakMark(world)
+      local key = ecruteakChoice()
+      local c = key and ECRUTEAK_CONTRACTS[key]
+      local carrier = key and ecruteakCarriers[key]
+      local obj = c and objectNamed(world, c.map, ECRUTEAK_MARK_NAME)
+      if not (c and carrier and obj) then return false end
+      obj.trainer = {
+        class = carrier.classIx, member = carrier.memberIx,
+        seenText = c.seen, winText = c.win, lossText = c.loss,
+      }
+      return true
+    end
+
+    local function ensureEcruteakMark(world)
+      if ecruteakStage() ~= CONTRACT_ACTIVE then return true end
+      local key = ecruteakChoice()
+      local c = key and ECRUTEAK_CONTRACTS[key]
+      local carrier = key and ecruteakCarriers[key]
+      if not (c and carrier) then return false end
+      local obj = objectNamed(world, c.map, ECRUTEAK_MARK_NAME)
+      if obj then
+        if not obj.trainer then armEcruteakMark(world) end
+        return true
+      end
+      local id, err = mod.world:spawnNpc(c.map, {
+        name = ECRUTEAK_MARK_NAME, sprite = c.sprite,
+        x = c.x, y = c.y, movement = MOVE_STANDING_DOWN,
+        trainer = {
+          class = carrier.classIx, member = carrier.memberIx,
+          seenText = c.seen, winText = c.win, lossText = c.loss,
+        },
+      })
+      if not id then errs("ECR MARK\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function giveHeistBall()
+      local game = mod.game
+      local save, data = game and game.save, game and game.data
+      if not (save and save.inventory and data) then return false end
+      return Bag.add(save, "HEIST_BALL", 1, data) == true
+    end
+
+    -- The girl is placed in the first safe orthogonal cell beside the player.
+    -- sight=1 + facing the player makes Gold's own CheckTrainerBattle engage
+    -- her automatically on the next world tick; no fake battle launcher.
+    local function spawnGirlForAmbush(world)
+      removeNamed(world, MAP, GIRL_NAME)
+      local p = world and world.player
+      if not p then return false end
+      local choices = {
+        { 0, -1, "down" }, { 1, 0, "left" },
+        { 0, 1, "up" }, { -1, 0, "right" },
+      }
+      local x, y, facing
+      for _, c in ipairs(choices) do
+        local tx, ty = p.cellX + c[1], p.cellY + c[2]
+        if usable(world, tx, ty) then x, y, facing = tx, ty, c[3]; break end
+      end
+      if not x then return false end
+      local id, err = mod.world:spawnNpc(MAP, {
+        name = GIRL_NAME, sprite = "SPRITE_LASS",
+        x = x, y = y, movement = MOVE_STANDING_DOWN, sight = 1,
+        trainer = {
+          class = girlClassIx, member = girlMemberIx,
+          seenText = GIRL_SEEN, winText = GIRL_WIN, lossText = GIRL_LOSS,
+        },
+      })
+      if not id then errs("GIRL SPAWN\n%s", tostring(err)); return false end
+      local h = mod.world:npc(MAP, GIRL_NAME)
+      if h and facing then pcall(h.face, h, facing) end
+      return true
+    end
+
+    -- Exactly one ball for the intro.  This intentionally normalizes any
+    -- leftover SNAG BALL stack from the earlier private mart tests to one.
+    local function giveOneSnagBall()
+      local game = mod.game
+      local save, data = game and game.save, game and game.data
+      if not (save and save.inventory and data) then return false end
+      local have = tonumber(save.inventory.SNAG_BALL or 0) or 0
+      if have > 0 then Bag.remove(save, "SNAG_BALL", have) end
+      return Bag.add(save, "SNAG_BALL", 1, data) == true
+    end
+
+    local function giveRewardSnagBalls()
+      local game = mod.game
+      local save, data = game and game.save, game and game.data
+      if not (save and save.inventory and data) then return false end
+      return Bag.add(save, "SNAG_BALL", 5, data) == true
+    end
+
+    -- Resolve one real LASS carrier from the live Gold trainer table.  The
+    -- trainer's portrait/name/money/AI remain vanilla; trainer.party below
+    -- replaces only her team with our shiny MEOWTH.
+    local function resolveGirlCarrier()
+      local td = mod.game and mod.game.data and mod.game.data.gen2Trainers
+      local cls = td and td.classes and td.classes.LASS
+      if not (cls and cls.index) then return false end
+      for i, row in ipairs(cls.trainers or {}) do
+        if row.id == "CARRIE" or row.name == "CARRIE" then
+          girlClassIx, girlMemberIx = cls.index, i
+          return true
+        end
+      end
+      if cls.trainers and cls.trainers[1] then
+        girlClassIx, girlMemberIx = cls.index, 1
+        return true
+      end
+      return false
+    end
+
+    mod.events:on("game.ready", function(p)
+      local game = p and p.game
+      local kantoBalls = mod.find("kanto_balls")
+      local api = kantoBalls and kantoBalls.exports
+      if api and type(api.requestBallSlots) == "function" then
+        api.requestBallSlots(2)
+      end
+      if game and game.data and game.data.items then
+        local def = game.data.items.SNAG_BALL
+        if def then def.pocket = "BALL" end
+        local heist = game.data.items.HEIST_BALL
+        if heist then heist.pocket = "BALL" end
+      end
+      if not resolveGirlCarrier() then errs("GIRL CARRIER\nLASS missing") end
+      for key in pairs(CONTRACTS) do
+        if not resolveContractCarrier(key) then
+          errs("MARK CARRIER\n%s missing", key)
+        end
+      end
+      for key in pairs(ECRUTEAK_CONTRACTS) do
+        if not resolveEcruteakCarrier(key) then
+          errs("ECR CARRIER\n%s missing", key)
+        end
+      end
+    end)
+
+    -- Cherrygrove placement/recovery.  A stale ARMED state cannot normally be
+    -- saved (the battle auto-starts immediately), but resetting it on a fresh
+    -- map entry makes a test save recover instead of getting stuck.
+    mod.events:on("map.entered", function(ev)
+      if not ev then return end
+      local ok, err = pcall(function()
+        local world = mod.world:overworld()
+        if not world then return end
+
+        -- After a successful intro, leave both actors standing in Cherrygrove
+        -- for the rest of that visit.  Clean them up only once the player has
+        -- actually entered another map; on later Cherrygrove visits they stay
+        -- gone because STAGE_DONE is durable quest state.
+        if ev.mapId ~= MAP then
+          if stage() == STAGE_DONE then
+            removeNamed(world, MAP, GIRL_NAME)
+            if rewardClaimed() then
+              removeNamed(world, MAP, SAILOR_NAME)
+            end
+            if ev.mapId == FENCE_MAP then ensureFence(world) end
+            if rewardClaimed() and ev.mapId == GOLDENROD_MAP then
+              ensureBroker(world)
+            end
+            if rewardClaimed() and ev.mapId == GOLDENROD_CITY_MAP
+                and contractStage() == CONTRACT_ACTIVE then
+              ensureClueNpc(world)
+            elseif contractStage() == CONTRACT_DONE
+                and ev.mapId ~= GOLDENROD_CITY_MAP then
+              removeNamed(world, GOLDENROD_CITY_MAP, CLUE_NAME)
+            end
+            if rewardClaimed() and ev.mapId == MARK_MAP then
+              if contractStage() == CONTRACT_ACTIVE then
+                ensureContractMark(world)
+              elseif contractStage() == CONTRACT_DONE then
+                removeNamed(world, MARK_MAP, MARK_NAME)
+              end
+            elseif contractStage() == CONTRACT_DONE and ev.mapId ~= MARK_MAP then
+              -- Let a successfully snagged mark remain for aftermath dialogue
+              -- until the player actually leaves the Underground.
+              removeNamed(world, MARK_MAP, MARK_NAME)
+            end
+
+            -- Ecruteak contract #2 unlocks only after the Goldenrod target was
+            -- actually snagged. Contact persists; witness/mark are job state.
+            if contractStage() == CONTRACT_DONE then
+              local ec = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
+              if ev.mapId == ECRUTEAK_MAP then
+                ensureEcruteakContact(world)
+                if ecruteakStage() == CONTRACT_ACTIVE then
+                  ensureEcruteakWitness(world)
+                elseif ecruteakStage() == CONTRACT_DONE then
+                  removeNamed(world, ECRUTEAK_MAP, ECRUTEAK_WITNESS_NAME)
+                end
+              end
+              if ec and ev.mapId == ec.map then
+                if ecruteakStage() == CONTRACT_ACTIVE then
+                  ensureEcruteakMark(world)
+                elseif ecruteakStage() == CONTRACT_DONE then
+                  -- Keep the completed mark until the player leaves this map.
+                end
+              elseif ec and ecruteakStage() == CONTRACT_DONE then
+                removeNamed(world, ec.map, ECRUTEAK_MARK_NAME)
+              end
+            end
+          end
+          return
+        end
+
+        if stage() == STAGE_ARMED then
+          setStage(STAGE_NEW)
+          removeNamed(world, MAP, GIRL_NAME)
+        end
+        if stage() ~= STAGE_DONE or not rewardClaimed() then
+          ensureSailor(world)
+        end
+      end)
+      if not ok then errs("ENTER\n%s", tostring(err)) end
+    end)
+
+    -- Sailor dialogue.  Gold mod-owned NPCs fall through to kind="none";
+    -- queue one paged text box, then gift the ball and create the sight-cone
+    -- trainer only after the player dismisses the final page.
+    mod.events:on("world.interacted", function(ev)
+      if not ev or ev.mapId ~= MAP or ev.kind ~= "none" then return end
+      local world = mod.world:overworld()
+      local sailor = objectNamed(world, MAP, SAILOR_NAME)
+      local girl = objectNamed(world, MAP, GIRL_NAME)
+      local isSailor = sailor and ev.x == sailor.x and ev.y == sailor.y
+      local isGirl = girl and ev.x == girl.x and ev.y == girl.y
+      if not isSailor and not isGirl then return end
+
+      local cur = mod.world:current()
+      local opposite = { up = "down", down = "up", left = "right", right = "left" }
+      local who = isSailor and SAILOR_NAME or GIRL_NAME
+      local h = mod.world:npc(MAP, who)
+      if h and cur and cur.facing then pcall(h.face, h, opposite[cur.facing]) end
+
+      -- After the successful snag both NPCs remain in town until the player
+      -- leaves, so give each of them a short aftermath line instead of
+      -- leaving inert scenery behind.
+      if stage() == STAGE_DONE then
+        if isSailor and not rewardClaimed() then
+          mod.world:queueScript({
+            { "text", "SAILOR: Good.\nMEOWTH is safe." },
+            { "text", "You handled that\ncleanly." },
+            { "text", "Here. Five more\nSNAG BALLs." },
+            { "text", "Need more BALLs?\nTry Route 36." },
+            { "text", "Near SUDOWOODO,\na fence trades." },
+          }, {
+            onDone = function()
+              local ok, err = pcall(function()
+                if rewardClaimed() then return end
+                if not giveRewardSnagBalls() then
+                  errs("REWARD BALLS\nBAG FULL")
+                  return
+                end
+                setRewardClaimed(true)
+              end)
+              if not ok then errs("SAILOR REWARD\n%s", tostring(err)) end
+            end,
+          })
+          return
+        end
+
+        local text
+        if isSailor then
+          mod.world:queueScript({
+            { "text", "Need more BALLs?\nTry Route 36." },
+            { "text", "Near SUDOWOODO,\na fence trades." },
+          })
+        else
+          mod.world:queueScript({
+            { "text", "LASS: You stole\nmy MEOWTH!" },
+            { "text", "Take care of\nMEOWTH." },
+          })
+        end
+        return
+      end
+
+      -- Before the battle only the sailor is conversational; the girl is
+      -- armed as a trainer and Gold owns her engagement dialogue.
+      if not isSailor then return end
+
+      mod.world:queueScript({
+        { "text", "SAILOR: See that\ngirl over there?" },
+        { "text", "That shiny MEOWTH\nwas stolen." },
+        { "text", "Take this\nSNAG BALL." },
+        { "text", "Catch MEOWTH.\nDon't hurt it." },
+      }, {
+        onDone = function()
+          local ok, err = pcall(function()
+            if stage() == STAGE_DONE then return end
+            if not girlClassIx and not resolveGirlCarrier() then
+              errs("NO LASS CARRIER")
+              return
+            end
+            if not giveOneSnagBall() then
+              errs("SNAG BALL\nBAG FULL")
+              return
+            end
+            setStage(STAGE_ARMED)
+            local w = mod.world:overworld()
+            if not spawnGirlForAmbush(w) then
+              setStage(STAGE_NEW)
+              errs("GIRL AMBUSH\nNO SAFE CELL")
+            end
+          end)
+          if not ok then errs("SAILOR DONE\n%s", tostring(err)) end
+        end,
+      })
+    end)
+
+    -- Goldenrod contract #1.  The broker introduces the first real choice:
+    -- PSYCHIC/NORMAL/BUG.  The choice is durable for this contract and spawns
+    -- one real trainer mark elsewhere in the city.  There is no free ball and
+    -- no guaranteed catch here: this is the first normal Snag job.
+    mod.events:on("world.interacted", function(ev)
+      if not ev or ev.kind ~= "none" then return end
+      if ev.mapId ~= GOLDENROD_MAP
+          and ev.mapId ~= GOLDENROD_CITY_MAP
+          and ev.mapId ~= MARK_MAP then return end
+      if stage() ~= STAGE_DONE or not rewardClaimed() then return end
+      local world = mod.world:overworld()
+      local broker = objectNamed(world, GOLDENROD_MAP, BROKER_NAME)
+      local clue = objectNamed(world, GOLDENROD_CITY_MAP, CLUE_NAME)
+      local mark = objectNamed(world, MARK_MAP, MARK_NAME)
+      local isBroker = ev.mapId == GOLDENROD_MAP
+          and broker and ev.x == broker.x and ev.y == broker.y
+      local isClue = ev.mapId == GOLDENROD_CITY_MAP
+          and clue and ev.x == clue.x and ev.y == clue.y
+      local isMark = ev.mapId == MARK_MAP
+          and mark and ev.x == mark.x and ev.y == mark.y
+      if not isBroker and not isClue and not isMark then return end
+
+      local cur = mod.world:current()
+      local opposite = { up = "down", down = "up", left = "right", right = "left" }
+      local who = isBroker and BROKER_NAME or (isClue and CLUE_NAME or MARK_NAME)
+      local whoMap = isBroker and GOLDENROD_MAP
+          or (isClue and GOLDENROD_CITY_MAP or MARK_MAP)
+      local h = mod.world:npc(whoMap, who)
+      if h and cur and cur.facing then pcall(h.face, h, opposite[cur.facing]) end
+
+      if isClue then
+        local c = CONTRACTS[contractChoice() or ""]
+        if contractStage() == CONTRACT_ACTIVE and c and c.gossip then
+          mod.world:queueScript({
+            { "text", c.gossip[1] },
+            { "text", c.gossip[2] },
+          })
+        else
+          mod.world:queueScript({
+            { "text", "Busy city today.\nOdd sights too." },
+          })
+        end
+        return
+      end
+
+      if isMark then
+        if contractStage() == CONTRACT_DONE then
+          local c = CONTRACTS[contractChoice() or ""]
+          if c then
+            mod.world:queueScript({
+              { "text", c.after1 },
+              { "text", c.after2 },
+            })
+          end
+        end
+        -- Active marks are trainers; Gold owns their interaction before this
+        -- kind="none" path, so reaching here means they are currently defanged.
+        return
+      end
+
+      if contractStage() == CONTRACT_DONE then
+        mod.world:queueScript({
+          { "text", "BROKER: Good work.\nYour call now." },
+          { "text", "Keep it, or trade\nit to a fence." },
+          { "text", "Better BALLs soon.\nKeep working." },
+        })
+        return
+      end
+
+      local chosen = contractChoice()
+      if contractStage() == CONTRACT_ACTIVE and chosen then
+        local c = CONTRACTS[chosen]
+        mod.world:queueScript({
+          { "text", "BROKER: Your mark\nis still out." },
+          { "text", c.clue1 },
+          { "text", c.clue2 },
+        })
+        return
+      end
+
+      mod.world:queueScript({
+        { "text", "BROKER: I hear\nabout TRAINERS." },
+        { "text", "What kind of mark\ndo you want?" },
+      }, {
+        onDone = function()
+          local g = mod.game
+          if not (g and g.stack) then return end
+          local items = {
+            { label = "PSYCHIC", value = "NATU" },
+            { label = "NORMAL", value = "AIPOM" },
+            { label = "BUG", value = "YANMA" },
+          }
+          local menu
+          menu = ListMenu.new(g, "CHOOSE A LEAD", items, {
+            kind = "snag.contract",
+            onChoose = function(item, list)
+              list:close()
+              local key = item and item.value
+              local c = key and CONTRACTS[key]
+              if not c then return end
+              setContractChoice(key)
+              setContractStage(CONTRACT_ACTIVE)
+              local w = mod.world:overworld()
+              if w then ensureContractMark(w) end
+              mod.world:queueScript({
+                { "text", "BROKER: Good.\nI know someone." },
+                { "text", c.clue1 },
+                { "text", c.clue2 },
+              })
+            end,
+          })
+          g.stack:push(menu)
+        end,
+      })
+    end)
+
+    -- Ecruteak contract #2: choose the TRAINER archetype, follow neutral
+    -- town gossip, then decide what to steal from a multi-Pokemon party.
+    mod.events:on("world.interacted", function(ev)
+      if not ev or ev.kind ~= "none" then return end
+      if contractStage() ~= CONTRACT_DONE then return end
+
+      local ec = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
+      local allowed = ev.mapId == ECRUTEAK_MAP or (ec and ev.mapId == ec.map)
+      if not allowed then return end
+
+      local world = mod.world:overworld()
+      local contact = objectNamed(world, ECRUTEAK_MAP, ECRUTEAK_CONTACT_NAME)
+      local witness = objectNamed(world, ECRUTEAK_MAP, ECRUTEAK_WITNESS_NAME)
+      local mark = ec and objectNamed(world, ec.map, ECRUTEAK_MARK_NAME)
+
+      local isContact = ev.mapId == ECRUTEAK_MAP
+          and contact and ev.x == contact.x and ev.y == contact.y
+      local isWitness = ev.mapId == ECRUTEAK_MAP
+          and witness and ev.x == witness.x and ev.y == witness.y
+      local isMark = ec and ev.mapId == ec.map
+          and mark and ev.x == mark.x and ev.y == mark.y
+      if not isContact and not isWitness and not isMark then return end
+
+      local cur = mod.world:current()
+      local opposite = { up = "down", down = "up", left = "right", right = "left" }
+      local who = isContact and ECRUTEAK_CONTACT_NAME
+          or (isWitness and ECRUTEAK_WITNESS_NAME or ECRUTEAK_MARK_NAME)
+      local whoMap = isContact and ECRUTEAK_MAP
+          or (isWitness and ECRUTEAK_MAP or (ec and ec.map))
+      local h = whoMap and mod.world:npc(whoMap, who)
+      if h and cur and cur.facing then pcall(h.face, h, opposite[cur.facing]) end
+
+      if isWitness then
+        if ecruteakStage() == CONTRACT_ACTIVE and ec and ec.gossip then
+          mod.world:queueScript({
+            { "text", ec.gossip[1] },
+            { "text", ec.gossip[2] },
+          })
+        else
+          mod.world:queueScript({
+            { "text", "Odd tales today.\nNothing new here." },
+          })
+        end
+        return
+      end
+
+      if isMark then
+        if ecruteakStage() == CONTRACT_DONE and ec then
+          mod.world:queueScript({
+            { "text", ec.after1 },
+            { "text", ec.after2 },
+          })
+        end
+        return
+      end
+
+      if ecruteakStage() == CONTRACT_DONE then
+        if not ecruteakRewarded() then
+          mod.world:queueScript({
+            { "text", "CONTACT: Nice.\nYou are moving up." },
+            { "text", "Try this one next.\nHEIST BALL." },
+            { "text", "Better odds.\nSave it for later." },
+          }, {
+            onDone = function()
+              if ecruteakRewarded() then return end
+              if not giveHeistBall() then
+                errs("HEIST BALL\nBAG FULL")
+                return
+              end
+              setEcruteakRewarded(true)
+            end,
+          })
+        else
+          mod.world:queueScript({
+            { "text", "Keep it, or trade\nit to a fence." },
+            { "text", "Bigger marks come\nwith bigger risks." },
+          })
+        end
+        return
+      end
+
+      if ecruteakStage() == CONTRACT_ACTIVE and ec then
+        mod.world:queueScript({
+          { "text", "CONTACT: Your mark\nis still around." },
+          { "text", ec.pitch1 },
+          { "text", ec.pitch2 },
+          { "text", "Ask around town." },
+        })
+        return
+      end
+
+      mod.world:queueScript({
+        { "text", "CONTACT: I heard\nof three marks." },
+        { "text", "PERFORMER.\nShould be easy." },
+        { "text", "MYSTIC.\nBattles well." },
+        { "text", "COLLECTOR.\nGuards his finds." },
+        { "text", "What kind of mark\ndo you want?" },
+      }, {
+        onDone = function()
+          local g = mod.game
+          if not (g and g.stack) then return end
+          local items = {
+            { label = "PERFORMER", value = "SMEARGLE" },
+            { label = "MYSTIC", value = "MISDREAVUS" },
+            { label = "COLLECTOR", value = "GIRAFARIG" },
+          }
+          local menu
+          menu = ListMenu.new(g, "CHOOSE A MARK", items, {
+            kind = "snag.contract2",
+            onChoose = function(item, list)
+              list:close()
+              local key = item and item.value
+              local c = key and ECRUTEAK_CONTRACTS[key]
+              if not c then return end
+              setEcruteakChoice(key)
+              setEcruteakStage(CONTRACT_ACTIVE)
+              local w = mod.world:overworld()
+              if w then
+                ensureEcruteakWitness(w)
+                ensureEcruteakMark(w)
+              end
+              mod.world:queueScript({
+                { "text", "CONTACT: Good.\nAsk around town." },
+              })
+            end,
+          })
+          g.stack:push(menu)
+        end,
+      })
+    end)
+
+    -- Route 36 fence.  The first dialogue is only an invitation; once it
+    -- closes, Gold's real Gen2PartyMenu is opened through World:selectPartyMon.
+    -- Selecting a mon is an offer, not an irreversible sale: valid stolen mons
+    -- get a quoted payout and an explicit YES/NO before anything is removed.
+    mod.events:on("world.interacted", function(ev)
+      if not ev or ev.mapId ~= FENCE_MAP or ev.kind ~= "none" then return end
+      if stage() ~= STAGE_DONE then return end
+      local world = mod.world:overworld()
+      local fence = objectNamed(world, FENCE_MAP, FENCE_NAME)
+      if not fence or ev.x ~= fence.x or ev.y ~= fence.y then return end
+
+      mod.world:queueScript({ { "text",
+        "FENCE: I deal in\nspecial POKEMON.\f"
+        .. "Show me something\nyou... acquired." } }, {
+        onDone = function()
+          local w = mod.world:overworld()
+          local game = mod.game
+          local save = game and game.save
+          if not (w and save and save.party) then return end
+          if #save.party < 2 then
+            mod.world:queueScript({ { "text",
+              "FENCE: Not your\nlast POKEMON.\f"
+              .. "Come back with\nanother one." } })
+            return
+          end
+          w:selectPartyMon("choose", function(index, picked)
+            if not index or not picked then return end
+            if picked.snagged ~= true then
+              mod.world:queueScript({ { "text",
+                "FENCE: That's clean.\nI only buy hot goods." } })
+              return
+            end
+            local n = snagPayout(picked)
+            local name = monName(picked)
+            mod.world:queueScript({ { "text", string.format(
+              "FENCE: %s...\fI can do %d SNAG\nBALL%s. Deal?",
+              name, n, n == 1 and "" or "s") } }, {
+              onDone = function()
+                local ChoiceBox = require("src.ui.ChoiceBox")
+                local g = mod.game
+                if not (g and g.stack) then return end
+                g.stack:push(ChoiceBox.new(g, function(yes)
+                  if not yes then
+                    mod.world:queueScript({ { "text",
+                      "FENCE: Your call.\nI'll be around." } })
+                    return
+                  end
+                  local party = g.save and g.save.party
+                  if not party or #party < 2 or party[index] ~= picked then
+                    mod.world:queueScript({ { "text",
+                      "FENCE: Something\nchanged. No deal." } })
+                    return
+                  end
+                  -- Pay first. If the BALL pocket cannot take the reward,
+                  -- the Pokemon never leaves the party.
+                  if Bag.add(g.save, "SNAG_BALL", n, g.data) ~= true then
+                    mod.world:queueScript({ { "text",
+                      "FENCE: No room for\nmy payment. Clear space." } })
+                    return
+                  end
+                  table.remove(party, index)
+                  mod.world:queueScript({ { "text", string.format(
+                    "FENCE: Done.\f%d SNAG BALL%s.\nForget we met.",
+                    n, n == 1 and "" or "s") } })
+                end, { defaultNo = true }))
+              end,
+            })
+          end)
+        end,
+      })
+    end)
+
+    -- The auto-start girl's battle is identified by OUR object, not by every
+    -- LASS in the game.  This flag scopes the shiny party and guaranteed catch
+    -- to this single scripted intro encounter.
+    mod.events:on("world.trainer_engaged", function(ev)
+      local npc = ev and ev.npc
+      local classIx = ev and ev.trainerClass
+      local memberIx = ev and ev.partyIndex
+      local className = resolveTrainerClassName(classIx)
+      local memberName = resolveTrainerMemberName(className, memberIx)
+      local world = mod.world:overworld()
+      local ctx = {
+        game = mod.game, world = world, npc = npc,
+        mapId = world and world.map and world.map.id or nil,
+        trainerClass = className, classIndex = classIx,
+        trainerName = memberName, memberIndex = memberIx,
+        trainerEvent = ev and ev.trainerEvent, sight = ev and ev.sight,
+      }
+      ctx.vip = trainerIsVip(ctx)
+      activeTrainer = ctx
+
+      if npc and npc.def and npc.def.name == GIRL_NAME
+          and stage() == STAGE_ARMED then
+        introBattleActive = true
+      elseif npc and npc.def and npc.def.name == MARK_NAME
+          and contractStage() == CONTRACT_ACTIVE then
+        contractBattleActive = true
+      elseif npc and npc.def and npc.def.name == ECRUTEAK_MARK_NAME
+          and ecruteakStage() == CONTRACT_ACTIVE then
+        ecruteakBattleActive = true
+      end
+    end)
+
+    -- Real shiny Gen 2 MEOWTH: the Lake of Rage shiny DV pattern (14/10/10/10),
+    -- not a cosmetic sprite override.  A caught mon therefore remains shiny.
+    mod.hooks:wrap("trainer.party", function(next_, class, member, party)
+      local base = next_()
+      if not introBattleActive then return base end
+      if class ~= "LASS" and class ~= girlClassIx then return base end
+      local data = mod.game and mod.game.data
+      local mon = data and Mon.new(data, "MEOWTH", INTRO_LEVEL, {
+        dvs = { attack = 14, defense = 10, speed = 10, special = 10 },
+      })
+      if not mon then return base end
+      return { mon }
+    end)
+
+    -- Goldenrod contract party substitution.  The carrier supplies a genuine
+    -- Gold trainer identity/portrait/money/AI; only the party is replaced.
+    mod.hooks:wrap("trainer.party", function(next_, class, member, party)
+      local base = next_()
+      if not contractBattleActive then return base end
+      local key = contractChoice()
+      local c = key and CONTRACTS[key]
+      local carrier = key and contractCarriers[key]
+      if not (c and carrier) then return base end
+      if class ~= c.class and class ~= carrier.classIx then return base end
+      local data = mod.game and mod.game.data
+      local mon = data and Mon.new(data, c.species, c.level)
+      if not mon then return base end
+      return { mon }
+    end)
+
+    -- Ecruteak archetype parties. Unlike Goldenrod, these trainers carry
+    -- multiple Pokemon, so the player can inspect/steal something other than
+    -- the advertised target and the battle continues after a successful snag.
+    mod.hooks:wrap("trainer.party", function(next_, class, member, party)
+      local base = next_()
+      if not ecruteakBattleActive then return base end
+      local key = ecruteakChoice()
+      local c = key and ECRUTEAK_CONTRACTS[key]
+      local carrier = key and ecruteakCarriers[key]
+      if not (c and carrier) then return base end
+      if class ~= c.class and class ~= carrier.classIx then return base end
+      local data = mod.game and mod.game.data
+      if not data then return base end
+      local out = {}
+      for _, spec in ipairs(c.party or {}) do
+        local mon = Mon.new(data, spec.species, spec.level)
+        if not mon then return base end
+        out[#out + 1] = mon
+      end
+      return #out > 0 and out or base
+    end)
+
+    -- Intro exception: this ONE SNAG BALL against this ONE shiny MEOWTH is a
+    -- guaranteed catch.  Normal Snag Balls everywhere else keep their normal
+    -- odds and behavior.
+    mod.hooks:wrap("catch.rate", function(next_, ball, mon, def, o)
+      if introBattleActive and ball == "SNAG_BALL"
+          and type(o) == "table" and o.species == "MEOWTH" then
+        return true, 255
+      end
+      if ball == "HEIST_BALL" and type(o) == "table" then
+        local boosted = {}
+        for k, v in pairs(o) do boosted[k] = v end
+        boosted.catchRate = math.min(255,
+          math.floor((tonumber(o.catchRate) or 45) * 2.0))
+        return next_(ball, mon, def, boosted)
+      end
+      return next_(ball, mon, def, o)
+    end)
+
+    -- Gold trainer snag mechanic, including the 0.14.21 continuation fix.
+    do
+      local BattleState = require("src.ui.gen2.BattleState")
+      BattleState._snagGoldOriginals = BattleState._snagGoldOriginals or {
+        throwBallAtTrainer = BattleState.throwBallAtTrainer,
+        useItem = BattleState.useItem,
+        advanceQueue = BattleState.advanceQueue,
+      }
+      local originals = BattleState._snagGoldOriginals
+
+      BattleState.advanceQueue = function(self)
+        local event = self.queue and self.queue[1]
+        if event and event.kind == "snag-replace" then
+          table.remove(self.queue, 1)
+          local battle = self.battle
+          if battle and battle.enemy then
+            local caught = battle.enemy
+            local ghost = {}
+            for k, v in pairs(caught) do ghost[k] = v end
+            ghost.hp = 0
+            local replaced = false
+            for i, mon in ipairs(battle.enemyParty or {}) do
+              if mon == caught then
+                battle.enemyParty[i] = ghost
+                battle.enemyIndex = i
+                replaced = true
+                break
+              end
+            end
+            if not replaced then
+              local i = battle.enemyIndex or 1
+              battle.enemyParty[i] = ghost
+              battle.enemyIndex = i
+            end
+            battle.enemy = ghost
+            battle._snagReplacing = true
+            battle.over = false
+            battle.outcome = nil
+            battle:resolveFaints()
+            self:pushAll(battle:takeEvents())
+            return self:advanceQueue()
+          end
+          return self:advanceQueue()
+        end
+        if event and event.kind == "faint" and event.side == "enemy"
+            and self.battle and self.battle._snagReplacing then
+          table.remove(self.queue, 1)
+          self.battle._snagReplacing = nil
+          return self:advanceQueue()
+        end
+        return originals.advanceQueue(self)
+      end
+
+      BattleState.throwBallAtTrainer = function(self, itemId)
+        if not SNAG_BALL_TIERS[itemId] then
+          return originals.throwBallAtTrainer(self, itemId)
+        end
+        local wasWild = self.battle and self.battle.wild
+        if self.battle then self.battle.wild = true end
+        local ok, err = pcall(originals.useItem, self, itemId)
+        if self.battle then self.battle.wild = wasWild end
+        if not ok then return originals.throwBallAtTrainer(self, itemId) end
+        if self.ballThrow and self.ballThrow.caught and self.battle
+            and self.battle.trainer then
+          self.battle.over = false
+          self.battle.outcome = nil
+          self.queue[#self.queue + 1] = { kind = "snag-replace" }
+        end
+        return err
+      end
+    end
+
+    mod.events:on("pokemon.caught", function(payload)
+      if not payload or not payload.mon then return end
+      if not SNAG_BALL_TIERS[payload.ball] then return end
+      local mon = payload.mon
+      mon.snagged = true
+      mon.snagFrom = (activeTrainer and activeTrainer.trainerClass)
+          or (payload.battle and payload.battle.opponentClass) or "trainer"
+      mon.snagLevel = mon.level
+      mon.snagVip = activeTrainer and activeTrainer.vip == true or false
+      if introBattleActive and mon.species == "MEOWTH" and stage() == STAGE_ARMED then
+        setStage(STAGE_DONE)
+        -- Do not despawn the sailor/girl here.  They remain for the rest of
+        -- this Cherrygrove visit and are removed after the player leaves town.
+        cleanupPending = false
+      end
+      if contractBattleActive and contractStage() == CONTRACT_ACTIVE then
+        local c = CONTRACTS[contractChoice() or ""]
+        if c and mon.species == c.species then
+          setContractStage(CONTRACT_DONE)
+          contractCleanupPending = false
+        end
+      end
+      if ecruteakBattleActive and ecruteakStage() == CONTRACT_ACTIVE then
+        local c = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
+        if c and mon.species == c.target then
+          setEcruteakStage(CONTRACT_DONE)
+          ecruteakCleanupPending = false
+        end
+      end
+    end)
+
+    -- No world mutation during battle teardown.  Defang is only a field write;
+    -- physical cleanup happens on the first normal world step afterwards.
+    mod.events:on("battle.ended", function()
+      local wasIntro = introBattleActive
+      local wasContract = contractBattleActive
+      local wasEcruteak = ecruteakBattleActive
+      activeTrainer = nil
+
+      if wasIntro then
+        local world = mod.world:overworld()
+        local obj = objectNamed(world, MAP, GIRL_NAME)
+        if obj then obj.trainer = nil end
+        introBattleActive = false
+        if stage() ~= STAGE_DONE then
+          setStage(STAGE_NEW)
+          cleanupPending = true
+        end
+      end
+
+      if wasContract then
+        local world = mod.world:overworld()
+        local obj = objectNamed(world, MARK_MAP, MARK_NAME)
+        contractBattleActive = false
+        if contractStage() == CONTRACT_DONE then
+          -- Keep the mark around, but harmless, for one aftermath conversation.
+          if obj then obj.trainer = nil end
+        else
+          -- A KO/loss is not contract completion. Re-arm on the next normal
+          -- world step so the player can retry without losing the chosen lead.
+          contractCleanupPending = true
+        end
+      end
+
+      if wasEcruteak then
+        local world = mod.world:overworld()
+        local c = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
+        local obj = c and objectNamed(world, c.map, ECRUTEAK_MARK_NAME)
+        ecruteakBattleActive = false
+        if ecruteakStage() == CONTRACT_DONE then
+          if obj then obj.trainer = nil end
+        else
+          ecruteakCleanupPending = true
+        end
+      end
+    end)
+
+    mod.events:on("world.stepped", function(ev)
+      if not cleanupPending or not ev or ev.mapId ~= MAP then return end
+      local world = mod.world:overworld()
+      if not world then return end
+      removeNamed(world, MAP, GIRL_NAME)
+      if stage() == STAGE_DONE then
+        removeNamed(world, MAP, SAILOR_NAME)
+      else
+        ensureSailor(world)
+      end
+      cleanupPending = false
+    end)
+
+    mod.events:on("world.stepped", function(ev)
+      if not ev then return end
+      if ev.mapId ~= GOLDENROD_MAP
+          and ev.mapId ~= GOLDENROD_CITY_MAP
+          and ev.mapId ~= MARK_MAP then return end
+      local world = mod.world:overworld()
+      if not world then return end
+
+      -- Reconcile even when installed while already standing on either map.
+      if stage() == STAGE_DONE and rewardClaimed() then
+        if ev.mapId == GOLDENROD_MAP then ensureBroker(world) end
+        if ev.mapId == GOLDENROD_CITY_MAP
+            and contractStage() == CONTRACT_ACTIVE then
+          ensureClueNpc(world)
+        end
+        if ev.mapId == MARK_MAP and contractStage() == CONTRACT_ACTIVE then
+          ensureContractMark(world)
+        end
+      end
+
+      if contractCleanupPending and ev.mapId == MARK_MAP then
+        if contractStage() == CONTRACT_ACTIVE then
+          ensureContractMark(world)
+          armContractMark(world)
+        end
+        contractCleanupPending = false
+      end
+    end)
+
+    mod.events:on("world.stepped", function(ev)
+      if not ev or contractStage() ~= CONTRACT_DONE then return end
+      local world = mod.world:overworld()
+      if not world then return end
+      local c = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
+
+      if ev.mapId == ECRUTEAK_MAP then
+        ensureEcruteakContact(world)
+        if ecruteakStage() == CONTRACT_ACTIVE then
+          ensureEcruteakWitness(world)
+        end
+      end
+
+      if c and ev.mapId == c.map and ecruteakStage() == CONTRACT_ACTIVE then
+        ensureEcruteakMark(world)
+      end
+
+      if ecruteakCleanupPending and c and ev.mapId == c.map then
+        if ecruteakStage() == CONTRACT_ACTIVE then
+          ensureEcruteakMark(world)
+          armEcruteakMark(world)
+        end
+        ecruteakCleanupPending = false
+      end
+    end)
+
+    mod.log:info("Pokemon Snag %s loaded (Gold through Ecruteak contract test)", VERSION)
+    return
+  end
+
+  ----------------------------------------------------------------------
+  -- EVERYTHING BELOW THIS LINE IS GEN 1 ONLY.
+  --
+  -- The `if GEN2` arm above ends in a bare `return` that exits this
+  -- entry function, so nothing from here down executes on a Gold boot.
+  --
+  -- gen2check is a static scanner and cannot see that early return, so
+  -- it reports MK402 (`require "src.script.Commands"` has no Gen 2
+  -- adapter) and MK409 ("PartyMenu" is a Gen 1 screen id) against lines
+  -- below this comment. Those findings are STRUCTURALLY UNREACHABLE on
+  -- Gold, not bugs, and gen2check will report them on every release
+  -- forever. `games: ["gen1", "gen2"]` in the manifest is accurate.
+  --
+  -- The one thing that would invalidate this: restructuring away from
+  -- the single early-return split. If the `if GEN2` block ever stops
+  -- ending in an unconditional `return`, re-verify every finding --
+  -- they become real.
+  ----------------------------------------------------------------------
+
   ----------------------------------------------------------------------
   -- quest_system is OPTIONAL as of 0.14.13. It used to be a hard
   -- dependency with an assert here, which meant the whole mod refused to
@@ -687,15 +2194,7 @@ return function(mod)
   }
 
   local function snagPayout(game, mon)
-    local n = 1
-    local lv = mon.snagLevel or mon.level or 1
-    if lv >= 25 then n = n + 1 end
-    if lv >= 45 then n = n + 1 end
-    local def = game.data.pokemon[mon.species]
-    if def and def.catchRate and def.catchRate <= 45 then n = n + 1 end
-    if mon.snagFrom and VIP_CLASSES[mon.snagFrom] then n = n + 1 end
-    if n > 5 then n = 5 end
-    return n
+    return computeSnagPayout(game, mon, VIP_CLASSES)
   end
 
   mod.content.commands:register("snag_quest:sell_snagged", {
@@ -1522,6 +3021,5 @@ return function(mod)
     end
   end)
 
-  mod.exports.version = "0.14.13"
-  mod.log:info("Pokemon Snag %s loaded", mod.exports.version)
+  mod.log:info("Pokemon Snag %s loaded", VERSION)
 end
