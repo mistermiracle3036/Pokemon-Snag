@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.14.39"
+  local VERSION = "0.14.40"
   mod.exports.version = VERSION
 
   -- Shared fence valuation. Gold stamps snagVip at encounter time; the legacy
@@ -646,14 +646,18 @@ return function(mod)
       return true
     end
 
-    -- Exactly one ball for the intro.  This intentionally normalizes any
-    -- leftover SNAG BALL stack from the earlier private mart tests to one.
+    -- Exactly one ball for the intro.
+    --
+    -- 0.14.40: this used to Bag.remove the player's ENTIRE SNAG BALL stack
+    -- first, to normalize a leftover stack from the private test builds
+    -- that stocked Gold marts.  Those builds are gone and marts are not
+    -- stocked on Gold, so the only thing that line can do now is destroy
+    -- balls belonging to someone carrying a save from one of them.  Adding
+    -- is enough; the intro is gated on STAGE_NEW and cannot repeat.
     local function giveOneSnagBall()
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and save.inventory and data) then return false end
-      local have = tonumber(save.inventory.SNAG_BALL or 0) or 0
-      if have > 0 then Bag.remove(save, "SNAG_BALL", have) end
       return Bag.add(save, "SNAG_BALL", 1, data) == true
     end
 
@@ -662,6 +666,60 @@ return function(mod)
       local save, data = game and game.save, game and game.data
       if not (save and save.inventory and data) then return false end
       return Bag.add(save, "SNAG_BALL", 5, data) == true
+    end
+
+    ------------------------------------------------------------------
+    -- THE DEAD-END VALVE (0.14.40).
+    --
+    -- Every Snag Ball on Gold comes from a finite list: one from the
+    -- sailor, five from his reward, one HEIST BALL from Ecruteak.  After
+    -- that the fence is the only source, and it pays for a SNAGGED
+    -- Pokemon -- so it costs a ball to earn balls.  Miss with the last
+    -- one holding nothing stolen and the questline is over permanently,
+    -- with no recovery path in the game.  Gold marts are deliberately
+    -- not stocked, so Red's mart safety net does not exist here.
+    --
+    -- Reported from device play, 2026-08-13.
+    --
+    -- The fix is a valve, not an economy: the fence hands over exactly
+    -- one base ball when the player has NOTHING to act with.  Both
+    -- halves of that test matter --
+    --
+    --   * count every tier, not just SNAG_BALL.  A player holding a
+    --     HEIST BALL is not stuck, and firing for them would hand out a
+    --     free ball on every visit.
+    --   * "sellable" means the fence would actually take it: the sale
+    --     path below refuses to leave the player with no Pokemon
+    --     (#party < 2), so a lone snagged mon is NOT a way out and must
+    --     not suppress the valve.  Getting this wrong leaves the player
+    --     exactly as stuck as before, which is the failure this whole
+    --     change exists to remove.
+    --
+    -- It can fire repeatedly -- throw the free ball, miss, walk back,
+    -- get another.  That is the point and it is not farmable: it only
+    -- ever fires at total zero, so nothing can be accumulated.
+    ------------------------------------------------------------------
+    local function snagBallsHeld()
+      local inv = mod.game and mod.game.save and mod.game.save.inventory
+      if type(inv) ~= "table" then return 0 end
+      local n = 0
+      for id in pairs(SNAG_BALL_TIERS) do
+        n = n + (tonumber(inv[id]) or 0)
+      end
+      return n
+    end
+
+    local function hasSellableSnaggedMon()
+      local party = mod.game and mod.game.save and mod.game.save.party
+      if type(party) ~= "table" or #party < 2 then return false end
+      for _, mon in ipairs(party) do
+        if mon and mon.snagged == true then return true end
+      end
+      return false
+    end
+
+    local function isDeadEnded()
+      return snagBallsHeld() == 0 and not hasSellableSnaggedMon()
     end
 
     -- Resolve one real LASS carrier from the live Gold trainer table.  The
@@ -1139,6 +1197,25 @@ return function(mod)
       local world = mod.world:overworld()
       local fence = objectNamed(world, FENCE_MAP, FENCE_NAME)
       if not fence or ev.x ~= fence.x or ev.y ~= fence.y then return end
+
+      -- Valve first: a player with no balls and nothing sellable has no
+      -- reason to be shown the party menu, and no way back without this.
+      if isDeadEnded() then
+        local game = mod.game
+        local save, data = game and game.save, game and game.data
+        if not (save and save.inventory and data) then return end
+        if Bag.add(save, "SNAG_BALL", 1, data) ~= true then
+          mod.world:queueScript({ { "text",
+            "FENCE: Your BAG's\nfull. Clear space." } })
+          return
+        end
+        mod.world:queueScript({ { "text",
+          "FENCE: No BALLs,\nno goods.\f"
+          .. "You're no use to\nme like that.\f"
+          .. "Here. One SNAG\nBALL. On credit.\f"
+          .. "Don't waste it." } })
+        return
+      end
 
       mod.world:queueScript({ { "text",
         "FENCE: I deal in\nspecial POKEMON.\f"

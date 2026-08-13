@@ -184,6 +184,8 @@ After completing the Cherrygrove introduction and claiming the sailor's five-bal
 
 This is the first non-tutorial Snag job: no free ball and no guaranteed catch. The selected target can be retried if it is knocked out. Snagging it completes the contract.
 
+Snag Balls are not sold anywhere on Gold, so the Route 36 fence doubles as your safety net: turn up with no Snag Balls and nothing he wants to buy, and he'll hand you one free rather than let you waste his time. You cannot permanently run out.
+
 
 ## Gold private test: Ecruteak archetype contract
 

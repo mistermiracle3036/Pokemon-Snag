@@ -1,3 +1,27 @@
+## 0.14.40 - You can no longer run out of Snag Balls for good (Gold)
+
+Reported from device play: on Gold, running out of Snag Balls ended the
+questline permanently. Every ball came from a fixed list — one from the
+Cherrygrove sailor, five from his reward, one HEIST BALL from Ecruteak —
+and after that the Route 36 fence was the only source, but it pays you
+for a *stolen* Pokemon, so it costs a ball to earn balls. Miss with your
+last one while holding nothing stolen and there was no way back. Red has
+marts as a safety net; Gold deliberately has no marts, so it had none.
+
+- The Route 36 fence now hands you one SNAG BALL, free, when you turn up
+  with no Snag Balls of any tier *and* nothing he would buy. He is not
+  generous about it. Come back as often as you need.
+- It only ever fires when you have absolutely nothing, so it cannot be
+  used to stockpile — one ball, and only while you are stuck.
+- Holding a HEIST BALL counts. You are not stuck if you can still throw
+  something.
+- The Cherrygrove sailor no longer empties your bag of Snag Balls before
+  handing you the intro ball. That only ever mattered for the private
+  test builds that stocked Gold marts, and on a save carried over from
+  one of those it destroyed balls you had paid for.
+
+No change on Red.
+
 ## 0.14.39 - Reconciliation into the repo
 
 The Gold questline arc (0.14.14-0.14.38) was written outside git and is
