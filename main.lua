@@ -44,8 +44,21 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.14.40"
+  local VERSION = "0.14.41"
   mod.exports.version = VERSION
+
+  -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
+  -- valuation is built for opportunistic theft -- base 1, and the bonuses only
+  -- fire for a high level, a rare species or a VIP owner -- so the first
+  -- contract target, a level 16 YANMA with a catch rate of 75 owned by a BUG
+  -- CATCHER, priced out at exactly 1 ball.  A job the player chose, tracked
+  -- across a city and spent balls on paid the same as a mon grabbed in passing.
+  --
+  -- A bounty therefore has a FLOOR rather than a bonus: at least this many,
+  -- with the ordinary bonuses stacking on top to the usual cap of 5.  A floor
+  -- keeps one dial instead of two and means a later, tougher mark is still
+  -- worth more than an early one.
+  local BOUNTY_FLOOR = 3
 
   -- Shared fence valuation. Gold stamps snagVip at encounter time; the legacy
   -- Gen 1 path may still supply a class table for old captured Pokemon.
@@ -62,6 +75,9 @@ return function(mod)
       vip = vipClasses[mon.snagFrom] == true
     end
     if vip then n = n + 1 end
+    if mon and mon.snagBounty == true and n < BOUNTY_FLOOR then
+      n = BOUNTY_FLOOR
+    end
     return math.min(5, n)
   end
 
@@ -299,6 +315,12 @@ return function(mod)
     local function setContractChoice(v)
       mod.save:set("g2_contract1_choice", CONTRACTS[v] and v or "")
     end
+    local function contractRewarded()
+      return mod.save:get("g2_contract1_rewarded", false) == true
+    end
+    local function setContractRewarded(v)
+      mod.save:set("g2_contract1_rewarded", v and true or false)
+    end
     local function ecruteakStage()
       return tonumber(mod.save:get("g2_contract2_stage", CONTRACT_NONE)) or CONTRACT_NONE
     end
@@ -315,6 +337,16 @@ return function(mod)
     end
     local function setEcruteakRewarded(v)
       mod.save:set("g2_contract2_rewarded", v and true or false)
+    end
+    -- The Ecruteak payout is TWO items -- the flat fee and the HEIST BALL --
+    -- so it needs two flags.  One flag covering both means a full BALL pocket
+    -- on the tier ball leaves the whole payout unclaimed, and the fee pays out
+    -- again on every visit: a farm, gated on nothing but keeping the bag full.
+    local function ecruteakFeePaid()
+      return mod.save:get("g2_contract2_feepaid", false) == true
+    end
+    local function setEcruteakFeePaid(v)
+      mod.save:set("g2_contract2_feepaid", v and true or false)
     end
 
     local introBattleActive = false
@@ -391,7 +423,8 @@ return function(mod)
     end
 
     mod.exports.owns = mod.exports.owns or {}
-    mod.exports.owns.monFields = { "snagged", "snagFrom", "snagLevel", "snagVip" }
+    mod.exports.owns.monFields =
+      { "snagged", "snagFrom", "snagLevel", "snagVip", "snagBounty" }
     mod.exports.vipClasses = GOLD_VIP_CLASSES
 
     -- Same valuation function is used by both generations.
@@ -661,11 +694,21 @@ return function(mod)
       return Bag.add(save, "SNAG_BALL", 1, data) == true
     end
 
-    local function giveRewardSnagBalls()
+    -- Completing a contract pays a flat fee on top of whatever the mark
+    -- itself fences for (0.14.41).  Finishing the Goldenrod job used to pay
+    -- literally nothing -- the broker congratulated the player and that was
+    -- the whole reward -- so a contract cost balls and returned none.
+    local CONTRACT_REWARD_BALLS = 5
+
+    local function giveSnagBalls(n)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and save.inventory and data) then return false end
-      return Bag.add(save, "SNAG_BALL", 5, data) == true
+      return Bag.add(save, "SNAG_BALL", n, data) == true
+    end
+
+    local function giveRewardSnagBalls()
+      return giveSnagBalls(5)
     end
 
     ------------------------------------------------------------------
@@ -720,6 +763,27 @@ return function(mod)
 
     local function isDeadEnded()
       return snagBallsHeld() == 0 and not hasSellableSnaggedMon()
+    end
+
+    -- One-time retro-fit (0.14.41).  A mon snagged before this version carries
+    -- no snagBounty field at all, so a mark already sitting in the player's
+    -- party would still fence for the old price.  nil means "snagged before
+    -- the field existed"; every mon snagged from here on gets an explicit
+    -- true or false, so this can never fire for a new one.
+    --
+    -- Deliberately narrow: the contract must be COMPLETE and the species must
+    -- be the one that contract advertised.  It can still be fooled by a mon of
+    -- the same species snagged from an unrelated trainer on an old save, which
+    -- is a few balls in the player's favour once, and is worth less than
+    -- leaving a real bounty underpaid.
+    local function ensureBountyFlag(mon)
+      if not mon or mon.snagged ~= true or mon.snagBounty ~= nil then return end
+      local c1 = CONTRACTS[contractChoice() or ""]
+      local c2 = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
+      local isMark =
+        (c1 and contractStage() == CONTRACT_DONE and mon.species == c1.species)
+        or (c2 and ecruteakStage() == CONTRACT_DONE and mon.species == c2.target)
+      mon.snagBounty = isMark and true or false
     end
 
     -- Resolve one real LASS carrier from the live Gold trainer table.  The
@@ -1001,11 +1065,28 @@ return function(mod)
       end
 
       if contractStage() == CONTRACT_DONE then
-        mod.world:queueScript({
-          { "text", "BROKER: Good work.\nYour call now." },
-          { "text", "Keep it, or trade\nit to a fence." },
-          { "text", "Better BALLs soon.\nKeep working." },
-        })
+        if not contractRewarded() then
+          mod.world:queueScript({
+            { "text", "BROKER: Good work.\nYour call now." },
+            { "text", "Keep it, or trade\nit to a fence." },
+            { "text", "Five SNAG BALLs.\nYou earned them." },
+          }, {
+            onDone = function()
+              if contractRewarded() then return end
+              if not giveSnagBalls(CONTRACT_REWARD_BALLS) then
+                mod.world:queueScript({ { "text",
+                  "BROKER: Clear your\nBAG. I'll hold it." } })
+                return
+              end
+              setContractRewarded(true)
+            end,
+          })
+        else
+          mod.world:queueScript({
+            { "text", "BROKER: Keep it, or\ntrade it to a fence." },
+            { "text", "Better BALLs soon.\nKeep working." },
+          })
+        end
         return
       end
 
@@ -1113,19 +1194,32 @@ return function(mod)
       end
 
       if ecruteakStage() == CONTRACT_DONE then
-        if not ecruteakRewarded() then
+        if not (ecruteakFeePaid() and ecruteakRewarded()) then
           mod.world:queueScript({
             { "text", "CONTACT: Nice.\nYou are moving up." },
+            { "text", "Five SNAG BALLs\nfor the job." },
             { "text", "Try this one next.\nHEIST BALL." },
             { "text", "Better odds.\nSave it for later." },
           }, {
             onDone = function()
-              if ecruteakRewarded() then return end
-              if not giveHeistBall() then
-                errs("HEIST BALL\nBAG FULL")
-                return
+              -- Each half claimed independently, so a bag that fills partway
+              -- through leaves exactly the unpaid half owed.
+              if not ecruteakFeePaid() then
+                if not giveSnagBalls(CONTRACT_REWARD_BALLS) then
+                  mod.world:queueScript({ { "text",
+                    "CONTACT: No room.\nClear your BAG." } })
+                  return
+                end
+                setEcruteakFeePaid(true)
               end
-              setEcruteakRewarded(true)
+              if not ecruteakRewarded() then
+                if not giveHeistBall() then
+                  mod.world:queueScript({ { "text",
+                    "CONTACT: No room\nfor the HEIST BALL." } })
+                  return
+                end
+                setEcruteakRewarded(true)
+              end
             end,
           })
         else
@@ -1238,6 +1332,7 @@ return function(mod)
                 "FENCE: That's clean.\nI only buy hot goods." } })
               return
             end
+            ensureBountyFlag(picked)
             local n = snagPayout(picked)
             local name = monName(picked)
             mod.world:queueScript({ { "text", string.format(
@@ -1461,6 +1556,11 @@ return function(mod)
           or (payload.battle and payload.battle.opponentClass) or "trainer"
       mon.snagLevel = mon.level
       mon.snagVip = activeTrainer and activeTrainer.vip == true or false
+      -- Explicit false, never nil: nil is how a mon snagged before 0.14.41 is
+      -- recognised for the one-time retro-fit at the fence.  A mark's OTHER
+      -- party members are fair game but are not the bounty, so only the
+      -- advertised species is stamped below.
+      mon.snagBounty = false
       if introBattleActive and mon.species == "MEOWTH" and stage() == STAGE_ARMED then
         setStage(STAGE_DONE)
         -- Do not despawn the sailor/girl here.  They remain for the rest of
@@ -1470,6 +1570,7 @@ return function(mod)
       if contractBattleActive and contractStage() == CONTRACT_ACTIVE then
         local c = CONTRACTS[contractChoice() or ""]
         if c and mon.species == c.species then
+          mon.snagBounty = true
           setContractStage(CONTRACT_DONE)
           contractCleanupPending = false
         end
@@ -1477,6 +1578,7 @@ return function(mod)
       if ecruteakBattleActive and ecruteakStage() == CONTRACT_ACTIVE then
         local c = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
         if c and mon.species == c.target then
+          mon.snagBounty = true
           setEcruteakStage(CONTRACT_DONE)
           ecruteakCleanupPending = false
         end

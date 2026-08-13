@@ -1,3 +1,24 @@
+## 0.14.41 - Quest Pokemon are bounties now (Gold)
+
+Contract targets were priced like any other stolen Pokemon, which meant
+the first job — a level 16 YANMA — fenced for a single Snag Ball. A job
+you chose, tracked across Goldenrod and spent balls on paid the same as
+something grabbed in passing. And completing the Goldenrod contract paid
+nothing at all: the broker congratulated you and that was it.
+
+- A contract's advertised target is now a **bounty**: it fences for at
+  least 3 Snag Balls, and the usual bonuses for level, rarity and a
+  famous owner still stack on top, up to the cap of 5.
+- Finishing a contract pays a flat **5 Snag Balls**. The Goldenrod broker
+  pays it, and the Ecruteak contact pays it alongside the HEIST BALL.
+- Other Pokemon on a mark's team are still fair game, but they are not
+  the bounty — only the target you were sent for is.
+- If a mark is already sitting in your party from an earlier version, the
+  fence works out that it was a bounty and pays the new rate. You do not
+  need to start over.
+
+No change on Red.
+
 ## 0.14.40 - You can no longer run out of Snag Balls for good (Gold)
 
 Reported from device play: on Gold, running out of Snag Balls ended the
