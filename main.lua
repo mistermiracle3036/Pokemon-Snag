@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.14.41"
+  local VERSION = "0.14.42"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -59,6 +59,20 @@ return function(mod)
   -- keeps one dial instead of two and means a later, tougher mark is still
   -- worth more than an early one.
   local BOUNTY_FLOOR = 3
+
+  -- And nothing is worth only one ball (0.14.42).  Giving up a Pokemon is the
+  -- most expensive thing the player can do at a fence -- it leaves the party
+  -- for good -- and one ball back could not even repeat the throw that caught
+  -- it.  A floor rather than a higher base: the bonuses keep their spread and
+  -- only the bottom rung moves, so a level 45 rarity from a Gym Leader is
+  -- still worth more than a common one off a Youngster.
+  --
+  -- This does NOT address the real complaint behind it.  Snagging at full HP
+  -- is ~catchRate/3 out of 256 per throw (src/battle/gen2/Catching.lua:301),
+  -- so a 45-catch-rate target is about 6% a ball and the player reloads rather
+  -- than spends.  A payout floor changes the drain, not the wall.  Deferred
+  -- deliberately, one change at a time.
+  local MIN_PAYOUT = 2
 
   -- Shared fence valuation. Gold stamps snagVip at encounter time; the legacy
   -- Gen 1 path may still supply a class table for old captured Pokemon.
@@ -75,6 +89,7 @@ return function(mod)
       vip = vipClasses[mon.snagFrom] == true
     end
     if vip then n = n + 1 end
+    if n < MIN_PAYOUT then n = MIN_PAYOUT end
     if mon and mon.snagBounty == true and n < BOUNTY_FLOOR then
       n = BOUNTY_FLOOR
     end

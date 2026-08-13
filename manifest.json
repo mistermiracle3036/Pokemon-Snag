@@ -1,7 +1,7 @@
 {
   "id": "snag_quest",
   "name": "Pokemon Snag",
-  "version": "0.14.41",
+  "version": "0.14.42",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",

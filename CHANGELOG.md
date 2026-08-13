@@ -1,3 +1,21 @@
+## 0.14.42 - A fence never pays just one ball
+
+Giving up a Pokemon is the most expensive thing you can do at a fence —
+it leaves your party for good — and a single Snag Ball back could not
+even repeat the throw that caught it.
+
+- **No sale pays less than 2 Snag Balls.** The bonuses for level, rarity
+  and a famous previous owner still stack on top exactly as before, so
+  only the bottom rung moved: a level 45 rarity taken off a Gym Leader is
+  still worth more than something common off a Youngster.
+- Quest marks still floor at 3, so a contract target remains worth more
+  than an ordinary theft.
+- This applies on Red as well as Gold. Both games share one valuation.
+
+Not addressed here, deliberately: snagging a healthy Pokemon is hard
+enough that it invites reloading rather than spending. That is a separate
+knob and it gets looked at on its own.
+
 ## 0.14.41 - Quest Pokemon are bounties now (Gold)
 
 Contract targets were priced like any other stolen Pokemon, which meant

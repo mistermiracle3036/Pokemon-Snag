@@ -127,6 +127,13 @@ Starting from **1 Snag Ball**:
 - +1 if you stole it from a **VIP**: your rival, any of the eight gym
   leaders, the Elite Four, or Giovanni
 
+Then two floors are applied, so a sale never drops below them:
+
+- **2 minimum** for any sale at all.
+- **3 minimum** if it was a quest mark — the Pokémon a Gold contract
+  actually sent you after. Other Pokémon on that trainer's team are
+  ordinary goods.
+
 Capped at **5**. Note the level used is the level it was *stolen* at —
 training it up afterwards doesn't raise the price.
 </details>

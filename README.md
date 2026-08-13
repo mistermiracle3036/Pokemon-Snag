@@ -45,7 +45,7 @@ collapsed so you only reveal what you want.
   snag (the trainer sends out their next Pokémon). This can be turned off
   in options if you prefer the snag to end the battle.
 - **Four fences.** Certain NPCs around Kanto quietly buy snagged Pokémon,
-  paying **1–5 Snag Balls** depending on the mon's level, rarity and who
+  paying **2–5 Snag Balls** depending on the mon's level, rarity and who
   you stole it from. VIP targets — a certain rival, gym leaders, the
   Elite Four — fetch top price. They are not one organisation: two are
   Rocket, two are independents who simply like what falls off the back of
@@ -131,9 +131,11 @@ load log prints the running version so you can confirm what's live.
 
 ## How snag payouts work
 
-Base payout is 1 Snag Ball, plus bonuses for high level, hard-to-catch
-species and VIP victims, capped at 5. Exact thresholds are in the
-[FAQ](FAQ.md) behind a spoiler fold.
+No sale pays less than 2 Snag Balls — giving up a Pokémon is permanent,
+and one ball back could not even repeat the throw that caught it. On top
+of that floor come bonuses for high level, hard-to-catch species and VIP
+victims, capped at 5. A quest mark never pays less than 3. Exact
+thresholds are in the [FAQ](FAQ.md) behind a spoiler fold.
 
 ## For modders
 
