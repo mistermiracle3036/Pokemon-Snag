@@ -104,7 +104,11 @@ jobs:
           mkdir -p build/"$MOD_ID"
           cp -r ./* build/"$MOD_ID"/ 2>/dev/null || true
           cp .modkitignore build/"$MOD_ID"/ 2>/dev/null || true
+          # docs/ holds README screenshots. They are repo documentation, not
+          # mod content -- shipping them would put a few MB of PNG into every
+          # player's install for nothing, and the launcher never reads them.
           rm -rf build/"$MOD_ID"/build build/"$MOD_ID"/tests build/"$MOD_ID"/.github
+          rm -rf build/"$MOD_ID"/docs
           rm -f  build/"$MOD_ID"/.gitignore
           cd build/"$MOD_ID"
           zip -r "../../$MOD_ID-$VERSION.zip" . -x '*.DS_Store'

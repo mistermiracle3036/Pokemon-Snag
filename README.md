@@ -1,14 +1,23 @@
 # Pokemon Snag — Steal Pokémon from Trainers
 
 **Throw a ball at another trainer's Pokémon and take it.** Pokemon Snag
-adds the Snag Ball to **gen1recomp** (Red / Blue / Yellow): a real,
-reusable ball that works in trainer battles, so any Pokémon an opponent
-sends out is a Pokémon you can walk away with.
+adds the Snag Ball to **gen1recomp**: a real, reusable ball that works in
+trainer battles, so any Pokémon an opponent sends out is a Pokémon you
+can walk away with. It has its own questline on **Red / Blue / Yellow**
+and a separate one on **Gold**.
 
-A Team Rocket recruiter at the end of Nugget Bridge brings you into the
-business, and a network of black-market "fences" across Kanto will pay
-you in Snag Balls for the goods — so the better your thefts, the more you
-can steal.
+On Red, a Team Rocket recruiter at the end of Nugget Bridge brings you
+into the business, and a network of black-market "fences" across Kanto
+pays you in Snag Balls for the goods — so the better your thefts, the
+more you can steal. On Gold you start smaller, working jobs for brokers
+who name a target and let you find it.
+
+| | |
+|---|---|
+| ![A sailor in Cherrygrove City points out a stolen shiny Meowth](docs/01-cherrygrove-sailor.png) | ![A fence on Route 36 offers to buy stolen Pokémon](docs/02-fence-route36.png) |
+| The Gold questline opens in Cherrygrove City. | Fences buy what you steal — and pay in Snag Balls. |
+| ![A broker's menu offering a Psychic, Normal or Bug lead](docs/03-choose-a-lead.png) | ![A collector in Ecruteak warns the player off a rare Pokémon](docs/04-ecruteak-mark.png) |
+| Contracts let you pick the kind of mark. | Then you go and find them. |
 
 > **Development Preview:** Pokemon Snag is in active development. Bug reports
 > and feature ideas are welcome in
@@ -190,6 +199,8 @@ Snag Balls are not sold anywhere on Gold, so the Route 36 fence doubles as your 
 
 
 ## Gold private test: Ecruteak archetype contract
+
+![An Ecruteak contact says he has heard of three marks](docs/05-ecruteak-contact.png)
 
 After successfully snagging the selected Goldenrod target, an Ecruteak contact offers a second contract based on trainer archetype rather than Pokemon type.
 
