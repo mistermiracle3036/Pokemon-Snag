@@ -1,7 +1,7 @@
 # Pokemon Snag — Steal Pokémon from Trainers
 
 **Throw a ball at another trainer's Pokémon and take it.** Pokemon Snag
-adds the Snag Ball to **gen1recomp**: a real, reusable ball that works in
+adds the Snag Ball to **Gen1ReComp++**: a real, reusable ball that works in
 trainer battles, so any Pokémon an opponent sends out is a Pokémon you can
 walk away with.
 
