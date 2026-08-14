@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.15.8"
+  local VERSION = "0.15.9"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -167,7 +167,13 @@ return function(mod)
     local OLIVINE_WITNESS_NAME = "SNAG_OLIVINE_WITNESS"
     local OLIVINE_WITNESS_X, OLIVINE_WITNESS_Y = 17, 13
     local OLIVINE_MARK_NAME = "SNAG_OLIVINE_MARK"
-    local OLIVINE_CONTACT_X, OLIVINE_CONTACT_Y = 15, 23
+    -- 0.15.9: moved from (15,23), which sat four tiles from the vanilla
+    -- sailor at (17,21). His walk can sit across the road down to the port
+    -- long enough to wall the player out of reaching the foreman at all --
+    -- a wait, not a softlock, but a bad one to hit on the way into a
+    -- contract. Device-calibrated by the developer; (9,25) also shares the
+    -- old tile's block id and quadrant, so the collision argument holds.
+    local OLIVINE_CONTACT_X, OLIVINE_CONTACT_Y = 9, 25
 
     local MOVE_STANDING_DOWN = 6
     local MOVE_STANDING_UP = 7

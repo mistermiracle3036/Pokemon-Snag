@@ -1,4 +1,4 @@
-## 0.15.8 - Johto
+## 0.15.9 - Johto
 
 **Updating from v0.14.11? Pokemon Snag works on Pokemon Gold now.** Not a
 port of the Kanto story — a questline of its own, from a first Snag Ball to
@@ -128,6 +128,9 @@ README has screenshots of the Johto questline.
 - The Cherrygrove sailor no longer tells you not to hurt the Meowth. That
   snag is a guaranteed catch, so the instruction described a rule the mod
   does not have — and the opposite of the one that matters later.
+- **The Olivine foreman moved down the road.** He was standing close enough
+  to a sailor on his rounds that the sailor could sit across the way down
+  and keep you from reaching him for a while. He is further along now.
 - **You can no longer sell your last Pokemon.** A fence would take it if you
   were holding an egg, because an egg fills a party slot but cannot battle —
   so the sale went through and left you unable to snag anything at all, with
