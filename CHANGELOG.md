@@ -21,6 +21,14 @@ they sound like it.
   bites back.
 - The foreman keeps his own voice; a couple of his lines were reaching for
   words a dock foreman would not use.
+- **The Olivine technician no longer claims his MAGNETON runs the
+  lighthouse.** It doesn't — Amphy does, and Amphy being unwell is the whole
+  reason you end up sailing to Cianwood. He is at the lighthouse taking
+  readings now, and losing them is what he minds.
+- **The Cherrygrove sailor no longer tells you not to hurt the Meowth.** That
+  snag is a guaranteed catch, so the instruction described a rule the mod
+  does not have — and the opposite of the one that matters later, where
+  wearing a mark down is exactly how you land it.
 
 ## 0.15.5 - Olivine high-risk payout
 

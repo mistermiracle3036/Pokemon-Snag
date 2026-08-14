@@ -363,7 +363,7 @@ return function(mod)
         loss = "SNAG_G2_MAGNETON_LOSS",
         lead1 = "THE LIGHTHOUSE.", lead2 = "Ground floor.\nNorth wall.",
         gossip = {
-          "LIGHTHOUSE hums\nwrong lately.",
+          "Bad interference\nby the LIGHTHOUSE.",
           "Ruined my tape.\nAll static.",
         },
         party = {
@@ -371,8 +371,8 @@ return function(mod)
           { species = "MAGNETON", level = 26 },
           { species = "KOFFING", level = 24 },
         },
-        after1 = "That unit ran",
-        after2 = "the whole light!",
+        after1 = "Months of data.",
+        after2 = "Gone with it.",
       },
       GANGWAY = {
         key = "GANGWAY", label = "GANGWAY", target = "QWILFISH",
@@ -402,11 +402,11 @@ return function(mod)
     mod.content.text:register("SNAG_G2_CORSOLA_LOSS",
       "Fish your own\nreef.")
     mod.content.text:register("SNAG_G2_MAGNETON_SEEN",
-      "That unit keeps\nthe light lit.")
+      "Three magnets,\none mind. Careful.")
     mod.content.text:register("SNAG_G2_MAGNETON_WIN",
-      "The light needs\nthat unit!")
+      "My readings!\nMonths of them!")
     mod.content.text:register("SNAG_G2_MAGNETON_LOSS",
-      "Keep clear of\nthe machinery.")
+      "Static ruins\neverything here.")
     mod.content.text:register("SNAG_G2_QWILFISH_SEEN",
       "Mind the spines.\nIt bites back.")
     mod.content.text:register("SNAG_G2_QWILFISH_WIN",
@@ -1279,7 +1279,6 @@ return function(mod)
         { "text", "SAILOR: See that\ngirl over there?" },
         { "text", "That shiny MEOWTH\nwas stolen." },
         { "text", "Take this\nSNAG BALL." },
-        { "text", "Catch MEOWTH.\nDon't hurt it." },
       }, {
         onDone = function()
           local ok, err = pcall(function()
