@@ -1,3 +1,76 @@
+## 0.15.6 - Olivine gets a voice, and the lighthouse job
+
+The Olivine cast was written in the foreman's vocabulary — the marks talked
+about cargo and manifests like they worked for him, and named their own
+Pokemon like a label on a crate. They are three different people now, and
+they sound like it.
+
+- **The MAGNETON job moved to the Olivine lighthouse.** Two of the three
+  routes were both on the port, close enough that choosing between them
+  barely changed where you went — and the whole point of this contract is
+  that the choice is a *place*. It is on the lighthouse ground floor now,
+  and the mark keeping a lighthouse running suits it far better.
+- **A new face in Olivine.** A sound recordist over from the Goldenrod radio
+  station is in town while a job is running, grumbling about her tape. She
+  has no idea what you are — she is complaining about the noise, and you are
+  the only one who knows what made it. She hears things the other two
+  witnesses would only have seen: a click out on the reef, a hum that ruins
+  a recording, a hiss up on the gangway.
+- **All three marks rewritten.** The fisher grew that coral herself, the
+  technician needs that unit for the light, and the sailor knows the thing
+  bites back.
+- The foreman keeps his own voice; a couple of his lines were reaching for
+  words a dock foreman would not use.
+
+## 0.15.5 - Olivine high-risk payout
+
+**Private test build.** Completing the Olivine contract now pays five SNAG
+BALLs and three HEIST BALLs. The two halves have separate saved receipts, so
+players who already collected Olivine's five-ball reward receive only the
+three newly added HEIST BALLs. If either stack cannot fit, the foreman keeps
+only that unpaid half available for the next conversation. He becomes a fence
+after both rewards have been collected.
+
+## 0.15.4 - Natural ball descriptions
+
+**Private test build.** The ball descriptions now describe catch reliability
+in natural terms: SNAG BALL has a normal catch rate and HEIST BALL has a good
+catch rate. Their actual catch behavior is unchanged.
+
+## 0.15.3 - Ball descriptions
+
+**Private test build.** SNAG BALL and HEIST BALL now show descriptions in
+Gold's PACK, item PC and shop menus. Both descriptions state that the ball
+steals a Pokemon and identify its catch-rate multiplier: 1x for SNAG BALL and
+2x for HEIST BALL.
+
+## 0.15.2 - Name the target and restore the missing tier reward
+
+**Private test build.** Every Gold contract now names the exact Pokemon to
+steal when the player accepts the job and whenever the contact repeats the
+lead. Multi-Pokemon parties remain: stealing a teammate is allowed, but only
+the named target completes the contract and carries the bounty. Ecruteak and
+Olivine marks also name the target in their opening battle dialogue.
+
+The Ecruteak HEIST BALL now has a separate saved receipt. Saves caught between
+the old one-ball reward and the newer five-ball fee can collect the missing
+HEIST BALL without receiving the five SNAG BALLs a second time. If an older
+save still holds its HEIST BALL, the migration recognises it and does not
+duplicate it.
+
+## 0.15.1 - Olivine route test
+
+**Private test build.** After finishing and collecting the Ecruteak job,
+an Olivine dock foreman offers the next contract. Choose where to intercept
+the shipment: the waterfront, customs platform, or upper gangway.
+
+- Each route has its own carrier, protected target, and map-dump-calibrated
+  encounter position.
+- Snagging the advertised target completes the contract and earns five SNAG
+  BALLs from the foreman.
+- After payment, the foreman becomes a fence and uses the same protected sale
+  flow and recovery-ball safety valve as the other Gold contacts.
+
 ## 0.15.0 - Johto
 
 **Updating from v0.14.11? Pokemon Snag works on Pokemon Gold now.** Not a

@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.15.0"
+  local VERSION = "0.15.6"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -144,6 +144,30 @@ return function(mod)
     local ECRUTEAK_MARK_NAME = "SNAG_ECRUTEAK_MARK"
     local ECRUTEAK_CONTACT_X, ECRUTEAK_CONTACT_Y = 27, 24
     local ECRUTEAK_WITNESS_X, ECRUTEAK_WITNESS_Y = 16, 23
+
+    -- Contract #3: the Olivine foreman makes LOCATION the player's choice.
+    -- Coordinates come from Gold Dev Kit 0.1.5 dumps captured on device:
+    -- the city waterfront and port platform are broad, while the upper
+    -- gangway is two cells wide. The one-cell lower gangway is never used.
+    local OLIVINE_MAP = "OLIVINE_CITY"
+    local OLIVINE_PORT_MAP = "OLIVINE_PORT"
+    -- 0.15.6: the MAGNETON job moved off the port. Two of the three routes
+    -- were both on OLIVINE_PORT, close enough that choosing between them
+    -- barely changed where you went -- the whole point of this contract is
+    -- that the CHOICE is a location. The lighthouse is a genuinely separate
+    -- destination and the target suits it.
+    local OLIVINE_LIGHTHOUSE_MAP = "OLIVINE_LIGHTHOUSE_1F"
+    local OLIVINE_CONTACT_NAME = "SNAG_OLIVINE_FOREMAN"
+    -- A sound recordist over from the GOLDENROD radio station (0.15.6).
+    -- Tile (17,13) shares block id 1 AND quadrant (1,1) with the
+    -- foreman's device-calibrated tile (15,23), and Gold collision is per
+    -- block quadrant, so it is standable by the same argument rather than
+    -- by guess. Clear of all eleven OLIVINE_CITY warps and of every
+    -- vanilla object. Confirm with Position Reporter anyway.
+    local OLIVINE_WITNESS_NAME = "SNAG_OLIVINE_WITNESS"
+    local OLIVINE_WITNESS_X, OLIVINE_WITNESS_Y = 17, 13
+    local OLIVINE_MARK_NAME = "SNAG_OLIVINE_MARK"
+    local OLIVINE_CONTACT_X, OLIVINE_CONTACT_Y = 15, 23
 
     local MOVE_STANDING_DOWN = 6
     local MOVE_STANDING_UP = 7
@@ -279,33 +303,133 @@ return function(mod)
     }
 
     mod.content.text:register("SNAG_G2_SMEARGLE_SEEN",
-      "Care to see my\nlatest work?")
+      "My SMEARGLE made\nthis latest work!")
     mod.content.text:register("SNAG_G2_SMEARGLE_WIN",
       "My masterpiece!")
     mod.content.text:register("SNAG_G2_SMEARGLE_LOSS",
       "Art wins again!")
     mod.content.text:register("SNAG_G2_MISDREAVUS_SEEN",
-      "Hear that crying?\nIt likes you.")
+      "MISDREAVUS hears\nyou coming.")
     mod.content.text:register("SNAG_G2_MISDREAVUS_WIN",
       "The spirits knew.")
     mod.content.text:register("SNAG_G2_MISDREAVUS_LOSS",
       "You were warned.")
     mod.content.text:register("SNAG_G2_GIRAFARIG_SEEN",
-      "Rare, isn't it?\nDon't touch.")
+      "Rare GIRAFARIG.\nDon't touch.")
     mod.content.text:register("SNAG_G2_GIRAFARIG_WIN",
       "My collection!")
     mod.content.text:register("SNAG_G2_GIRAFARIG_LOSS",
       "Hands off!")
 
+    local OLIVINE_CONTRACTS = {
+      WATERFRONT = {
+        key = "WATERFRONT", label = "WATERFRONT", target = "CORSOLA",
+        class = "FISHER", sprite = "SPRITE_FISHING_GURU",
+        map = OLIVINE_MAP, x = 24, y = 23,
+        seen = "SNAG_G2_CORSOLA_SEEN", win = "SNAG_G2_CORSOLA_WIN",
+        loss = "SNAG_G2_CORSOLA_LOSS",
+        lead1 = "WATERFRONT.", lead2 = "East end.\nOpen ground.",
+        gossip = {
+          "Taping waves out\neast. Got a click.",
+          "Something coral\nclicked back.",
+        },
+        party = {
+          { species = "KRABBY", level = 24 },
+          { species = "CORSOLA", level = 26 },
+          { species = "POLIWHIRL", level = 24 },
+        },
+        after1 = "Years of growth",
+        after2 = "gone in a blink.",
+      },
+      -- The KEY stays "CUSTOMS" even though nothing the player sees says so.
+      -- g2_contract3_choice stores this string, and olivineChoice() validates
+      -- it against this table -- so renaming the key would make a save that is
+      -- mid-contract read back nil, leaving the stage ACTIVE with no chosen
+      -- route and no mark to find. Only `label` and the copy are player-facing.
+      --
+      -- Tile (12,2) on OLIVINE_LIGHTHOUSE_1F is standable, not a guess: the
+      -- vanilla SPRITE_SAILOR stands at (8,2), which is the SAME quadrant
+      -- (x,y both even) of the SAME block id (39) in the imported map data,
+      -- and block collision on Gold is per quadrant. It is clear of all five
+      -- warps -- the OLIVINE_CITY door at (10,17)/(11,17) and the 2F stairs at
+      -- (3,11)/(16,13)/(17,13) -- and of both vanilla objects. Still worth a
+      -- Position Reporter confirmation on device, since every other placement
+      -- in this contract was calibrated that way and this one was derived.
+      CUSTOMS = {
+        key = "CUSTOMS", label = "LIGHTHOUSE", target = "MAGNETON",
+        class = "SCIENTIST", sprite = "SPRITE_SCIENTIST",
+        map = OLIVINE_LIGHTHOUSE_MAP, x = 12, y = 2,
+        seen = "SNAG_G2_MAGNETON_SEEN", win = "SNAG_G2_MAGNETON_WIN",
+        loss = "SNAG_G2_MAGNETON_LOSS",
+        lead1 = "THE LIGHTHOUSE.", lead2 = "Ground floor.\nNorth wall.",
+        gossip = {
+          "LIGHTHOUSE hums\nwrong lately.",
+          "Ruined my tape.\nAll static.",
+        },
+        party = {
+          { species = "VOLTORB", level = 24 },
+          { species = "MAGNETON", level = 26 },
+          { species = "KOFFING", level = 24 },
+        },
+        after1 = "That unit ran",
+        after2 = "the whole light!",
+      },
+      GANGWAY = {
+        key = "GANGWAY", label = "GANGWAY", target = "QWILFISH",
+        class = "SAILOR", sprite = "SPRITE_SAILOR",
+        map = OLIVINE_PORT_MAP, x = 10, y = 10,
+        seen = "SNAG_G2_QWILFISH_SEEN", win = "SNAG_G2_QWILFISH_WIN",
+        loss = "SNAG_G2_QWILFISH_LOSS",
+        lead1 = "GANGWAY.", lead2 = "Upper bridge.\nOne lane.",
+        gossip = {
+          "Up on the gangway\nsomething hissed.",
+          "Like air leaving\na balloon.",
+        },
+        party = {
+          { species = "TENTACOOL", level = 24 },
+          { species = "QWILFISH", level = 26 },
+          { species = "KRABBY", level = 24 },
+        },
+        after1 = "Off my own deck.",
+        after2 = "That's a first.",
+      },
+    }
+
+    mod.content.text:register("SNAG_G2_CORSOLA_SEEN",
+      "Took years to\ngrow that coral.")
+    mod.content.text:register("SNAG_G2_CORSOLA_WIN",
+      "You'll never grow\none of your own!")
+    mod.content.text:register("SNAG_G2_CORSOLA_LOSS",
+      "Fish your own\nreef.")
+    mod.content.text:register("SNAG_G2_MAGNETON_SEEN",
+      "That unit keeps\nthe light lit.")
+    mod.content.text:register("SNAG_G2_MAGNETON_WIN",
+      "The light needs\nthat unit!")
+    mod.content.text:register("SNAG_G2_MAGNETON_LOSS",
+      "Keep clear of\nthe machinery.")
+    mod.content.text:register("SNAG_G2_QWILFISH_SEEN",
+      "Mind the spines.\nIt bites back.")
+    mod.content.text:register("SNAG_G2_QWILFISH_WIN",
+      "Hope it stings\nyou on the way!")
+    mod.content.text:register("SNAG_G2_QWILFISH_LOSS",
+      "Off my gangway.")
+
     -- Gold item registration.  This build deliberately does NOT stock marts:
     -- the intro is supposed to hand the player exactly one SNAG BALL.
     local SNAG_BALL_TIERS = {
-      SNAG_BALL = { name = "SNAG BALL", multiplier = 1.0, price = 10000 },
-      HEIST_BALL = { name = "HEIST BALL", multiplier = 2.0, price = 20000 },
+      SNAG_BALL = {
+        name = "SNAG BALL", multiplier = 1.0, price = 10000,
+        description = "Steals a POKeMON.\nNormal catch rate.",
+      },
+      HEIST_BALL = {
+        name = "HEIST BALL", multiplier = 2.0, price = 20000,
+        description = "Steals a POKeMON.\nGood catch rate.",
+      },
     }
     for id, tier in pairs(SNAG_BALL_TIERS) do
       mod.content.items:register(id, {
         id = id, name = tier.name, price = tier.price, tossable = true,
+        description = tier.description,
       })
     end
 
@@ -363,16 +487,69 @@ return function(mod)
     local function setEcruteakFeePaid(v)
       mod.save:set("g2_contract2_feepaid", v and true or false)
     end
+    -- 0.15.2 gives the tier reward its own durable receipt. Older builds
+    -- reused g2_contract2_rewarded across the GREAT/HEIST transition, so an
+    -- upgraded save could collect the new five-ball fee while being treated
+    -- as though its HEIST BALL had already been handed over. If that legacy
+    -- flag is set and a HEIST BALL is still in the bag, record the migration
+    -- without duplicating it. If none is present, owe one replacement. This
+    -- can replace a HEIST BALL an old player already used, but only once; that
+    -- player-favouring edge is safer than permanently withholding the tier.
+    local function ecruteakHeistPaid()
+      if mod.save:get("g2_contract2_heistpaid_v2", false) == true then
+        return true
+      end
+      if ecruteakRewarded() then
+        local inv = mod.game and mod.game.save and mod.game.save.inventory
+        if type(inv) == "table" and (tonumber(inv.HEIST_BALL) or 0) > 0 then
+          mod.save:set("g2_contract2_heistpaid_v2", true)
+          return true
+        end
+      end
+      return false
+    end
+    local function setEcruteakHeistPaid(v)
+      local paid = v and true or false
+      mod.save:set("g2_contract2_heistpaid_v2", paid)
+      -- Keep the legacy receipt current for downgrade/save compatibility.
+      setEcruteakRewarded(paid)
+    end
+    local function olivineStage()
+      return tonumber(mod.save:get("g2_contract3_stage", CONTRACT_NONE)) or CONTRACT_NONE
+    end
+    local function setOlivineStage(v) mod.save:set("g2_contract3_stage", v) end
+    local function olivineChoice()
+      local v = mod.save:get("g2_contract3_choice", "")
+      return OLIVINE_CONTRACTS[v] and v or nil
+    end
+    local function setOlivineChoice(v)
+      mod.save:set("g2_contract3_choice", OLIVINE_CONTRACTS[v] and v or "")
+    end
+    local function olivineRewarded()
+      return mod.save:get("g2_contract3_rewarded", false) == true
+    end
+    local function setOlivineRewarded(v)
+      mod.save:set("g2_contract3_rewarded", v and true or false)
+    end
+    local function olivineHeistPaid()
+      return mod.save:get("g2_contract3_heistpaid", false) == true
+    end
+    local function setOlivineHeistPaid(v)
+      mod.save:set("g2_contract3_heistpaid", v and true or false)
+    end
 
     local introBattleActive = false
     local contractBattleActive = false
     local contractCleanupPending = false
     local ecruteakBattleActive = false
     local ecruteakCleanupPending = false
+    local olivineBattleActive = false
+    local olivineCleanupPending = false
     local cleanupPending = false
     local girlClassIx, girlMemberIx
     local contractCarriers = {}
     local ecruteakCarriers = {}
+    local olivineCarriers = {}
 
     -- Gold VIP provenance.  Keep this list conservative: the rival, all 16
     -- Gym Leaders, the Elite Four/Champion, and Red.  The value is stamped on
@@ -454,6 +631,11 @@ return function(mod)
       local data = mod.game and mod.game.data
       local def = data and data.pokemon and data.pokemon[mon.species]
       return (def and def.name) or mon.species or "POKEMON"
+    end
+
+    local function contractTargetLine(c)
+      local species = c and (c.target or c.species) or "POKEMON"
+      return "Take " .. species .. "."
     end
 
     local function objectNamed(world, mapId, name)
@@ -656,11 +838,81 @@ return function(mod)
       return true
     end
 
-    local function giveHeistBall()
+    local function ensureOlivineContact(world)
+      if objectNamed(world, OLIVINE_MAP, OLIVINE_CONTACT_NAME) then return true end
+      local id, err = mod.world:spawnNpc(OLIVINE_MAP, {
+        name = OLIVINE_CONTACT_NAME, sprite = "SPRITE_SAILOR",
+        x = OLIVINE_CONTACT_X, y = OLIVINE_CONTACT_Y,
+        movement = MOVE_STANDING_DOWN,
+      })
+      if not id then errs("OLI CONTACT\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function ensureOlivineWitness(world)
+      if objectNamed(world, OLIVINE_MAP, OLIVINE_WITNESS_NAME) then return true end
+      local id, err = mod.world:spawnNpc(OLIVINE_MAP, {
+        name = OLIVINE_WITNESS_NAME, sprite = "SPRITE_ROCKER",
+        x = OLIVINE_WITNESS_X, y = OLIVINE_WITNESS_Y,
+        movement = MOVE_STANDING_DOWN,
+      })
+      if not id then errs("OLV WITNESS\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function resolveOlivineCarrier(key)
+      local c = OLIVINE_CONTRACTS[key]
+      if not c then return false end
+      local td = mod.game and mod.game.data and mod.game.data.gen2Trainers
+      local cls = td and td.classes and td.classes[c.class]
+      if not (cls and cls.index and cls.trainers and cls.trainers[1]) then
+        return false
+      end
+      olivineCarriers[key] = { classIx = cls.index, memberIx = 1 }
+      return true
+    end
+
+    local function armOlivineMark(world)
+      local key = olivineChoice()
+      local c = key and OLIVINE_CONTRACTS[key]
+      local carrier = key and olivineCarriers[key]
+      local obj = c and objectNamed(world, c.map, OLIVINE_MARK_NAME)
+      if not (c and carrier and obj) then return false end
+      obj.trainer = {
+        class = carrier.classIx, member = carrier.memberIx,
+        seenText = c.seen, winText = c.win, lossText = c.loss,
+      }
+      return true
+    end
+
+    local function ensureOlivineMark(world)
+      if olivineStage() ~= CONTRACT_ACTIVE then return true end
+      local key = olivineChoice()
+      local c = key and OLIVINE_CONTRACTS[key]
+      local carrier = key and olivineCarriers[key]
+      if not (c and carrier) then return false end
+      local obj = objectNamed(world, c.map, OLIVINE_MARK_NAME)
+      if obj then
+        if not obj.trainer then armOlivineMark(world) end
+        return true
+      end
+      local id, err = mod.world:spawnNpc(c.map, {
+        name = OLIVINE_MARK_NAME, sprite = c.sprite,
+        x = c.x, y = c.y, movement = MOVE_STANDING_DOWN,
+        trainer = {
+          class = carrier.classIx, member = carrier.memberIx,
+          seenText = c.seen, winText = c.win, lossText = c.loss,
+        },
+      })
+      if not id then errs("OLI MARK\n%s", tostring(err)); return false end
+      return true
+    end
+
+    local function giveHeistBalls(n)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and save.inventory and data) then return false end
-      return Bag.add(save, "HEIST_BALL", 1, data) == true
+      return Bag.add(save, "HEIST_BALL", n or 1, data) == true
     end
 
     -- The girl is placed in the first safe orthogonal cell beside the player.
@@ -795,9 +1047,11 @@ return function(mod)
       if not mon or mon.snagged ~= true or mon.snagBounty ~= nil then return end
       local c1 = CONTRACTS[contractChoice() or ""]
       local c2 = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
+      local c3 = OLIVINE_CONTRACTS[olivineChoice() or ""]
       local isMark =
         (c1 and contractStage() == CONTRACT_DONE and mon.species == c1.species)
         or (c2 and ecruteakStage() == CONTRACT_DONE and mon.species == c2.target)
+        or (c3 and olivineStage() == CONTRACT_DONE and mon.species == c3.target)
       mon.snagBounty = isMark and true or false
     end
 
@@ -843,6 +1097,11 @@ return function(mod)
       for key in pairs(ECRUTEAK_CONTRACTS) do
         if not resolveEcruteakCarrier(key) then
           errs("ECR CARRIER\n%s missing", key)
+        end
+      end
+      for key in pairs(OLIVINE_CONTRACTS) do
+        if not resolveOlivineCarrier(key) then
+          errs("OLI CARRIER\n%s missing", key)
         end
       end
     end)
@@ -909,6 +1168,32 @@ return function(mod)
                 end
               elseif ec and ecruteakStage() == CONTRACT_DONE then
                 removeNamed(world, ec.map, ECRUTEAK_MARK_NAME)
+              end
+            end
+
+            -- Olivine opens only after both halves of Ecruteak's payout are
+            -- collected. The foreman persists and becomes a fence; the mark
+            -- exists only while its chosen route is active or for the single
+            -- post-snag conversation before the player leaves that map.
+            if ecruteakStage() == CONTRACT_DONE
+                and ecruteakFeePaid() and ecruteakHeistPaid() then
+              local oc = OLIVINE_CONTRACTS[olivineChoice() or ""]
+              if ev.mapId == OLIVINE_MAP then
+                ensureOlivineContact(world)
+                if olivineStage() == CONTRACT_ACTIVE then
+                  ensureOlivineWitness(world)
+                else
+                  removeNamed(world, OLIVINE_MAP, OLIVINE_WITNESS_NAME)
+                end
+              end
+              if oc and ev.mapId == oc.map then
+                if olivineStage() == CONTRACT_ACTIVE then
+                  ensureOlivineMark(world)
+                elseif olivineStage() == CONTRACT_DONE then
+                  removeNamed(world, oc.map, OLIVINE_MARK_NAME)
+                end
+              elseif oc and olivineStage() == CONTRACT_DONE then
+                removeNamed(world, oc.map, OLIVINE_MARK_NAME)
               end
             end
           end
@@ -1165,6 +1450,22 @@ return function(mod)
         .. "Bring me something\nworth my time.",
     }
 
+    -- The foreman speaks like a shipping boss: every sale is cargo moved.
+    local FOREMAN_VOICE = {
+      invite = "FOREMAN: Cargo?\nI can move it.",
+      lastMon = "FOREMAN: Last one?\nKeep your crew.",
+      notSnagged = "FOREMAN: Papers on\nthat one. No.",
+      quote = "%s.\fFOREMAN: %d SNAG\nBALL%s. Loading?",
+      declined = "FOREMAN: Hold it.\nDock stays open.",
+      changed = "FOREMAN: Manifest\nchanged. No deal.",
+      noRoom = "FOREMAN: BAG full.\nClear deck space.",
+      done = "FOREMAN: Shipped.\f%d SNAG BALL%s.\nJob closed.",
+      valveFull = "FOREMAN: BAG full.\nClear deck space.",
+      valveGive = "FOREMAN: No BALLs?\nNothing to ship.\f"
+        .. "One SNAG BALL.\nOff the books.\f"
+        .. "Bring me something\nworth shipping.",
+    }
+
     -- Goldenrod contract #1.  The broker introduces the first real choice:
     -- PSYCHIC/NORMAL/BUG.  The choice is durable for this contract and spawns
     -- one real trainer mark elsewhere in the city.  There is no free ball and
@@ -1253,6 +1554,7 @@ return function(mod)
         local c = CONTRACTS[chosen]
         mod.world:queueScript({
           { "text", "BROKER: Your mark\nis still out." },
+          { "text", contractTargetLine(c) },
           { "text", c.clue1 },
           { "text", c.clue2 },
         })
@@ -1285,6 +1587,7 @@ return function(mod)
               if w then ensureContractMark(w) end
               mod.world:queueScript({
                 { "text", "BROKER: Good.\nI know someone." },
+                { "text", contractTargetLine(c) },
                 { "text", c.clue1 },
                 { "text", c.clue2 },
               })
@@ -1352,13 +1655,18 @@ return function(mod)
       end
 
       if ecruteakStage() == CONTRACT_DONE then
-        if not (ecruteakFeePaid() and ecruteakRewarded()) then
-          mod.world:queueScript({
+        if not (ecruteakFeePaid() and ecruteakHeistPaid()) then
+          local rows = {
             { "text", "CONTACT: Nice.\nYou are moving up." },
-            { "text", "Five SNAG BALLs\nfor the job." },
-            { "text", "Try this one next.\nHEIST BALL." },
-            { "text", "Better odds.\nSave it for later." },
-          }, {
+          }
+          if not ecruteakFeePaid() then
+            rows[#rows + 1] = { "text", "Five SNAG BALLs\nfor the job." }
+          end
+          if not ecruteakHeistPaid() then
+            rows[#rows + 1] = { "text", "One more thing.\nHEIST BALL." }
+            rows[#rows + 1] = { "text", "Better odds.\nSave it for later." }
+          end
+          mod.world:queueScript(rows, {
             onDone = function()
               -- Each half claimed independently, so a bag that fills partway
               -- through leaves exactly the unpaid half owed.
@@ -1370,13 +1678,13 @@ return function(mod)
                 end
                 setEcruteakFeePaid(true)
               end
-              if not ecruteakRewarded() then
-                if not giveHeistBall() then
+              if not ecruteakHeistPaid() then
+                if not giveHeistBalls(1) then
                   mod.world:queueScript({ { "text",
                     "CONTACT: No room\nfor the HEIST BALL." } })
                   return
                 end
-                setEcruteakRewarded(true)
+                setEcruteakHeistPaid(true)
               end
             end,
           })
@@ -1389,6 +1697,7 @@ return function(mod)
       if ecruteakStage() == CONTRACT_ACTIVE and ec then
         mod.world:queueScript({
           { "text", "CONTACT: Your mark\nis still around." },
+          { "text", contractTargetLine(ec) },
           { "text", ec.pitch1 },
           { "text", ec.pitch2 },
           { "text", "Ask around town." },
@@ -1427,7 +1736,156 @@ return function(mod)
                 ensureEcruteakMark(w)
               end
               mod.world:queueScript({
-                { "text", "CONTACT: Good.\nAsk around town." },
+                { "text", "CONTACT: Good.\n" .. contractTargetLine(c) },
+                { "text", "Ask around town." },
+              })
+            end,
+          })
+          g.stack:push(menu)
+        end,
+      })
+    end)
+
+    -- Olivine contract #3: choose WHERE to intercept the shipment. The
+    -- foreman pays the completed job first, then becomes a permanent fence.
+    mod.events:on("world.interacted", function(ev)
+      if not ev or ev.kind ~= "none" then return end
+      if ecruteakStage() ~= CONTRACT_DONE
+          or not ecruteakFeePaid() or not ecruteakHeistPaid() then return end
+
+      local oc = OLIVINE_CONTRACTS[olivineChoice() or ""]
+      local allowed = ev.mapId == OLIVINE_MAP or (oc and ev.mapId == oc.map)
+      if not allowed then return end
+
+      local world = mod.world:overworld()
+      local contact = objectNamed(world, OLIVINE_MAP, OLIVINE_CONTACT_NAME)
+      local witness = objectNamed(world, OLIVINE_MAP, OLIVINE_WITNESS_NAME)
+      local mark = oc and objectNamed(world, oc.map, OLIVINE_MARK_NAME)
+      local isContact = ev.mapId == OLIVINE_MAP
+          and contact and ev.x == contact.x and ev.y == contact.y
+      local isWitness = ev.mapId == OLIVINE_MAP
+          and witness and ev.x == witness.x and ev.y == witness.y
+      local isMark = oc and ev.mapId == oc.map
+          and mark and ev.x == mark.x and ev.y == mark.y
+      if not isContact and not isWitness and not isMark then return end
+
+      local cur = mod.world:current()
+      local opposite = { up = "down", down = "up", left = "right", right = "left" }
+      local who = isContact and OLIVINE_CONTACT_NAME
+          or (isWitness and OLIVINE_WITNESS_NAME or OLIVINE_MARK_NAME)
+      local whoMap = (isContact or isWitness) and OLIVINE_MAP
+          or (oc and oc.map)
+      local h = whoMap and mod.world:npc(whoMap, who)
+      if h and cur and cur.facing then pcall(h.face, h, opposite[cur.facing]) end
+
+      if isWitness then
+        if olivineStage() == CONTRACT_ACTIVE and oc and oc.gossip then
+          mod.world:queueScript({
+            { "text", "Recording for the\nRADIO, from\vGOLDENROD." },
+            { "text", oc.gossip[1] },
+            { "text", oc.gossip[2] },
+          })
+        else
+          mod.world:queueScript({
+            { "text", "Just harbour noise\ntoday. No good." },
+          })
+        end
+        return
+      end
+
+      if isMark then
+        if olivineStage() == CONTRACT_DONE and oc then
+          mod.world:queueScript({
+            { "text", oc.after1 },
+            { "text", oc.after2 },
+          })
+        end
+        return
+      end
+
+      if olivineStage() == CONTRACT_DONE then
+        if not (olivineRewarded() and olivineHeistPaid()) then
+          local rows = {
+            { "text", "FOREMAN: Clean.\nRoute's clear." },
+          }
+          if not olivineRewarded() then
+            rows[#rows + 1] = { "text", "Five SNAG BALLs.\nDock rate." }
+          end
+          if not olivineHeistPaid() then
+            rows[#rows + 1] = { "text", "Three HEIST BALLs.\nHazard pay." }
+          end
+          rows[#rows + 1] = { "text", "Bring future cargo\nback to me." }
+          mod.world:queueScript(rows, {
+            onDone = function()
+              -- Pay each half independently. An upgraded save whose five-ball
+              -- fee was already claimed receives only the three new HEIST
+              -- BALLs, and a full pocket cannot duplicate either half.
+              if not olivineRewarded() then
+                if not giveSnagBalls(CONTRACT_REWARD_BALLS) then
+                  mod.world:queueScript({ { "text",
+                    "FOREMAN: BAG full.\nClear deck space." } })
+                  return
+                end
+                setOlivineRewarded(true)
+              end
+              if not olivineHeistPaid() then
+                if not giveHeistBalls(3) then
+                  mod.world:queueScript({ { "text",
+                    "FOREMAN: No room\nfor HEIST BALLs." } })
+                  return
+                end
+                setOlivineHeistPaid(true)
+              end
+            end,
+          })
+        else
+          runFenceSale(FOREMAN_VOICE)
+        end
+        return
+      end
+
+      if olivineStage() == CONTRACT_ACTIVE and oc then
+        mod.world:queueScript({
+          { "text", "FOREMAN: Shipment\nstill moving." },
+          { "text", contractTargetLine(oc) },
+          { "text", oc.lead1 },
+          { "text", oc.lead2 },
+        })
+        return
+      end
+
+      mod.world:queueScript({
+        { "text", "FOREMAN: Three\nroutes are open." },
+        { "text", "WATERFRONT.\nOpen ground." },
+        { "text", "THE LIGHTHOUSE.\nQuiet inside." },
+        { "text", "GANGWAY.\nTight passage." },
+        { "text", "Pick the route.\nMake the grab." },
+      }, {
+        onDone = function()
+          local g = mod.game
+          if not (g and g.stack) then return end
+          local items = {
+            { label = "WATERFRONT", value = "WATERFRONT" },
+            { label = "CUSTOMS", value = "CUSTOMS" },
+            { label = "GANGWAY", value = "GANGWAY" },
+          }
+          local menu
+          menu = ListMenu.new(g, "CHOOSE A ROUTE", items, {
+            kind = "snag.contract3",
+            onChoose = function(item, list)
+              list:close()
+              local key = item and item.value
+              local c = key and OLIVINE_CONTRACTS[key]
+              if not c then return end
+              setOlivineChoice(key)
+              setOlivineStage(CONTRACT_ACTIVE)
+              local w = mod.world:overworld()
+              if w then ensureOlivineMark(w) end
+              mod.world:queueScript({
+                { "text", "FOREMAN: Good.\n" .. contractTargetLine(c) },
+                { "text", "Cover that route." },
+                { "text", c.lead1 },
+                { "text", c.lead2 },
               })
             end,
           })
@@ -1475,6 +1933,9 @@ return function(mod)
       elseif npc and npc.def and npc.def.name == ECRUTEAK_MARK_NAME
           and ecruteakStage() == CONTRACT_ACTIVE then
         ecruteakBattleActive = true
+      elseif npc and npc.def and npc.def.name == OLIVINE_MARK_NAME
+          and olivineStage() == CONTRACT_ACTIVE then
+        olivineBattleActive = true
       end
     end)
 
@@ -1517,6 +1978,27 @@ return function(mod)
       local key = ecruteakChoice()
       local c = key and ECRUTEAK_CONTRACTS[key]
       local carrier = key and ecruteakCarriers[key]
+      if not (c and carrier) then return base end
+      if class ~= c.class and class ~= carrier.classIx then return base end
+      local data = mod.game and mod.game.data
+      if not data then return base end
+      local out = {}
+      for _, spec in ipairs(c.party or {}) do
+        local mon = Mon.new(data, spec.species, spec.level)
+        if not mon then return base end
+        out[#out + 1] = mon
+      end
+      return #out > 0 and out or base
+    end)
+
+    -- Olivine route parties use real Gold trainer identities, with comparable
+    -- three-Pokemon protection regardless of which interception map was chosen.
+    mod.hooks:wrap("trainer.party", function(next_, class, member, party)
+      local base = next_()
+      if not olivineBattleActive then return base end
+      local key = olivineChoice()
+      local c = key and OLIVINE_CONTRACTS[key]
+      local carrier = key and olivineCarriers[key]
       if not (c and carrier) then return base end
       if class ~= c.class and class ~= carrier.classIx then return base end
       local data = mod.game and mod.game.data
@@ -1656,6 +2138,14 @@ return function(mod)
           ecruteakCleanupPending = false
         end
       end
+      if olivineBattleActive and olivineStage() == CONTRACT_ACTIVE then
+        local c = OLIVINE_CONTRACTS[olivineChoice() or ""]
+        if c and mon.species == c.target then
+          mon.snagBounty = true
+          setOlivineStage(CONTRACT_DONE)
+          olivineCleanupPending = false
+        end
+      end
     end)
 
     -- No world mutation during battle teardown.  Defang is only a field write;
@@ -1664,6 +2154,7 @@ return function(mod)
       local wasIntro = introBattleActive
       local wasContract = contractBattleActive
       local wasEcruteak = ecruteakBattleActive
+      local wasOlivine = olivineBattleActive
       activeTrainer = nil
 
       if wasIntro then
@@ -1700,6 +2191,18 @@ return function(mod)
           if obj then obj.trainer = nil end
         else
           ecruteakCleanupPending = true
+        end
+      end
+
+      if wasOlivine then
+        local world = mod.world:overworld()
+        local c = OLIVINE_CONTRACTS[olivineChoice() or ""]
+        local obj = c and objectNamed(world, c.map, OLIVINE_MARK_NAME)
+        olivineBattleActive = false
+        if olivineStage() == CONTRACT_DONE then
+          if obj then obj.trainer = nil end
+        else
+          olivineCleanupPending = true
         end
       end
     end)
@@ -1769,6 +2272,36 @@ return function(mod)
           armEcruteakMark(world)
         end
         ecruteakCleanupPending = false
+      end
+    end)
+
+    mod.events:on("world.stepped", function(ev)
+      if not ev or ecruteakStage() ~= CONTRACT_DONE
+          or not ecruteakFeePaid() or not ecruteakHeistPaid() then return end
+      local world = mod.world:overworld()
+      if not world then return end
+      local c = OLIVINE_CONTRACTS[olivineChoice() or ""]
+
+      if ev.mapId == OLIVINE_MAP then
+        ensureOlivineContact(world)
+        -- The recordist is only in town while there is a job running; she
+        -- packs up once the contract is done, like the other two witnesses.
+        if olivineStage() == CONTRACT_ACTIVE then
+          ensureOlivineWitness(world)
+        else
+          removeNamed(world, OLIVINE_MAP, OLIVINE_WITNESS_NAME)
+        end
+      end
+      if c and ev.mapId == c.map and olivineStage() == CONTRACT_ACTIVE then
+        ensureOlivineMark(world)
+      end
+
+      if olivineCleanupPending and c and ev.mapId == c.map then
+        if olivineStage() == CONTRACT_ACTIVE then
+          ensureOlivineMark(world)
+          armOlivineMark(world)
+        end
+        olivineCleanupPending = false
       end
     end)
 
@@ -1984,6 +2517,7 @@ return function(mod)
   mod.content.items:register("SNAG_BALL", {
     id = "SNAG_BALL", name = "SNAG BALL", price = 10000,
     tossable = true, ball = "SNAG_BALL",
+    description = "Steals a POKeMON.\nNormal catch rate.",
   })
   require("src.inventory.ItemEffects").BALLS["SNAG_BALL"] = true
 
