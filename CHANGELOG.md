@@ -1,3 +1,17 @@
+## 0.14.43 - Groundwork: one sale flow, many fences
+
+**Nothing changes in play.** This is preparation for letting the people who
+hand out contracts also buy what you steal, and it deliberately ships on
+its own so that "nothing changed" is a testable claim.
+
+- The Route 36 fence's buy-and-pay routine is now a single shared routine
+  that any number of fences can speak through. Each fence supplies only
+  its own lines.
+- The rules that protect you are in that one shared place: your last
+  Pokemon is never sellable, the payment always lands before the Pokemon
+  leaves your party, and the offer is re-checked after you confirm.
+- Every fence is also a way out of a dead end, not just the Route 36 one.
+
 ## 0.14.42 - A fence never pays just one ball
 
 Giving up a Pokemon is the most expensive thing you can do at a fence —
