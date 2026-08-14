@@ -69,13 +69,26 @@ jobs:
 
           # main.lua's mod.exports.version is what the in-game load log
           # prints, so it's how you confirm which build is running.
-          if grep -q 'mod.exports.version' main.lua; then
-            LUA=$(grep -o 'mod\.exports\.version *= *"[^"]*"' main.lua | head -1 | sed 's/.*"\(.*\)"/\1/')
-            echo "main.lua  : $LUA"
-            if [ "$VERSION" != "$LUA" ]; then
-              echo "::error::main.lua reports $LUA but manifest.json says $VERSION - the in-game load log would be wrong"
-              FAIL=1
-            fi
+          #
+          # This mod assigns it from a local (`mod.exports.version = VERSION`,
+          # since 0.14.39), so the value lives in `local VERSION = "x.y.z"`.
+          # Grepping the exports line for a string literal -- what this
+          # workflow used to do, and what the other repos still do -- matched
+          # nothing, so LUA came back EMPTY and the check failed the release
+          # against itself. That is what killed the v0.15.9 run. Read the
+          # local, and verify the exports line actually points at it.
+          LUA=$(grep -oP '^\s*local VERSION\s*=\s*"\K[^"]+' main.lua | head -1)
+          echo "main.lua  : $LUA"
+          if [ -z "$LUA" ]; then
+            echo "::error::could not find 'local VERSION = \"...\"' in main.lua"
+            FAIL=1
+          elif [ "$VERSION" != "$LUA" ]; then
+            echo "::error::main.lua reports $LUA but manifest.json says $VERSION - the in-game load log would be wrong"
+            FAIL=1
+          fi
+          if ! grep -q 'mod\.exports\.version\s*=\s*VERSION' main.lua; then
+            echo "::error::main.lua does not set mod.exports.version = VERSION - the load log would not report this build"
+            FAIL=1
           fi
 
           # The launcher only offers in-app updates for mods whose manifest
