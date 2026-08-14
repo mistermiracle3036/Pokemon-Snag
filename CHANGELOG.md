@@ -1,34 +1,134 @@
-## 0.15.6 - Olivine gets a voice, and the lighthouse job
+## 0.15.6 - Johto
 
-The Olivine cast was written in the foreman's vocabulary — the marks talked
-about cargo and manifests like they worked for him, and named their own
-Pokemon like a label on a crate. They are three different people now, and
-they sound like it.
+**Updating from v0.14.11? Pokemon Snag works on Pokemon Gold now.** Not a
+port of the Kanto story — a questline of its own, from a first Snag Ball to
+a network of contacts who hand out jobs and buy what you bring back.
 
-- **The MAGNETON job moved to the Olivine lighthouse.** Two of the three
-  routes were both on the port, close enough that choosing between them
-  barely changed where you went — and the whole point of this contract is
-  that the choice is a *place*. It is on the lighthouse ground floor now,
-  and the mark keeping a lighthouse running suits it far better.
-- **A new face in Olivine.** A sound recordist over from the Goldenrod radio
-  station is in town while a job is running, grumbling about her tape. She
-  has no idea what you are — she is complaining about the noise, and you are
-  the only one who knows what made it. She hears things the other two
-  witnesses would only have seen: a click out on the reef, a hum that ruins
-  a recording, a hiss up on the gangway.
-- **All three marks rewritten.** The fisher grew that coral herself, the
-  technician needs that unit for the light, and the sailor knows the thing
-  bites back.
-- The foreman keeps his own voice; a couple of his lines were reaching for
-  words a dock foreman would not use.
-- **The Olivine technician no longer claims his MAGNETON runs the
-  lighthouse.** It doesn't — Amphy does, and Amphy being unwell is the whole
-  reason you end up sailing to Cianwood. He is at the lighthouse taking
-  readings now, and losing them is what he minds.
-- **The Cherrygrove sailor no longer tells you not to hurt the Meowth.** That
+### Where it starts
+
+A sailor in **Cherrygrove City** gives you exactly one SNAG BALL and points
+you at a girl with something unusual on her team. That one ball is
+guaranteed to catch her **shiny Meowth** — the only time the mod bends its
+own rules. Snag it, find him again before you leave town, and he hands over
+five more balls and tells you where to sell what you steal.
+
+### Selling
+
+A **fence on Route 36**, near Sudowoodo, buys Pokemon you have snagged, and
+only those. He quotes a price and asks you to confirm before anything
+leaves your party, and he pays before it does. What he pays depends on the
+Pokemon's level when you took it, how rare it is, and **who you took it
+from** — the rivals, all sixteen Gym Leaders, the Elite Four, Lance and Red
+are all worth more, and that is remembered on the Pokemon even if you
+change your mod list later.
+
+**No sale pays less than 2 SNAG BALLs.** Giving up a Pokemon is the most
+expensive thing you can do — it leaves your party for good — and a single
+ball back could not even repeat the throw that caught it. *This one applies
+on Red as well.*
+
+### Three jobs, three kinds of choice
+
+A broker at **Goldenrod's Magnet Train Station** offers you a lead and lets
+you choose the type: **PSYCHIC**, **NORMAL** or **BUG**. Pick one and a
+trainer carrying that Pokemon turns up in the Goldenrod Underground.
+Somewhere in the city an ordinary passer-by is talking about having seen
+something strange — they have no idea what you are, and they are telling you
+where to look.
+
+Knock the target out and you have not failed; the mark comes back so you can
+try again. Snag it and the contract is done.
+
+Then **Ecruteak**, where the choice is not a type but a kind of person:
+**PERFORMER**, **MYSTIC** or **COLLECTOR**. Each leads somewhere different,
+with a different team around the target.
+
+Then **Olivine**, where a dock foreman lets you choose the *place*:
+the **WATERFRONT**, the **LIGHTHOUSE** or the **GANGWAY**. A sound recordist
+over from the Goldenrod radio station is in town while the job runs,
+complaining about whatever is ruining her tape. She has no idea what you
+are either.
+
+Every contract names the exact Pokemon you are being sent for. Marks travel
+with a full team and any of them can be snagged, but only the named target
+closes the job.
+
+**Contract targets are bounties.** A job's advertised Pokemon fences for at
+least 3 SNAG BALLs, and finishing a contract pays a flat **5** on top. If you
+are already carrying a mark from an earlier version, the fence works out what
+it was and pays the new rate — nothing to redo.
+
+### Better balls
+
+Finishing the first Ecruteak contract earns the **HEIST BALL**, which is
+twice as reliable as a plain SNAG BALL. Olivine pays five SNAG BALLs and
+three more HEIST BALLs for the risk. Both balls now describe themselves in
+the bag, so you can tell at a glance which one you are about to throw.
+
+### You cannot get permanently stuck
+
+Gold has no marts selling Snag Balls, so running out used to end the
+questline for good — a fence pays you for stolen Pokemon, which costs a
+ball to earn a ball. Now, if you turn up at a fence with **no Snag Balls of
+any kind and nothing they would buy**, you get handed one. They are not
+generous about it. Come back as often as you need.
+
+It only fires when you have absolutely nothing, so it cannot be used to
+stockpile.
+
+### Your contacts buy from you too
+
+Every contact starts buying snagged Pokemon once they have paid you for
+their contract — the Goldenrod broker directly, the Ecruteak contact in a
+colder voice, the Olivine foreman by the crate. Same rules either way: your
+last Pokemon is never sellable, and the payment always lands before the
+Pokemon leaves.
+
+### One more thing about Gold
+
+Snagging a healthy Pokemon is meant to be hard, and the odds improve as the
+target's HP drops, exactly as they would for a wild catch. A mark at full
+health is a low-percentage throw. Weaken it first if you can do it without
+knocking it out.
+
+The mod has no settings on Gold — CONTINUE BATTLE AFTER SNAG and GET NEW
+SNAG BALLS are Red/Blue/Yellow only, and on Gold the battle always
+continues after a snag.
+
+### Quest System is no longer required
+
+It used to be a hard dependency: without it, Pokemon Snag refused to load at
+all — no Snag Ball, no fences, no questline — for a mod that only supplies
+the journal entry. Since Quest System is distributed as a loose file rather
+than a release, the launcher could not fetch it for you, so a hand-installed
+third-party mod was gating everything. It is optional now. Install it and
+you get the journal entry; skip it and the questline plays identically.
+
+### Red, Blue and Yellow
+
+**Nothing about the Kanto story has changed.** Existing saves and existing
+Snag Balls behave exactly as they did in v0.14.11. The one change that
+crosses over is the 2-ball minimum at a fence, which applies on both games —
+they share one valuation.
+
+The mod also carries an MIT `LICENSE` now, which it never had, and the
+README has screenshots of the Johto questline.
+
+### New in this build
+
+- The Olivine cast was written in the foreman's vocabulary — the marks talked
+  about cargo and manifests like they worked for him. They are three
+  different people now, and they sound like it.
+- The MAGNETON job moved from the port to the **Olivine lighthouse**. Two of
+  the three routes were both on the port, so choosing between them barely
+  changed where you went.
+- The Olivine technician no longer claims his MAGNETON runs the lighthouse.
+  It doesn't — Amphy does, and Amphy being unwell is the whole reason you end
+  up sailing to Cianwood.
+- The Cherrygrove sailor no longer tells you not to hurt the Meowth. That
   snag is a guaranteed catch, so the instruction described a rule the mod
-  does not have — and the opposite of the one that matters later, where
-  wearing a mark down is exactly how you land it.
+  does not have — and the opposite of the one that matters later.
+
 
 ## 0.15.5 - Olivine high-risk payout
 
@@ -79,109 +179,13 @@ the shipment: the waterfront, customs platform, or upper gangway.
 - After payment, the foreman becomes a fence and uses the same protected sale
   flow and recovery-ball safety valve as the other Gold contacts.
 
-## 0.15.0 - Johto
+## 0.15.0 - Release preparation
 
-**Updating from v0.14.11? Pokemon Snag works on Pokemon Gold now.** Not a
-port of the Kanto story — a questline of its own, from a first Snag Ball to
-a network of contacts who hand out jobs and buy what you bring back.
+Documentation and presentation only; no gameplay change. Screenshots of the
+Johto questline in the README, the mod manager card updated to describe Gold
+rather than Kanto alone, and the load line no longer calling itself a test
+build.
 
-### Where it starts
-
-A sailor in **Cherrygrove City** gives you exactly one SNAG BALL and points
-you at a girl with something unusual on her team. That one ball is
-guaranteed to catch her **shiny Meowth** — the only time the mod bends its
-own rules. Snag it, find him again before you leave town, and he hands over
-five more balls and tells you where to sell what you steal.
-
-### Selling
-
-A **fence on Route 36**, near Sudowoodo, buys Pokemon you have snagged, and
-only those. He quotes a price and asks you to confirm before anything
-leaves your party, and he pays before it does. What he pays depends on the
-Pokemon's level when you took it, how rare it is, and **who you took it
-from** — the rivals, all sixteen Gym Leaders, the Elite Four, Lance and Red
-are all worth more, and that is remembered on the Pokemon even if you
-change your mod list later.
-
-**No sale pays less than 2 SNAG BALLs.** Giving up a Pokemon is the most
-expensive thing you can do — it leaves your party for good — and a single
-ball back could not even repeat the throw that caught it. *This one applies
-on Red as well.*
-
-### Jobs
-
-A broker at **Goldenrod's Magnet Train Station** offers you a lead and lets
-you choose the type: **PSYCHIC**, **NORMAL** or **BUG**. Pick one and a
-trainer carrying that Pokemon turns up in the **Goldenrod Underground**.
-Somewhere in the city, an ordinary passer-by is gossiping about having seen
-something strange — they have no idea what you are, and they are telling you
-where to look.
-
-Knock the target out and you have not failed; the mark comes back so you can
-try again. Snag it and the contract is done.
-
-Then **Ecruteak**, where the choice is not a type but a kind of person:
-**PERFORMER**, **MYSTIC** or **COLLECTOR**. Each leads somewhere different,
-with a different team around the target.
-
-**Contract targets are bounties.** A job's advertised Pokemon fences for at
-least 3 SNAG BALLs, and finishing a contract pays a flat **5** on top. If you
-are already carrying a mark from an earlier version, the fence works out what
-it was and pays the new rate — nothing to redo.
-
-### Better balls
-
-Finishing the first Ecruteak contract earns the **HEIST BALL**, which is
-twice as reliable as a plain SNAG BALL.
-
-### You cannot get permanently stuck
-
-Gold has no marts selling Snag Balls, so running out used to end the
-questline for good — the fence pays you for stolen Pokemon, which costs a
-ball to earn a ball. Now, if you turn up at a fence with **no Snag Balls of
-any kind and nothing they would buy**, you get handed one. They are not
-generous about it. Come back as often as you need.
-
-It only fires when you have absolutely nothing, so it cannot be used to
-stockpile.
-
-### Your contacts buy from you too
-
-The Goldenrod broker starts buying snagged Pokemon directly once he has paid
-you for his contract, and the Ecruteak contact does the same after handing
-over the HEIST BALL — in a colder voice, and at a higher level. Same rules,
-same protections: your last Pokemon is never sellable, and the payment
-always lands before the Pokemon leaves.
-
-### One more thing about Gold
-
-Snagging a healthy Pokemon is meant to be hard, and the odds improve as the
-target's HP drops, exactly as they would for a wild catch. A mark at full
-health is a low-percentage throw. Weaken it first if you can do it without
-knocking it out.
-
-The mod has no settings on Gold — CONTINUE BATTLE AFTER SNAG and GET NEW
-SNAG BALLS are Red/Blue/Yellow only, and on Gold the battle always
-continues after a snag.
-
-### Quest System is no longer required
-
-It used to be a hard dependency: without it, Pokemon Snag refused to load at
-all — no Snag Ball, no fences, no questline — for a mod that only supplies
-the journal entry. Since Quest System is distributed as a loose file rather
-than a release, the launcher could not fetch it for you, so a hand-installed
-third-party mod was gating everything. It is optional now. Install it and
-you get the journal entry; skip it and the questline plays identically.
-
-### Red, Blue and Yellow
-
-**Nothing about the Kanto story has changed.** Existing saves and existing
-Snag Balls behave exactly as they did in v0.14.11. The one change that
-crosses over is the 2-ball minimum at a fence, which applies on both games —
-they share one valuation.
-
-The mod also carries an MIT `LICENSE` now, which it never had, and the
-README has screenshots of the Johto questline.
 
 ## 0.14.44 - Your contacts buy what you steal
 
