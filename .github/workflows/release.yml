@@ -139,11 +139,32 @@ jobs:
 
           # Release notes = this version's CHANGELOG section, plus install
           # steps and the checksum so anyone can verify the download.
-          awk -v v="## $VERSION" '
-            $0 == v {found=1; next}
-            found && /^## / {exit}
-            found {print}
+          # Match the heading on its VERSION TOKEN, not the whole line. The
+          # old `$0 == "## $VERSION"` was an exact line match, so any
+          # decorated heading -- and 25 of this file's headings are decorated
+          # -- captured zero lines and published a release whose body was
+          # just the install steps. Nothing failed: the version-agreement
+          # check above reads only the first word of the heading, so it
+          # passed while the notes came out empty.
+          awk -v v="$VERSION" '
+            /^## / {
+              if (found) exit
+              h = $0
+              gsub(/[][]/, "", h)
+              sub(/^##[ \t]*/, "", h)
+              split(h, parts, /[ \t]/)
+              if (parts[1] == v) { found = 1; next }
+            }
+            found { print }
           ' CHANGELOG.md > notes.md
+
+          # An empty body means the heading did not match, or the section is
+          # blank. Either way this must not publish silently -- a release
+          # whose notes are just install steps looks deliberate and is not.
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::no CHANGELOG section body found for $VERSION - refusing to publish empty release notes"
+            exit 1
+          fi
 
           {
             echo ""
