@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.14.43"
+  local VERSION = "0.14.44"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -1114,17 +1114,55 @@ return function(mod)
         .. "Show me something\nyou... acquired.",
       lastMon = "FENCE: Not your\nlast POKEMON.\f"
         .. "Come back with\nanother one.",
-      notSnagged = "FENCE: That's clean.\nI only buy hot goods.",
-      quote = "FENCE: %s...\fI can do %d SNAG\nBALL%s. Deal?",
+      -- Three of these were over the 18-column line width and had been
+      -- soft-wrapping in game since 0.14.38 (0.14.44).  `quote` overflowed
+      -- only for a long nickname, which is why it survived testing: the
+      -- name sat after "FENCE: " on the same line, so a 10-character
+      -- nickname made 20.  It gets its own box now, the way the broker and
+      -- contact voices do.  Wording is otherwise unchanged.
+      notSnagged = "FENCE: That one's\nclean.\fI only buy hot\ngoods.",
+      quote = "%s...\fI can do %d SNAG\nBALL%s. Deal?",
       declined = "FENCE: Your call.\nI'll be around.",
       changed = "FENCE: Something\nchanged. No deal.",
-      noRoom = "FENCE: No room for\nmy payment. Clear space.",
+      noRoom = "FENCE: No room for\nmy payment.\fClear some space.",
       done = "FENCE: Done.\f%d SNAG BALL%s.\nForget we met.",
       valveFull = "FENCE: Your BAG's\nfull. Clear space.",
       valveGive = "FENCE: No BALLs,\nno goods.\f"
         .. "You're no use to\nme like that.\f"
         .. "Here. One SNAG\nBALL. On credit.\f"
         .. "Don't waste it.",
+    }
+
+    -- The broker treats every sale as another staff transaction.
+    local BROKER_VOICE = {
+      invite = "BROKER: Got stock?\nLet's talk terms.",
+      lastMon = "BROKER: One left?\nYour last stays.",
+      notSnagged = "BROKER: Clean.\nNot on my ledger.",
+      quote = "%s.\fBROKER: %d SNAG\nBALL%s. Approve?",
+      declined = "BROKER: Held back.\nWe'll revisit.",
+      changed = "BROKER: Inventory\nchanged. Again.",
+      noRoom = "BROKER: BAG full.\nMake room first.",
+      done = "BROKER: Transfer\napproved.\f%d SNAG BALL%s.\nGood work.",
+      valveFull = "BROKER: BAG full.\nMake room first.",
+      valveGive = "BROKER: No stock,\nno BALLs.\f"
+        .. "Advance: one SNAG\nBALL.\f"
+        .. "Pay it back in\nresults.",
+    }
+
+    -- The contact buys leverage and makes clear that refusal is temporary.
+    local CONTACT_VOICE = {
+      invite = "CONTACT: Goods?\nShow me. Quietly.",
+      lastMon = "CONTACT: Last one?\nNo. Stay useful.",
+      notSnagged = "CONTACT: Clean.\nWorthless to me.",
+      quote = "%s.\fCONTACT: %d SNAG\nBALL%s. Decide.",
+      declined = "CONTACT: Refused.\nFor now.",
+      changed = "CONTACT: Changed.\nStart again.",
+      noRoom = "CONTACT: BAG full.\nClear it.",
+      done = "CONTACT: Accepted.\f%d SNAG BALL%s.\nYou saw nothing.",
+      valveFull = "CONTACT: BAG full.\nClear it.",
+      valveGive = "CONTACT: Empty?\nPathetic.\f"
+        .. "One SNAG BALL.\nA final courtesy.\f"
+        .. "Bring me something\nworth my time.",
     }
 
     -- Goldenrod contract #1.  The broker introduces the first real choice:
@@ -1191,7 +1229,7 @@ return function(mod)
         if not contractRewarded() then
           mod.world:queueScript({
             { "text", "BROKER: Good work.\nYour call now." },
-            { "text", "Keep it, or trade\nit to a fence." },
+            { "text", "Keep it, or bring\nit back to me." },
             { "text", "Five SNAG BALLs.\nYou earned them." },
           }, {
             onDone = function()
@@ -1205,10 +1243,7 @@ return function(mod)
             end,
           })
         else
-          mod.world:queueScript({
-            { "text", "BROKER: Keep it, or\ntrade it to a fence." },
-            { "text", "Better BALLs soon.\nKeep working." },
-          })
+          runFenceSale(BROKER_VOICE)
         end
         return
       end
@@ -1346,10 +1381,7 @@ return function(mod)
             end,
           })
         else
-          mod.world:queueScript({
-            { "text", "Keep it, or trade\nit to a fence." },
-            { "text", "Bigger marks come\nwith bigger risks." },
-          })
+          runFenceSale(CONTACT_VOICE)
         end
         return
       end

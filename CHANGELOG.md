@@ -1,3 +1,16 @@
+## 0.14.44 - Your contacts buy what you steal
+
+- After paying out the Goldenrod contract, the broker now buys snagged
+  Pokemon directly instead of sending you elsewhere.
+- After paying the Ecruteak fee and handing over the HEIST BALL, the contact
+  also becomes a fence with a colder, higher-level voice of their own.
+- Both contacts use the same safe sale rules and payouts as the Route 36
+  fence, including refusing your last Pokemon or a clean Pokemon and offering
+  one recovery ball if you are completely stuck.
+- Tidied three of the Route 36 fence's lines that ran past the width of the
+  text box and were wrapping awkwardly. One of them only misbehaved for a
+  Pokemon with a long nickname. Same words, better spacing.
+
 ## 0.14.43 - Groundwork: one sale flow, many fences
 
 **Nothing changes in play.** This is preparation for letting the people who
