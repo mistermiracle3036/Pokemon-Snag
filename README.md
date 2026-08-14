@@ -134,6 +134,17 @@ log prints the running version so you can confirm what's live.
 
 - **[Pokéball Colors](https://github.com/mistermiracle3036/Pokeball-Colors)** —
   optional. Gives the Snag Ball its own colours.
+- **[Too Many Balls](https://github.com/mistermiracle3036/Too-Many-Balls)** —
+  optional, and worth having on Gold. Gold's Ball pocket is small and this
+  mod adds two more ids to it, so Pokemon Snag asks Too Many Balls for two
+  slots of extra headroom when it is installed. Without it nothing breaks —
+  the pocket is simply tighter, and if a reward will not fit, whoever owes
+  it keeps that half until you have made room.
+
+  Its **Ball Case** tidies away its own balls, which is the quickest way to
+  stop scrolling past a dozen of them. Your Snag Balls stay in the pocket
+  rather than going into the case — each mod's balls stay with that mod —
+  so the ones you actually throw mid-battle are still where you left them.
 - **[Ribbons](https://github.com/mistermiracle3036/Ribbons)** — supported.
   Reads the snag marker on stolen Pokémon and awards a ribbon.
 - **[Shiny Pokémon](https://github.com/masterwebx/gen1recomp-shiny-pokemon)** —

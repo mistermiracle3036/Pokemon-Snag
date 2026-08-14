@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.15.6"
+  local VERSION = "0.15.7"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
