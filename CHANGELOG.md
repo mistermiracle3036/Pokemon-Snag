@@ -1,3 +1,56 @@
+## 0.15.0 - Johto
+
+**Pokemon Snag comes to Gold.**
+
+### Updating from v0.14.11?
+
+That was the last public release, and two big things have happened since.
+
+**Quest System is no longer required.** It used to be a hard dependency:
+without it, Pokemon Snag refused to load at all — no Snag Ball, no fences,
+no questline — for a mod that only supplies the journal entry. Since that
+mod is distributed as a loose file rather than a release, the launcher
+could not fetch it for you, so a hand-installed third-party mod was
+gating everything. It is optional now. Install it and you get the journal
+entry; skip it and the questline plays identically.
+
+**Gold has its own questline.** Not a port of the Kanto story — a separate
+one, with its own characters, that begins the moment you reach Cherrygrove
+City:
+
+- A sailor there points out a stolen shiny Meowth and hands you a single
+  Snag Ball to take it back. That one is a guaranteed catch. Nothing after
+  it is.
+- A broker in Goldenrod then offers you contract work, and lets you choose
+  the *kind* of mark rather than naming one: Psychic, Normal or Bug. An
+  ordinary resident's gossip about something strange they saw is your only
+  lead on where the target went.
+- An Ecruteak contact raises the stakes, picking marks by the kind of
+  trainer holding them — Performer, Mystic or Collector — each with a
+  different team and a different part of the city.
+- Finishing that contract earns the **Heist Ball**, a better Snag Ball at
+  double the catch rate. It is not sold anywhere.
+- Everyone who gives you a job also buys from you once it is done, and
+  none of them will let you get permanently stuck: turn up with no Snag
+  Balls and nothing worth buying, and you will be handed one, grudgingly.
+
+Every Johto character in this is the mod's own. No vanilla Gold NPC is
+taken over and no map data is changed, so it sits alongside other Johto
+mods without fighting them.
+
+**On Red, Blue and Yellow**, the questline is unchanged, with one
+adjustment: no fence pays less than **2** Snag Balls now. Giving up a
+Pokemon is permanent, and one ball back could not even buy the throw that
+caught it.
+
+### New in 0.15.0
+
+- Screenshots in the README, and the Gold questline documented properly
+  rather than described as a private test.
+- The mod's card in the mod manager now describes the Johto questline —
+  it previously only mentioned Kanto.
+- The load line no longer calls itself a test build.
+
 ## 0.14.44 - Your contacts buy what you steal
 
 - After paying out the Goldenrod contract, the broker now buys snagged

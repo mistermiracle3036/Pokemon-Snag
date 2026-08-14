@@ -52,10 +52,16 @@ collapsed so you only reveal what you want.
   a truck, and they each have their own opinion of you.
 - **Choose your supply.** One setting decides where new Snag Balls come
   from: the marts (they are *not* cheap), the fences, or both.
+- **A separate Gold questline.** Johto gets its own story rather than a
+  port of Kanto's — an introduction in Cherrygrove, then contract work
+  for brokers who name a target and let you go and find it. See
+  [The Gold questline](#the-gold-questline).
 
 ## Options
 
-Open **MODS → POKEMON SNAG → OPTIONS** (F10 mod manager):
+Open **MODS → POKEMON SNAG → OPTIONS** (F10 mod manager). **These are
+Red/Blue/Yellow only** — the Gold questline has no settings, and the
+battle always continues after a snag there:
 
 | Option | Default | Effect |
 | ------ | ------- | ------ |
@@ -160,11 +166,11 @@ It replaced an earlier opening built around the Viridian City girl.
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-### Gold private test
+## The Gold questline
 
 The Gold path is a separate questline, not a port of the Kanto one — the mod splits on generation at load and the Kanto quest never runs on Gold. Gold marts do **not** stock the SNAG BALL: every ball comes from the questline, starting with the single ball the Cherrygrove sailor hands you.
 
-### Custom trainer VIP compatibility (Gold)
+### For modders: custom trainer VIP compatibility (Gold)
 
 Pokemon Snag exposes a `snag.vip` hook for mods that add important custom trainers.
 The hook receives the built-in VIP verdict plus encounter context and may return `true`
@@ -185,7 +191,7 @@ end)
 `trainerName`, `memberIndex`, `trainerEvent`, and `sight`.
 
 
-## Gold private test: Goldenrod contract
+### Goldenrod: your first contract
 
 After completing the Cherrygrove introduction and claiming the sailor's five-ball reward, a broker appears in Goldenrod City. He offers one of three leads:
 
@@ -200,7 +206,7 @@ Contract targets are bounties: the mark you were sent for fences for at least 3 
 Snag Balls are not sold anywhere on Gold, so the Route 36 fence doubles as your safety net: turn up with no Snag Balls and nothing he wants to buy, and he'll hand you one free rather than let you waste his time. You cannot permanently run out.
 
 
-## Gold private test: Ecruteak archetype contract
+### Ecruteak: pick your risk
 
 ![An Ecruteak contact says he has heard of three marks](docs/05-ecruteak-contact.png)
 
@@ -212,4 +218,4 @@ After successfully snagging the selected Goldenrod target, an Ecruteak contact o
 
 A neutral resident gives Pokedex-flavored gossip that points toward the chosen mark. Only snagging the advertised target completes the job, but other Pokemon in the mark's party remain valid Snag targets.
 
-Returning to the Ecruteak contact after completion awards one HEIST BALL. It doubles the catch rate; it is not sold anywhere and fences do not trade for it. (0.14.37 called this reward the GREAT SNAG BALL at 1.5x — 0.14.38 replaced it with the HEIST BALL from the tier brief.)
+Returning to the Ecruteak contact after completion awards one HEIST BALL. It doubles the catch rate; it is not sold anywhere and fences do not trade for it.
