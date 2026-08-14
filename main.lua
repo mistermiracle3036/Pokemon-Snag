@@ -1019,6 +1019,114 @@ return function(mod)
       })
     end)
 
+    ------------------------------------------------------------------
+    -- ONE sale flow, spoken by different people (0.14.43).
+    --
+    -- The first dialogue is only an invitation; once it closes, Gold's real
+    -- Gen2PartyMenu is opened through World:selectPartyMon.  Selecting a mon
+    -- is an offer, not an irreversible sale: valid stolen mons get a quoted
+    -- payout and an explicit YES/NO before anything is removed.
+    --
+    -- This is extracted rather than copied because of what it protects, all
+    -- of which is easy to get subtly wrong and expensive when it is:
+    --
+    --   * the player's last Pokemon is never sellable (#party < 2);
+    --   * the slot is RE-VERIFIED after the confirmation box, because the
+    --     party can move while a menu is open;
+    --   * payment lands BEFORE the Pokemon is removed, so a full BALL pocket
+    --     costs the player nothing instead of eating the mon;
+    --   * the dead-end valve runs first, so every fence is a way out rather
+    --     than only the one the player happens to be standing next to.
+    --
+    -- A new fence is therefore a VOICE table and a gate.  It is never a
+    -- second copy of this function -- two copies drift, and the copy that
+    -- drifts is the one that loses somebody's Pokemon.
+    ------------------------------------------------------------------
+    local function runFenceSale(voice)
+      if isDeadEnded() then
+        local game = mod.game
+        local save, data = game and game.save, game and game.data
+        if not (save and save.inventory and data) then return end
+        if Bag.add(save, "SNAG_BALL", 1, data) ~= true then
+          mod.world:queueScript({ { "text", voice.valveFull } })
+          return
+        end
+        mod.world:queueScript({ { "text", voice.valveGive } })
+        return
+      end
+
+      mod.world:queueScript({ { "text", voice.invite } }, {
+        onDone = function()
+          local w = mod.world:overworld()
+          local game = mod.game
+          local save = game and game.save
+          if not (w and save and save.party) then return end
+          if #save.party < 2 then
+            mod.world:queueScript({ { "text", voice.lastMon } })
+            return
+          end
+          w:selectPartyMon("choose", function(index, picked)
+            if not index or not picked then return end
+            if picked.snagged ~= true then
+              mod.world:queueScript({ { "text", voice.notSnagged } })
+              return
+            end
+            ensureBountyFlag(picked)
+            local n = snagPayout(picked)
+            local name = monName(picked)
+            mod.world:queueScript({ { "text", string.format(
+              voice.quote, name, n, n == 1 and "" or "s") } }, {
+              onDone = function()
+                local ChoiceBox = require("src.ui.ChoiceBox")
+                local g = mod.game
+                if not (g and g.stack) then return end
+                g.stack:push(ChoiceBox.new(g, function(yes)
+                  if not yes then
+                    mod.world:queueScript({ { "text", voice.declined } })
+                    return
+                  end
+                  local party = g.save and g.save.party
+                  if not party or #party < 2 or party[index] ~= picked then
+                    mod.world:queueScript({ { "text", voice.changed } })
+                    return
+                  end
+                  -- Pay first. If the BALL pocket cannot take the reward,
+                  -- the Pokemon never leaves the party.
+                  if Bag.add(g.save, "SNAG_BALL", n, g.data) ~= true then
+                    mod.world:queueScript({ { "text", voice.noRoom } })
+                    return
+                  end
+                  table.remove(party, index)
+                  mod.world:queueScript({ { "text", string.format(
+                    voice.done, n, n == 1 and "" or "s") } })
+                end, { defaultNo = true }))
+              end,
+            })
+          end)
+        end,
+      })
+    end
+
+    -- The Route 36 fence: a professional, and the only one who was ever in
+    -- this business for its own sake.
+    local ROUTE36_VOICE = {
+      invite = "FENCE: I deal in\nspecial POKEMON.\f"
+        .. "Show me something\nyou... acquired.",
+      lastMon = "FENCE: Not your\nlast POKEMON.\f"
+        .. "Come back with\nanother one.",
+      notSnagged = "FENCE: That's clean.\nI only buy hot goods.",
+      quote = "FENCE: %s...\fI can do %d SNAG\nBALL%s. Deal?",
+      declined = "FENCE: Your call.\nI'll be around.",
+      changed = "FENCE: Something\nchanged. No deal.",
+      noRoom = "FENCE: No room for\nmy payment. Clear space.",
+      done = "FENCE: Done.\f%d SNAG BALL%s.\nForget we met.",
+      valveFull = "FENCE: Your BAG's\nfull. Clear space.",
+      valveGive = "FENCE: No BALLs,\nno goods.\f"
+        .. "You're no use to\nme like that.\f"
+        .. "Here. One SNAG\nBALL. On credit.\f"
+        .. "Don't waste it.",
+    }
+
     -- Goldenrod contract #1.  The broker introduces the first real choice:
     -- PSYCHIC/NORMAL/BUG.  The choice is durable for this contract and spawns
     -- one real trainer mark elsewhere in the city.  There is no free ball and
@@ -1295,114 +1403,6 @@ return function(mod)
         end,
       })
     end)
-
-    ------------------------------------------------------------------
-    -- ONE sale flow, spoken by different people (0.14.43).
-    --
-    -- The first dialogue is only an invitation; once it closes, Gold's real
-    -- Gen2PartyMenu is opened through World:selectPartyMon.  Selecting a mon
-    -- is an offer, not an irreversible sale: valid stolen mons get a quoted
-    -- payout and an explicit YES/NO before anything is removed.
-    --
-    -- This is extracted rather than copied because of what it protects, all
-    -- of which is easy to get subtly wrong and expensive when it is:
-    --
-    --   * the player's last Pokemon is never sellable (#party < 2);
-    --   * the slot is RE-VERIFIED after the confirmation box, because the
-    --     party can move while a menu is open;
-    --   * payment lands BEFORE the Pokemon is removed, so a full BALL pocket
-    --     costs the player nothing instead of eating the mon;
-    --   * the dead-end valve runs first, so every fence is a way out rather
-    --     than only the one the player happens to be standing next to.
-    --
-    -- A new fence is therefore a VOICE table and a gate.  It is never a
-    -- second copy of this function -- two copies drift, and the copy that
-    -- drifts is the one that loses somebody's Pokemon.
-    ------------------------------------------------------------------
-    local function runFenceSale(voice)
-      if isDeadEnded() then
-        local game = mod.game
-        local save, data = game and game.save, game and game.data
-        if not (save and save.inventory and data) then return end
-        if Bag.add(save, "SNAG_BALL", 1, data) ~= true then
-          mod.world:queueScript({ { "text", voice.valveFull } })
-          return
-        end
-        mod.world:queueScript({ { "text", voice.valveGive } })
-        return
-      end
-
-      mod.world:queueScript({ { "text", voice.invite } }, {
-        onDone = function()
-          local w = mod.world:overworld()
-          local game = mod.game
-          local save = game and game.save
-          if not (w and save and save.party) then return end
-          if #save.party < 2 then
-            mod.world:queueScript({ { "text", voice.lastMon } })
-            return
-          end
-          w:selectPartyMon("choose", function(index, picked)
-            if not index or not picked then return end
-            if picked.snagged ~= true then
-              mod.world:queueScript({ { "text", voice.notSnagged } })
-              return
-            end
-            ensureBountyFlag(picked)
-            local n = snagPayout(picked)
-            local name = monName(picked)
-            mod.world:queueScript({ { "text", string.format(
-              voice.quote, name, n, n == 1 and "" or "s") } }, {
-              onDone = function()
-                local ChoiceBox = require("src.ui.ChoiceBox")
-                local g = mod.game
-                if not (g and g.stack) then return end
-                g.stack:push(ChoiceBox.new(g, function(yes)
-                  if not yes then
-                    mod.world:queueScript({ { "text", voice.declined } })
-                    return
-                  end
-                  local party = g.save and g.save.party
-                  if not party or #party < 2 or party[index] ~= picked then
-                    mod.world:queueScript({ { "text", voice.changed } })
-                    return
-                  end
-                  -- Pay first. If the BALL pocket cannot take the reward,
-                  -- the Pokemon never leaves the party.
-                  if Bag.add(g.save, "SNAG_BALL", n, g.data) ~= true then
-                    mod.world:queueScript({ { "text", voice.noRoom } })
-                    return
-                  end
-                  table.remove(party, index)
-                  mod.world:queueScript({ { "text", string.format(
-                    voice.done, n, n == 1 and "" or "s") } })
-                end, { defaultNo = true }))
-              end,
-            })
-          end)
-        end,
-      })
-    end
-
-    -- The Route 36 fence: a professional, and the only one who was ever in
-    -- this business for its own sake.
-    local ROUTE36_VOICE = {
-      invite = "FENCE: I deal in\nspecial POKEMON.\f"
-        .. "Show me something\nyou... acquired.",
-      lastMon = "FENCE: Not your\nlast POKEMON.\f"
-        .. "Come back with\nanother one.",
-      notSnagged = "FENCE: That's clean.\nI only buy hot goods.",
-      quote = "FENCE: %s...\fI can do %d SNAG\nBALL%s. Deal?",
-      declined = "FENCE: Your call.\nI'll be around.",
-      changed = "FENCE: Something\nchanged. No deal.",
-      noRoom = "FENCE: No room for\nmy payment. Clear space.",
-      done = "FENCE: Done.\f%d SNAG BALL%s.\nForget we met.",
-      valveFull = "FENCE: Your BAG's\nfull. Clear space.",
-      valveGive = "FENCE: No BALLs,\nno goods.\f"
-        .. "You're no use to\nme like that.\f"
-        .. "Here. One SNAG\nBALL. On credit.\f"
-        .. "Don't waste it.",
-    }
 
     mod.events:on("world.interacted", function(ev)
       if not ev or ev.mapId ~= FENCE_MAP or ev.kind ~= "none" then return end
