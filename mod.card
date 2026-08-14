@@ -18,10 +18,15 @@ return {
       "a GET NEW SNAG BALLS option (BOTH / MART / FENCES, default BOTH) choosing where post-quest Snag Balls come from -- marts stock them at 10,000 at the same shops Custom Pokeballs uses for GREAT/ULTRA BALL",
       "a [DEV] option to replay the Meowth quest for testing (default off)",
       "a snagged Pokemon gets persistent markers (mon.snagged, mon.snagFrom, mon.snagLevel; survive save/load) for other mods and this mod's own fence to key off",
-      "after the quest, four NPCs become fences: the NUGGET BRIDGE recruiter himself (no badge), the Celadon Game Corner gambler (no badge; Red/Blue and Yellow names both covered), the Pewter City man who explains badge-based obedience (needs the BOULDERBADGE), and the Vermilion City dock sailor (needs the THUNDERBADGE). Hand any of them a snagged Pokemon for 1-5 SNAG BALLs, priced by snag level, species rarity, and VIP provenance (rival/gym leaders/Elite Four/Giovanni)",
+      "after the quest, four NPCs become fences: the NUGGET BRIDGE recruiter himself (no badge), the Celadon Game Corner gambler (no badge; Red/Blue and Yellow names both covered), the Pewter City man who explains badge-based obedience (needs the BOULDERBADGE), and the Vermilion City dock sailor (needs the THUNDERBADGE). Hand any of them a snagged Pokemon for 2-5 SNAG BALLs, priced by snag level, species rarity, and VIP provenance (rival/gym leaders/Elite Four/Giovanni); a quest mark on GOLD never pays less than 3",
       "the fences are deliberately not one organization -- the sailor and the recruiter are TEAM ROCKET, the gambler and the Pewter man are independents who simply buy stolen goods, and each has its own voice",
+      "GOLD: a separate questline, not a port of the Kanto one -- the mod splits on generation at load and neither story runs on the other game. A CHERRYGROVE CITY sailor opens it with one SNAG BALL and a guaranteed catch on a stolen shiny MEOWTH, then a GOLDENROD broker and an ECRUTEAK contact hand out contracts: pick the KIND of mark (type, then trainer archetype), follow a neutral resident's gossip to find them, and snag the advertised target. All the NPCs are this mod's own, spawned at runtime -- no vanilla Johto character is taken over and no Johto map data is patched",
+      "GOLD: the HEIST BALL, a second Snag Ball tier at double the catch rate, awarded once for finishing the ECRUTEAK contract. It is not sold anywhere and no fence trades for it",
+      "GOLD: SNAG BALLs are not sold in marts at all -- every one comes from the questline or from a fence. The ROUTE 36 fence, the broker and the contact all buy snagged Pokemon once their own job is done, and any of them will hand over one free ball if you have none left and nothing to sell, so the questline cannot dead-end",
     },
     known = {
+      "GOLD: the mod has no options there. CONTINUE BATTLE AFTER SNAG and GET NEW SNAG BALLS are Red/Blue/Yellow only -- on GOLD the battle always continues after a snag, and there are no marts to configure",
+      "GOLD: snagging a healthy Pokemon is hard on purpose, and the catch odds fall with the target's remaining HP exactly as a wild catch does -- a full-HP mark is a low-percentage throw, so weaken it first if you can do it without fainting it",
       "with \"Continue battle after snag\" on (default), a snag also awards EXP and plays the faint sound/slide, since it routes through the real faint pipeline -- a normal catch never does either",
       "with that option off, a snag ends the trainer battle immediately even if they had other Pokemon left",
       "the fences take over vanilla NPCs. If another mod claims the same character, the engine picks one winner per NPC and the loser's dialogue silently never runs -- if a fence only ever gives its ordinary line, check GET NEW SNAG BALLS is not set to MART, then try disabling other NPC-editing mods",
@@ -33,7 +38,7 @@ return {
 
   credits = {
     { who = "trikus (gen1recomp Discord)", for_ = "the Nugget Bridge opening -- use the TEAM ROCKET grunt who already asks you to join, and let saying yes mean something" },
-    { who = "Quest System", for_ = "the journal, NPC markers and quest state this mod registers into" },
+    { who = "Quest System by FAFF0x (github.com/FAFF0x/gen1recomp -- committed zip, not a release)", for_ = "the journal, NPC markers and quest state this mod registers into when present; OPTIONAL as of 0.14.13 -- without it the questline plays identically, just with no journal entry" },
     { who = "Custom Pokeballs", for_ = "the item+ball registry pattern this mod's Snag Ball follows, and the mart list its shop unlock reuses" },
     { who = "Team Rocket Returns", for_ = "the map_scripts/Flags/base_talk dialogue pattern and custom trainer-class registration this mod follows" },
     { who = "Shiny Pokemon", for_ = "the optional shiny-DV generator this mod's Meowth uses when that mod is installed" },

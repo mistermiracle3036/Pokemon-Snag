@@ -1,7 +1,7 @@
 {
   "id": "snag_quest",
   "name": "Pokemon Snag",
-  "version": "0.14.11",
+  "version": "0.15.9",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -12,14 +12,18 @@
   "permissions": [
     "engine_internals"
   ],
-  "dependencies": [
-    "quest_system"
-  ],
+  "dependencies": [],
   "optional_dependencies": [
+    "quest_system",
     "SHINY_POKEMON",
-    "pokeball_colors"
+    "pokeball_colors",
+    "kanto_balls"
   ],
   "conflicts": [],
-  "description": "Steal Pokemon from other trainers. The SNAG BALL works in trainer battles, so any Pokemon an opponent sends out is one you can take. Beat the TEAM ROCKET recruiter at Nugget Bridge to earn your first, or fence stolen Pokemon to black-market buyers across Kanto. Requires Quest System.",
-  "github": "mistermiracle3036/Pokemon-Snag"
+  "description": "Steal Pokemon from other trainers with the SNAG BALL. It works in trainer battles, so any Pokemon an opponent sends out is one you can take. On Red, beat the TEAM ROCKET recruiter at Nugget Bridge to earn your first, then fence stolen Pokemon to black-market buyers across Kanto. On Gold, a sailor in Cherrygrove City starts you off and brokers in Goldenrod and Ecruteak hand out contracts. Quest System optional, for a journal entry.",
+  "github": "mistermiracle3036/Pokemon-Snag",
+  "games": [
+    "gen1",
+    "gen2"
+  ]
 }
