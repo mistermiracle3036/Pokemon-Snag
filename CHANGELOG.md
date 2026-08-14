@@ -1,4 +1,4 @@
-## 0.15.7 - Johto
+## 0.15.8 - Johto
 
 **Updating from v0.14.11? Pokemon Snag works on Pokemon Gold now.** Not a
 port of the Kanto story — a questline of its own, from a first Snag Ball to
@@ -128,6 +128,14 @@ README has screenshots of the Johto questline.
 - The Cherrygrove sailor no longer tells you not to hurt the Meowth. That
   snag is a guaranteed catch, so the instruction described a rule the mod
   does not have — and the opposite of the one that matters later.
+- **You can no longer sell your last Pokemon.** A fence would take it if you
+  were holding an egg, because an egg fills a party slot but cannot battle —
+  so the sale went through and left you unable to snag anything at all, with
+  no way back. Every fence now counts what can actually fight, and says so:
+  no partner, no merchandise.
+- The same hole existed on Red, in a different place: handing the Kanto quest
+  Meowth over could empty your party outright. It asks you for a different
+  Pokemon now, before opening the picker rather than after.
 - The README now covers **Too Many Balls**, which is worth having on Gold:
   it gives the Ball pocket the headroom these two extra balls ask for, and
   its Ball Case clears its own balls out of your way while leaving your

@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.15.7"
+  local VERSION = "0.15.8"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -1043,9 +1043,24 @@ return function(mod)
       return n
     end
 
+    -- What can actually FIGHT, not what fills a party slot (0.15.8). An egg
+    -- occupies a slot and cannot battle, so it must never be what keeps a
+    -- player "not empty" -- see the note on hasSellableSnaggedMon below.
+    local function battlers(party, excluding)
+      local n = 0
+      for _, mon in ipairs(party or {}) do
+        if mon ~= excluding and type(mon) == "table" and mon.isEgg ~= true then
+          n = n + 1
+        end
+      end
+      return n
+    end
+
+    -- "Sellable" must mean a sale would actually be ALLOWED, or the valve
+    -- and the sale disagree and the player falls between them.
     local function hasSellableSnaggedMon()
       local party = mod.game and mod.game.save and mod.game.save.party
-      if type(party) ~= "table" or #party < 2 then return false end
+      if type(party) ~= "table" or battlers(party) < 2 then return false end
       for _, mon in ipairs(party) do
         if mon and mon.snagged == true then return true end
       end
@@ -1369,7 +1384,7 @@ return function(mod)
           local game = mod.game
           local save = game and game.save
           if not (w and save and save.party) then return end
-          if #save.party < 2 then
+          if battlers(save.party) < 2 then
             mod.world:queueScript({ { "text", voice.lastMon } })
             return
           end
@@ -1394,7 +1409,8 @@ return function(mod)
                     return
                   end
                   local party = g.save and g.save.party
-                  if not party or #party < 2 or party[index] ~= picked then
+                  if not party or battlers(party, picked) < 1
+                      or party[index] ~= picked then
                     mod.world:queueScript({ { "text", voice.changed } })
                     return
                   end
@@ -1420,8 +1436,8 @@ return function(mod)
     local ROUTE36_VOICE = {
       invite = "FENCE: I deal in\nspecial POKEMON.\f"
         .. "Show me something\nyou... acquired.",
-      lastMon = "FENCE: Not your\nlast POKEMON.\f"
-        .. "Come back with\nanother one.",
+      lastMon = "FENCE: You nuts?\nKeep one POKEMON.\f"
+        .. "No partner, no\nmerchandise.",
       -- Three of these were over the 18-column line width and had been
       -- soft-wrapping in game since 0.14.38 (0.14.44).  `quote` overflowed
       -- only for a long nickname, which is why it survived testing: the
@@ -1444,7 +1460,8 @@ return function(mod)
     -- The broker treats every sale as another staff transaction.
     local BROKER_VOICE = {
       invite = "BROKER: Got stock?\nLet's talk terms.",
-      lastMon = "BROKER: One left?\nYour last stays.",
+      lastMon = "BROKER: One left?\nThat one stays.\f"
+        .. "No partner, no\ncontracts.",
       notSnagged = "BROKER: Clean.\nNot on my ledger.",
       quote = "%s.\fBROKER: %d SNAG\nBALL%s. Approve?",
       declined = "BROKER: Held back.\nWe'll revisit.",
@@ -1460,7 +1477,8 @@ return function(mod)
     -- The contact buys leverage and makes clear that refusal is temporary.
     local CONTACT_VOICE = {
       invite = "CONTACT: Goods?\nShow me. Quietly.",
-      lastMon = "CONTACT: Last one?\nNo. Stay useful.",
+      lastMon = "CONTACT: Last one?\nNo.\f"
+        .. "You need a partner\nto take anything.",
       notSnagged = "CONTACT: Clean.\nWorthless to me.",
       quote = "%s.\fCONTACT: %d SNAG\nBALL%s. Decide.",
       declined = "CONTACT: Refused.\nFor now.",
@@ -1476,7 +1494,8 @@ return function(mod)
     -- The foreman speaks like a shipping boss: every sale is cargo moved.
     local FOREMAN_VOICE = {
       invite = "FOREMAN: Cargo?\nI can move it.",
-      lastMon = "FOREMAN: Last one?\nKeep your crew.",
+      lastMon = "FOREMAN: Last one?\nKeep your crew.\f"
+        .. "No hands, no\ncargo.",
       notSnagged = "FOREMAN: Papers on\nthat one. No.",
       quote = "%s.\fFOREMAN: %d SNAG\nBALL%s. Loading?",
       declined = "FOREMAN: Hold it.\nDock stays open.",
@@ -3329,6 +3348,16 @@ return function(mod)
       local Screens = require("src.ui.Screens")
       local party = ctx.save.party
       local runner = ctx.runner
+      -- Never empty the party (0.15.8). This path had no size guard at all,
+      -- unlike the fence beside it -- so handing over a MEOWTH that was the
+      -- player's only Pokemon left them with none, which no vanilla script
+      -- can do. Checked BEFORE the picker opens, so the player is not asked
+      -- to choose and then refused. Gen 1 has no eggs, so a slot count is
+      -- the whole question here; the Gold arm counts battlers instead.
+      if type(party) ~= "table" or #party < 2 then
+        ctx.lastCheck = false
+        return
+      end
       local picked
       Screens.push(ctx.game, "PartyMenu", {
         pickOnly = true,
