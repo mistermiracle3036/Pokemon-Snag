@@ -395,6 +395,30 @@ return function(mod)
       },
     }
 
+    -- Choice-menu rows are built FROM the contract tables (0.15.6).
+    --
+    -- Each menu used to carry its own hardcoded copy of the labels, which is
+    -- the same string written in two places -- and the LIGHTHOUSE rename
+    -- proved the trap immediately: the table said LIGHTHOUSE, the menu still
+    -- offered CUSTOMS, and nothing failed because both were valid strings.
+    -- The label now has one home. `key` remains the stored save value, so
+    -- renaming a label can never move what a save holds.
+    --
+    -- The order is explicit because `pairs` is unordered and these menus must
+    -- not reshuffle between visits.
+    local CONTRACT_ORDER = { "NATU", "AIPOM", "YANMA" }
+    local ECRUTEAK_ORDER = { "SMEARGLE", "MISDREAVUS", "GIRAFARIG" }
+    local OLIVINE_ORDER = { "WATERFRONT", "CUSTOMS", "GANGWAY" }
+
+    local function menuItems(order, contracts)
+      local items = {}
+      for _, key in ipairs(order) do
+        local c = contracts[key]
+        if c then items[#items + 1] = { label = c.label, value = key } end
+      end
+      return items
+    end
+
     mod.content.text:register("SNAG_G2_CORSOLA_SEEN",
       "Took years to\ngrow that coral.")
     mod.content.text:register("SNAG_G2_CORSOLA_WIN",
@@ -1567,11 +1591,7 @@ return function(mod)
         onDone = function()
           local g = mod.game
           if not (g and g.stack) then return end
-          local items = {
-            { label = "PSYCHIC", value = "NATU" },
-            { label = "NORMAL", value = "AIPOM" },
-            { label = "BUG", value = "YANMA" },
-          }
+          local items = menuItems(CONTRACT_ORDER, CONTRACTS)
           local menu
           menu = ListMenu.new(g, "CHOOSE A LEAD", items, {
             kind = "snag.contract",
@@ -1714,11 +1734,7 @@ return function(mod)
         onDone = function()
           local g = mod.game
           if not (g and g.stack) then return end
-          local items = {
-            { label = "PERFORMER", value = "SMEARGLE" },
-            { label = "MYSTIC", value = "MISDREAVUS" },
-            { label = "COLLECTOR", value = "GIRAFARIG" },
-          }
+          local items = menuItems(ECRUTEAK_ORDER, ECRUTEAK_CONTRACTS)
           local menu
           menu = ListMenu.new(g, "CHOOSE A MARK", items, {
             kind = "snag.contract2",
@@ -1863,11 +1879,7 @@ return function(mod)
         onDone = function()
           local g = mod.game
           if not (g and g.stack) then return end
-          local items = {
-            { label = "WATERFRONT", value = "WATERFRONT" },
-            { label = "CUSTOMS", value = "CUSTOMS" },
-            { label = "GANGWAY", value = "GANGWAY" },
-          }
+          local items = menuItems(OLIVINE_ORDER, OLIVINE_CONTRACTS)
           local menu
           menu = ListMenu.new(g, "CHOOSE A ROUTE", items, {
             kind = "snag.contract3",
