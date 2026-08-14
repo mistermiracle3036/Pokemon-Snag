@@ -2,22 +2,21 @@
 
 **Throw a ball at another trainer's Pokémon and take it.** Pokemon Snag
 adds the Snag Ball to **gen1recomp**: a real, reusable ball that works in
-trainer battles, so any Pokémon an opponent sends out is a Pokémon you
-can walk away with. It has its own questline on **Red / Blue / Yellow**
-and a separate one on **Gold**.
+trainer battles, so any Pokémon an opponent sends out is a Pokémon you can
+walk away with.
 
-On Red, a Team Rocket recruiter at the end of Nugget Bridge brings you
-into the business, and a network of black-market "fences" across Kanto
-pays you in Snag Balls for the goods — so the better your thefts, the
-more you can steal. On Gold you start smaller, working jobs for brokers
-who name a target and let you find it.
+**On Pokémon Gold** you work your way into a black-market network — a first
+ball handed over in Cherrygrove, a fence who buys what you steal, and
+brokers who name a target and let you go and find it.
 
 | | |
 |---|---|
-| ![A sailor in Cherrygrove City points out a stolen shiny Meowth](docs/01-cherrygrove-sailor.png) | ![A fence on Route 36 offers to buy stolen Pokémon](docs/02-fence-route36.png) |
-| The Gold questline opens in Cherrygrove City. | Fences buy what you steal — and pay in Snag Balls. |
-| ![A broker's menu offering a Psychic, Normal or Bug lead](docs/03-choose-a-lead.png) | ![A collector in Ecruteak warns the player off a rare Pokémon](docs/04-ecruteak-mark.png) |
-| Contracts let you pick the kind of mark. | Then you go and find them. |
+| ![A sailor in Cherrygrove City hands the player a Snag Ball](docs/snag-01-cherrygrove-first-ball.png) | ![A girl in Cherrygrove City says the player stole her Meowth](docs/snag-02-you-stole-my-meowth.png) |
+| It starts with one ball and a target. | It goes about as well as she expected. |
+| ![A fence on Route 36 says he deals in special Pokémon](docs/snag-03-fence-route36.png) | ![A broker's menu offering a Psychic, Normal or Bug lead](docs/snag-05-choose-a-lead.png) |
+| A fence on Route 36 buys what you steal. | Contracts let you pick the kind of mark. |
+| ![A trainer boasts that it took him weeks to catch his Yanma](docs/snag-06-mark-brags-about-yanma.png) | ![The battle log reads: Gotcha! Yanma was caught!](docs/snag-07-yanma-caught.png) |
+| He is very proud of that Yanma. | Not any more, he isn't. |
 
 > **Development Preview:** Pokemon Snag is in active development. Bug reports
 > and feature ideas are welcome in
@@ -28,46 +27,89 @@ Looking for exact merchant locations, payout math or quest triggers?
 Open the **[FAQ and spoiler guide](FAQ.md)** — every detailed answer is
 collapsed so you only reveal what you want.
 
-## Features
+---
 
-- **The intro quest.** Beat the Team Rocket recruiter at the end of
-  Nugget Bridge, then hear him out. He'll set you up with your first Snag
-  Ball and a target: a Picnicker with a very special Meowth. The snag is
-  guaranteed — and so is a surprise about that Meowth. Say no and the
-  offer stays open; come back any time.
-- **The Snag Ball.** A custom ball that works in *trainer* battles. Throw
-  it at an opponent's Pokémon and it's yours. It throws with the
-  Ultra/Master-tier arc and flicker, because a ball that costs ₽10,000 or
-  a stolen Pokémon shouldn't look like a starter item. Snagged Pokémon are marked
-  permanently and keep a record of who you took them from and at what
-  level.
-- **Keep fighting.** By default the battle continues after a successful
-  snag (the trainer sends out their next Pokémon). This can be turned off
-  in options if you prefer the snag to end the battle.
-- **Four fences.** Certain NPCs around Kanto quietly buy snagged Pokémon,
-  paying **2–5 Snag Balls** depending on the mon's level, rarity and who
-  you stole it from. VIP targets — a certain rival, gym leaders, the
-  Elite Four — fetch top price. They are not one organisation: two are
-  Rocket, two are independents who simply like what falls off the back of
-  a truck, and they each have their own opinion of you.
-- **Choose your supply.** One setting decides where new Snag Balls come
-  from: the marts (they are *not* cheap), the fences, or both.
-- **A separate Gold questline.** Johto gets its own story rather than a
-  port of Kanto's — an introduction in Cherrygrove, then contract work
-  for brokers who name a target and let you go and find it. See
-  [The Gold questline](#the-gold-questline).
+## The Gold questline
 
-## Options
+Johto gets its own story rather than a port of Kanto's. The mod splits on
+generation at load, and the Kanto quest never runs on Gold.
 
-Open **MODS → POKEMON SNAG → OPTIONS** (F10 mod manager). **These are
-Red/Blue/Yellow only** — the Gold questline has no settings, and the
-battle always continues after a snag there:
+**Snag Balls are not sold anywhere on Gold.** Every ball you own comes from
+the questline, starting with the single one the Cherrygrove sailor hands
+you.
 
-| Option | Default | Effect |
-| ------ | ------- | ------ |
-| CONTINUE BATTLE AFTER SNAG | ON | Trainer battles continue after a successful snag instead of ending |
-| GET NEW SNAG BALLS | BOTH | Where Snag Balls come from after the quest: `BOTH`, `MART` (₽10,000 each) or `FENCES` |
-| [DEV] REPLAY INTRO QUEST | OFF | Dev/testing toggle — lets you redo *Introduction to Thievery* |
+### Cherrygrove: your first ball
+
+A sailor gives you exactly one SNAG BALL and points you at a girl with
+something unusual on her team. That one ball is guaranteed to catch her
+**shiny Meowth** — the only time the mod bends its own rules. Snag it, find
+him again before you leave town, and he hands over five more and tells you
+where to sell what you take.
+
+### Route 36: the fence
+
+A fence near Sudowoodo buys Pokémon you have snagged, and only those. He
+quotes a price and asks you to confirm before anything leaves your party,
+and **he pays before it does**.
+
+He is also your safety net. Turn up with no Snag Balls of any kind and
+nothing he wants to buy, and he hands you one free rather than let you
+waste his time — so you cannot permanently run out. He is not generous
+about it.
+
+### Goldenrod: your first contract
+
+A broker at the Magnet Train Station offers you a lead and lets you choose
+the type: **PSYCHIC**, **NORMAL** or **BUG**. Pick one and a trainer
+carrying that Pokémon turns up in the Goldenrod Underground. Somewhere in
+the city an ordinary passer-by is talking about having seen something
+strange — they have no idea what you are, and they are telling you where to
+look.
+
+This is the first real job: no free ball, no guaranteed catch. Knock the
+target out and you have not failed — the mark comes back so you can try
+again. Snag it and the contract is done.
+
+### Ecruteak: pick your risk
+
+![An Ecruteak contact says he has heard of three marks](docs/snag-11-ecruteak-contact.png)
+
+The second contract asks a different question — not which Pokémon, but what
+kind of person is carrying it:
+
+- **PERFORMER** — the easier party, at the Dance Theater
+- **MYSTIC** — a three-strong Ghost party, over by the Burned Tower
+- **COLLECTOR** — rarer, stronger, out by the west gate
+
+A neutral resident gossips about something odd they have seen, which points
+you at the mark. Only the advertised target completes the job, but the rest
+of their team is fair game.
+
+Finish it and go back, and the contact hands you a **HEIST BALL** — twice
+as reliable as a plain Snag Ball. It is not sold anywhere and no fence will
+trade for one.
+
+### What a job is worth
+
+Contract targets are **bounties**: the mark you were sent for fences for at
+least 3 Snag Balls rather than the going rate for casual theft, and
+finishing a contract pays a flat **5** on top. The rest of a mark's team is
+fair game, but only the advertised target carries the bounty.
+
+Once they have paid you, **both contacts start buying** — the Goldenrod
+broker directly, and the Ecruteak contact in a colder voice and at a higher
+level. Same rules either way: your last Pokémon is never sellable, and the
+payment always lands before the Pokémon leaves.
+
+## How snag payouts work
+
+No sale pays less than 2 Snag Balls — giving up a Pokémon is permanent, and
+one ball back could not even repeat the throw that caught it. On top of that
+floor come bonuses for high level, hard-to-catch species and VIP victims,
+capped at 5. A quest mark never pays less than 3. Exact thresholds are in
+the [FAQ](FAQ.md) behind a spoiler fold.
+
+**This applies on both games** — Red and Gold share one valuation.
 
 ## Installation
 
@@ -76,106 +118,103 @@ battle always continues after a snag there:
 2. In the launcher: **MODS → Import mod .zip**. On iOS, delete any older
    downloaded copy of the zip from Files first.
 3. Fully quit and relaunch.
-4. Requires gen1recomp **0.1.38 or newer**. Nothing else is mandatory.
 
-**Optional: Quest System.** Install it and the questline gets a proper
-journal entry — objective, progress, map markers. Without it everything
-still works exactly the same; you just track the quest yourself. Download
-`quest_system_v<version>.zip` from the root of
-[FAFF0x/gen1recomp](https://github.com/FAFF0x/gen1recomp) and import it
-the same way. Note it is committed directly in that repo rather than
-published under Releases, so grab the zip from the file list — and the
-launcher's auto-update won't cover it.
+Requires gen1recomp **0.1.38 or newer** for Red, Blue and Yellow, and
+**0.1.78 or newer** for Gold — that is the release Gen 2 support arrived
+in. Nothing else is mandatory.
 
 **Updating:** once installed, the launcher checks this repo for new
 releases. The mod's entry shows "vX.Y.Z available" → tap → **Update** →
 fully quit and relaunch. No manual re-download.
 
-After installing an update, **fully quit and relaunch** the game. The
-load log prints the running version so you can confirm what's live.
+After installing an update, **fully quit and relaunch** the game. The load
+log prints the running version so you can confirm what's live.
 
 ## Compatibility
 
-- **[quest_system](https://github.com/FAFF0x/gen1recomp)** by FAFF0x —
-  optional. With it, the questline appears in the journal with an
-  objective, progress and map markers. Without it the quest plays
-  identically — it runs on its own save flags — you simply get no journal
-  entry. Grab `quest_system_v<version>.zip` from that repo's file list;
-  it is committed there rather than released. See Installation above.
-- **[kanto_ribbons](https://github.com/mistermiracle3036/kanto_ribbons)** —
-  supported. Reads the snag marker on stolen Pokémon and awards a ribbon.
+- **[Pokéball Colors](https://github.com/mistermiracle3036/Pokeball-Colors)** —
+  optional. Gives the Snag Ball its own colours.
+- **[Ribbons](https://github.com/mistermiracle3036/Ribbons)** — supported.
+  Reads the snag marker on stolen Pokémon and awards a ribbon.
 - **[Shiny Pokémon](https://github.com/masterwebx/gen1recomp-shiny-pokemon)** —
   optional, and the division of labour matters: **this mod supplies the
   data, that mod supplies the picture.** The quest Meowth's shiny DVs are
   set here and are engine-native (`Stats.isShiny`), so it is genuinely
   shiny whether or not that mod is installed. Every *visual* — the ◆
   marker beside the name, the sparkle animation on send-out — is drawn
-  entirely by Shiny Pokémon. The engine draws no shiny effects of its
-  own and Pokemon Snag draws nothing at all. Turning that mod off leaves
-  the Meowth just as shiny, only undecorated. Note its marker and its
-  recolour are separate options, so a Meowth showing the ◆ but the wrong
-  colour means **SHINY COLORS** is switched off.
-- **[Pokéball Colors](https://github.com/mistermiracle3036/Pokeball-Colors)** —
-  optional. Gives the Snag Ball its own colours.
-- **[NPC Inspector](https://github.com/mistermiracle3036/npc_inspector)** —
-  not required to play; the dev tool used to target this mod's NPCs
-  correctly across Red, Blue and Yellow.
+  entirely by Shiny Pokémon. Turning that mod off leaves the Meowth just
+  as shiny, only undecorated. Note its marker and its recolour are
+  separate options, so a Meowth showing the ◆ but the wrong colour means
+  **SHINY COLORS** is switched off.
+- **[quest_system](https://github.com/FAFF0x/gen1recomp)** by FAFF0x —
+  optional. With it, the questline appears in the journal with an
+  objective, progress and map markers. Without it the quest plays
+  identically — it runs on its own save flags — you simply get no journal
+  entry. Grab `quest_system_v<version>.zip` from that repo's file list; it
+  is committed there rather than released, so the launcher's auto-update
+  will not cover it.
 - **Dramatic Shape (voxel mode)** — played and tested in voxel mode.
-- **Red, Blue and Yellow all supported.** Where an NPC's internal name
-  differs between versions, both names are registered. Every NPC this mod
-  takes over was checked against the engine's Red and Yellow symbol
-  tables: the Nugget Bridge recruiter, the Pewter fence and the Vermilion
-  fence are identical across versions; the Celadon fence genuinely
-  differs, so that one ships both names.
 - **Other mods that change the same NPCs.** This mod takes over specific
-  vanilla characters. If another mod claims the same character, only one
-  of them wins and the other's dialogue silently never runs — that is how
-  the engine resolves the conflict, not a bug in either mod. If a fence
-  only ever gives their ordinary line, try disabling other NPC-editing
-  mods to see which one is winning. (Team Rocket Returns was tested
-  alongside this mod and does **not** conflict.)
+  vanilla characters. If another mod claims the same character, only one of
+  them wins and the other's dialogue silently never runs — that is how the
+  engine resolves the conflict, not a bug in either mod. If a fence only
+  ever gives their ordinary line, try disabling other NPC-editing mods to
+  see which one is winning. (Team Rocket Returns was tested alongside this
+  mod and does **not** conflict.)
 
-## How snag payouts work
+---
 
-No sale pays less than 2 Snag Balls — giving up a Pokémon is permanent,
-and one ball back could not even repeat the throw that caught it. On top
-of that floor come bonuses for high level, hard-to-catch species and VIP
-victims, capped at 5. A quest mark never pays less than 3. Exact
-thresholds are in the [FAQ](FAQ.md) behind a spoiler fold.
+## Also on Red, Blue and Yellow
+
+Kanto has its own separate questline, and it is still here — nothing about
+it changed when Gold arrived.
+
+A **Team Rocket recruiter** at the end of Nugget Bridge brings you into the
+business. Beat him, then hear him out: he sets you up with your first Snag
+Ball and a target, a Picnicker with a very special Meowth. The snag is
+guaranteed, and so is a surprise about that Meowth. Say no and the offer
+stays open — come back any time.
+
+From there, **four fences** around Kanto quietly buy snagged Pokémon,
+paying **2–5 Snag Balls** depending on the mon's level, rarity and who you
+stole it from. VIP targets — a certain rival, gym leaders, the Elite Four —
+fetch top price. They are not one organisation: two are Rocket, two are
+independents who simply like what falls off the back of a truck, and they
+each have their own opinion of you.
+
+**Red, Blue and Yellow are all supported.** Where an NPC's internal name
+differs between versions, both names are registered. Every NPC this mod
+takes over was checked against the engine's Red and Yellow symbol tables:
+the Nugget Bridge recruiter, the Pewter fence and the Vermilion fence are
+identical across versions; the Celadon fence genuinely differs, so that one
+ships both names.
+
+### Options — Red, Blue and Yellow only
+
+Open **MODS → POKEMON SNAG → OPTIONS** (F10 mod manager). **The Gold
+questline has no settings**, and the battle always continues after a snag
+there.
+
+| Option | Default | Effect |
+| ------ | ------- | ------ |
+| CONTINUE BATTLE AFTER SNAG | ON | Trainer battles continue after a successful snag instead of ending |
+| GET NEW SNAG BALLS | BOTH | Where Snag Balls come from after the quest: `BOTH`, `MART` (₽10,000 each) or `FENCES` |
+| [DEV] REPLAY INTRO QUEST | OFF | Dev/testing toggle — lets you redo *Introduction to Thievery* |
 
 ## For modders
 
 If you're building on this, [DEVELOPMENT.md](DEVELOPMENT.md) documents the
 engine internals this mod touches and the reasoning behind them — the
 trainer-battle ball gate, the faint-pipeline handoff, and the
-`mon.snagged` / `mon.snagFrom` / `mon.snagLevel` fields other mods can
-read.
+`mon.snagged` / `mon.snagFrom` / `mon.snagLevel` fields other mods can read.
 
-## Credits
+### Custom trainer VIP compatibility (Gold)
 
-Built for [gen1recomp](https://github.com/bryanthaboi/gen1recomp).
-By **Mister Miracle**
-([@mistermiracle3036](https://github.com/mistermiracle3036)).
-
-The Nugget Bridge opening was **trikus's** idea, suggested in the
-gen1recomp Discord: instead of inventing a character to hand out the
-quest, use the Team Rocket grunt who already asks whether you want to
-join — and let saying yes actually mean something. Vanilla asks the
-question and then ignores your answer, so the hook was already there.
-It replaced an earlier opening built around the Viridian City girl.
-
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-## The Gold questline
-
-The Gold path is a separate questline, not a port of the Kanto one — the mod splits on generation at load and the Kanto quest never runs on Gold. Gold marts do **not** stock the SNAG BALL: every ball comes from the questline, starting with the single ball the Cherrygrove sailor hands you.
-
-### For modders: custom trainer VIP compatibility (Gold)
-
-Pokemon Snag exposes a `snag.vip` hook for mods that add important custom trainers.
-The hook receives the built-in VIP verdict plus encounter context and may return `true`
-to mark that trainer as VIP for Snag Ball fence valuation. The verdict is stamped onto
-the stolen Pokemon as `mon.snagVip`, so the bonus remains stable later.
+Pokemon Snag exposes a `snag.vip` hook for mods that add important custom
+trainers. The hook receives the built-in VIP verdict plus encounter context
+and may return `true` to mark that trainer as VIP for fence valuation. The
+verdict is stamped onto the stolen Pokémon as `mon.snagVip`, so the bonus
+stays stable later even if the other mod is disabled.
 
 ```lua
 mod.hooks:wrap("snag.vip", function(next_, vip, ctx)
@@ -190,32 +229,18 @@ end)
 `ctx` includes `game`, `world`, `npc`, `mapId`, `trainerClass`, `classIndex`,
 `trainerName`, `memberIndex`, `trainerEvent`, and `sight`.
 
+## Credits
 
-### Goldenrod: your first contract
+Built for [gen1recomp](https://github.com/bryanthaboi/gen1recomp).
+By **Mister Miracle**
+([@mistermiracle3036](https://github.com/mistermiracle3036)).
 
-After completing the Cherrygrove introduction and claiming the sailor's five-ball reward, a broker appears in Goldenrod City. He offers one of three leads:
+The Nugget Bridge opening was **trikus's** idea, suggested in the
+gen1recomp Discord: instead of inventing a character to hand out the
+quest, use the Team Rocket grunt who already asks whether you want to
+join — and let saying yes actually mean something. Vanilla asks the
+question and then ignores your answer, so the hook was already there.
+It replaced an earlier opening built around the Viridian City girl.
 
-- PSYCHIC -> NATU
-- NORMAL -> AIPOM
-- BUG -> YANMA
-
-This is the first non-tutorial Snag job: no free ball and no guaranteed catch. The selected target can be retried if it is knocked out. Snagging it completes the contract.
-
-Contract targets are bounties: the mark you were sent for fences for at least 3 Snag Balls rather than the going rate for casual theft, and finishing a contract pays a flat 5 on top. The rest of a mark's team is fair game, but only the advertised target carries the bounty.
-
-Snag Balls are not sold anywhere on Gold, so the Route 36 fence doubles as your safety net: turn up with no Snag Balls and nothing he wants to buy, and he'll hand you one free rather than let you waste his time. You cannot permanently run out.
-
-
-### Ecruteak: pick your risk
-
-![An Ecruteak contact says he has heard of three marks](docs/05-ecruteak-contact.png)
-
-After successfully snagging the selected Goldenrod target, an Ecruteak contact offers a second contract based on trainer archetype rather than Pokemon type.
-
-- PERFORMER: Smeargle / easier two-Pokemon party / Dance Theater
-- MYSTIC: Misdreavus / three-Pokemon Ghost party / Burned Tower side of Ecruteak
-- COLLECTOR: Girafarig / stronger rare-species party / west gate
-
-A neutral resident gives Pokedex-flavored gossip that points toward the chosen mark. Only snagging the advertised target completes the job, but other Pokemon in the mark's party remain valid Snag targets.
-
-Returning to the Ecruteak contact after completion awards one HEIST BALL. It doubles the catch rate; it is not sold anywhere and fences do not trade for it.
+Licensed under [MIT](LICENSE). See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
