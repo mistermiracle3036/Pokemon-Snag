@@ -133,7 +133,9 @@ log prints the running version so you can confirm what's live.
 ## Compatibility
 
 - **[Pokéball Colors](https://github.com/mistermiracle3036/Pokeball-Colors)** —
-  optional. Gives the Snag Ball its own colours.
+  optional. On **Red, Blue and Yellow** it paints the Snag Ball's throw in
+  Team Rocket black and red; this mod hands it those colours at startup, so
+  there is nothing to set up.
 - **[Too Many Balls](https://github.com/mistermiracle3036/Too-Many-Balls)** —
   optional, and worth having on Gold. Gold's Ball pocket is small and this
   mod adds two more ids to it, so Pokemon Snag asks Too Many Balls for two
@@ -147,31 +149,11 @@ log prints the running version so you can confirm what's live.
   so the ones you actually throw mid-battle are still where you left them.
 - **[Ribbons](https://github.com/mistermiracle3036/Ribbons)** — supported.
   Reads the snag marker on stolen Pokémon and awards a ribbon.
-- **[Shiny Pokémon](https://github.com/masterwebx/gen1recomp-shiny-pokemon)** —
-  optional, and the division of labour matters: **this mod supplies the
-  data, that mod supplies the picture.** The quest Meowth's shiny DVs are
-  set here and are engine-native (`Stats.isShiny`), so it is genuinely
-  shiny whether or not that mod is installed. Every *visual* — the ◆
-  marker beside the name, the sparkle animation on send-out — is drawn
-  entirely by Shiny Pokémon. Turning that mod off leaves the Meowth just
-  as shiny, only undecorated. Note its marker and its recolour are
-  separate options, so a Meowth showing the ◆ but the wrong colour means
-  **SHINY COLORS** is switched off.
-- **[quest_system](https://github.com/FAFF0x/gen1recomp)** by FAFF0x —
-  optional. With it, the questline appears in the journal with an
-  objective, progress and map markers. Without it the quest plays
-  identically — it runs on its own save flags — you simply get no journal
-  entry. Grab `quest_system_v<version>.zip` from that repo's file list; it
-  is committed there rather than released, so the launcher's auto-update
-  will not cover it.
-- **Dramatic Shape (voxel mode)** — played and tested in voxel mode.
-- **Other mods that change the same NPCs.** This mod takes over specific
-  vanilla characters. If another mod claims the same character, only one of
-  them wins and the other's dialogue silently never runs — that is how the
-  engine resolves the conflict, not a bug in either mod. If a fence only
-  ever gives their ordinary line, try disabling other NPC-editing mods to
-  see which one is winning. (Team Rocket Returns was tested alongside this
-  mod and does **not** conflict.)
+- **It sits quietly beside other mods on Gold.** Everyone this mod adds in
+  Johto — the sailor, the fence, the brokers, the marks — is its own
+  character placed at runtime, not a vanilla NPC rewritten. So it does not
+  compete with another mod for the same townsfolk, and nothing it adds can
+  be silently overwritten by one.
 
 ---
 
@@ -199,6 +181,35 @@ takes over was checked against the engine's Red and Yellow symbol tables:
 the Nugget Bridge recruiter, the Pewter fence and the Vermilion fence are
 identical across versions; the Celadon fence genuinely differs, so that one
 ships both names.
+
+### Other mods in Kanto
+
+Unlike the Gold questline, the Kanto one works by **taking over specific
+vanilla characters**. If another mod claims the same character, only one of
+them wins and the other's dialogue silently never runs — that is how the
+engine resolves the conflict, not a bug in either mod. If a fence only ever
+gives their ordinary line, try disabling other NPC-editing mods to see which
+one is winning. (Team Rocket Returns was tested alongside this mod and does
+**not** conflict.)
+
+**[quest_system](https://github.com/FAFF0x/gen1recomp)** by FAFF0x —
+optional, and Kanto only. With it, the questline appears in the journal with
+an objective, progress and map markers. Without it the quest plays
+identically — it runs on its own save flags — you simply get no journal
+entry. Grab `quest_system_v<version>.zip` from that repo's file list; it is
+committed there rather than released, so the launcher's auto-update will not
+cover it.
+
+**[Shiny Pokémon](https://github.com/masterwebx/gen1recomp-shiny-pokemon)** —
+optional, and only relevant here: Gold renders shiny Pokémon itself, so
+nothing extra is needed there. In Kanto the division of labour matters —
+**this mod supplies the data, that mod supplies the picture.** The quest
+Meowth's shiny DVs are set here and are engine-native (`Stats.isShiny`), so
+it is genuinely shiny whether or not that mod is installed. Every *visual* —
+the ◆ marker beside the name, the sparkle on send-out — is drawn entirely by
+Shiny Pokémon. Turning it off leaves the Meowth just as shiny, only
+undecorated. Its marker and its recolour are separate options, so a Meowth
+showing the ◆ but the wrong colour means **SHINY COLORS** is switched off.
 
 ### Options — Red, Blue and Yellow only
 
