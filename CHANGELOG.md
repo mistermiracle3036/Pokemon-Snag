@@ -1,3 +1,182 @@
+## 0.15.20 - Shared Trainer Journey stat-up UI (private test)
+
+- Gold RELEASE contracts now use Trainer Journey's durable one-time award and
+  queued gain contract every second completed release.
+- Removed the broker's inline `HEART UP! +1` substitute. Trainer Journey now
+  waits for the contract dialogue and any battle state to clear before opening
+  the same centered stat-up card used by other Gold quests.
+
+## 0.15.19 - Standalone three-ball colors (private test)
+
+- Gold colors no longer require Too Many Balls. Pokemon Snag registers its
+  own four-tone rows and maps only SNAG, HEIST, and KINGPIN BALL to them.
+- KINGPIN BALL joins the color pass in cream and gold. SNAG remains Rocket
+  black/red and HEIST remains dark navy/gold; all three are first-pass values
+  for on-device tuning.
+- The narrow mapping forwards every other ball to the previous renderer, so
+  Gold's cartridge balls and Too Many Balls' additions retain their own
+  palettes. Too Many Balls remains optional for extra Ball-pocket capacity.
+- Catch behavior and rates are unchanged.
+
+## 0.15.18 - Colored Gold throws (private test)
+
+- With Too Many Balls active on Gold, SNAG BALL now throws in Team Rocket
+  black and red, while HEIST BALL throws in dark navy and gold instead of
+  both falling back to the engine's grey custom-ball palette.
+- Pokemon Snag registers both four-tone rows through Too Many Balls 0.7.0's
+  published `registerBallPalette` API. It does not install a competing
+  `ballPalette` wrapper; Too Many Balls remains the single owner of Gold's
+  throw-palette extension point.
+- These colors carry over the existing Pokeball Colors body/accent choices
+  and are a first on-device tuning pass. Ball effects and catch rates are
+  unchanged.
+
+## 0.15.17 - Payout and release clarity (private test)
+
+- Every Gold fence now shows the valuation components before quoting a
+  snagged Pokemon: two-ball base, level, rarity, VIP, bounty floor, and the
+  five-ball cap when each applies. The displayed total and actual payout use
+  the same shared calculation.
+- RELEASE dossiers now state `PAY: NO BALLS`. With Trainer Journey's live API,
+  they also show `HEART: EVERY 2` and current progress; without it, they say
+  `REWARD: NONE` explicitly.
+- RELEASE turn-in repeats the no-ball term and reports Heart progress, a Heart
+  gain, or a pending award error. The two-completed-job Zapdos gate is
+  unchanged.
+
+## 0.15.16 - Fence bonus valuation fix (private test)
+
+- The guaranteed two-SNAG-BALL minimum is now the starting value before
+  level, rarity, and VIP bonuses. Previously the calculation started at one
+  and applied the two-ball floor afterward, silently swallowing the first
+  bonus: a low-level rarity such as Hitmonchan paid the same as a common mon.
+- Gold's shiny Lv.5 intro Meowth is now correctly stamped as the named job's
+  bounty and therefore quotes three SNAG BALLs. A narrow species, level,
+  trainer-class, and shiny-DV migration repairs that same Meowth on existing
+  test saves when it is next shown to a fence.
+- Expected examples: intro Meowth 3; ordinary-trainer Lv.15 Hitmonchan 3;
+  VIP Lv.15 Hitmonchan 4. The existing five-ball cap is unchanged.
+- Confirmed against Gold's catch implementation: SNAG BALL is a normal 1x
+  Poke Ball rate, except for the guaranteed intro Meowth; HEIST BALL is 2x;
+  KINGPIN BALL is guaranteed.
+
+## 0.15.15 - Live Trainer Journey Heart awards (private test)
+
+- Verified Trainer Journey 0.2.2's versioned award export and added it as an
+  optional dependency. Every second completed RELEASE now calls API version 1
+  for one HEART point using the unique Snag job id as its source tag.
+- RELEASE still pays zero SNAG BALLs. With Trainer Journey 0.2.2 active and
+  initialized, the broker confirms `HEART UP! +1` and the new total. Without
+  it, the quest completes normally and shows no fake replacement reward.
+- Snag now exports raw releases, half-rate Heart points, successfully credited
+  live awards, and the uncredited difference. This preserves exact evidence
+  for Trainer Journey's future idempotent reconstruction contract.
+- Trainer Journey 0.2.2 does not deduplicate source tags. Snag prevents normal
+  callback replay through its own one-shot target removal and completed-job
+  state, while the unique tag is ready for a future `awardOnce` API.
+
+## 0.15.14 - Release is not a sale (private test)
+
+- RELEASE repeat jobs no longer pay SNAG BALLs. The broker now states the
+  zero-payment term in the dossier and again at turn-in.
+- Every completed RELEASE is counted durably as `heartReleases` in the
+  Trainer Journey evidence export. Heart is the framework's empathy and
+  Pokemon-care stat, but Trainer Journey currently has no implementation or
+  award API, so this build does not invent one and gives no substitute reward.
+- The export also supplies integer `heartPoints` at a half-point rate: every
+  second completed RELEASE is worth one suggested Heart point. The raw count
+  remains available if Trainer Journey later changes the balance.
+
+## 0.15.13 - Repeatable network jobs (private test)
+
+- The Goldenrod broker now opens a permanent network board after all three
+  city contracts and their rewards are complete. It still buys ordinary
+  snagged Pokemon through the same shared fence-sale path.
+- Each cycle offers three saved dossiers assembled from four fields: exact
+  target species, carrier archetype, verified destination, and KEEP, DELIVER,
+  or RELEASE terms. Offers advance only after a completed job and never reroll
+  across save/load.
+- Every carrier has a fresh three-Pokemon party built with `Mon.new`; only the
+  named target completes the job. Losses, knockouts, and catching a different
+  party member leave the mark retryable.
+- Correct targets carry a durable job id through party or all 14 boxes. KEEP
+  pays 3 SNAG BALLs and retains the target; DELIVER pays 6 and removes it;
+  RELEASE pays 4 and removes it. Removal terms refuse the player's final
+  usable battler, and payment failure never removes the Pokemon.
+- The Zapdos job now also requires two completed network jobs. This is the
+  temporary local equivalent of its future Pokemon Thief career-rank gate.
+- Published reconstruction-only Trainer Journey evidence under path id
+  `snag_quest:pokemon_thief`. This build does not write Trainer Journey save
+  data or guess its unfinished API.
+- Repeat marks use only previously Position Reporter-calibrated cells. The
+  inferred lighthouse cell is deliberately excluded from the repeat pool.
+- All new dialogue is at most two lines per page and 18 glyphs per line. No
+  vanilla trainer party or Indigo Conference party is copied or overwritten.
+
+## 0.15.12 - Reachable Cianwood entrance (private test)
+
+- Moved the Cianwood sewer lookout from the isolated lower terrace to the
+  connected ground southeast of the Pokemon Center. The return point now uses
+  the same reachable area, so leaving the sewer cannot strand the player.
+- This is deliberately a one-change diagnostic build; tournament behavior is
+  otherwise identical to 0.15.11.
+
+## 0.15.11 - Cianwood Sewers first demo (private test)
+
+- Added a mod-owned Cianwood Sewers tournament room reached through a Rocket
+  lookout on a dry dockside cell verified against the 2026-08-20 Cianwood map
+  dump. Cianwood's map and vanilla NPCs are not patched.
+- Petrel runs a repeatable four-entry, two-round circuit. The player draws a
+  random semifinal against a Rocket Grunt, Ariana, or Bruno; the other side of
+  the bracket is simulated and supplies the final opponent.
+- Tournament battles expose exactly the first three snagged, non-Egg Pokemon
+  in the party. Those three are healed before and between rounds. Fewer than
+  three eligible Pokemon cannot enter, and losses do not cause a blackout.
+- Opponent parties are newly constructed with Gold's `Mon.new` path and scale
+  from the selected team's highest level (floor 28, cap 55). No Indigo
+  Conference trainer party or vanilla party is copied or overwritten.
+- Champions receive one HEIST BALL. Petrel then resets the bracket so the
+  circuit can be entered again.
+- Added SirWhibbles' Ariana and Petrel overworld sprites plus Ariana's battle
+  front, all scoped to the sewer. Bruno uses his vanilla Gold presentation.
+- All new dialogue is at most two lines per page and 18 glyphs per line.
+
+## 0.15.10 - Zapdos job first pass (private test)
+
+- Added the first playable pass of Gold's post-Radio-Tower Zapdos job. It is
+  invisible until vanilla `EVENT_TEAM_ROCKET_DISBANDED` (1889), the cleared
+  Mahogany-base population flag (1754), and both halves of Olivine's payout
+  are all set.
+- Reused the existing Goldenrod, Ecruteak, and Olivine witnesses at their
+  established coordinates. Sight, old lore, and recorded sound now form the
+  three clues; none of the witnesses acknowledges the Snag network.
+- The Olivine foreman issues exactly one KINGPIN BALL after all three reports.
+  It is a new unsold Snag tier with a guaranteed catch, a bag description, and
+  a near-white/gold Pokeball Colors export. Other Snag tiers cannot take the
+  job's Zapdos.
+- Added two remnant-grunt fights and Proton to the already-cleared Mahogany
+  hideout. All three are mod-owned runtime NPCs on standable cells formerly
+  occupied by story actors hidden by flag 1754; no Johto map or vanilla NPC is
+  patched. A loss or a Zapdos KO rearms the current fight.
+- Added SirWhibbles' male/female Rocket Grunts and Proton as private six-frame
+  overworld sprites plus battle-front overrides scoped to these encounters.
+  Vanilla Rocket trainer classes and member rows are preserved.
+- Proton's last Pokemon is Lv.45 Zapdos. A KINGPIN catch stamps the ordinary
+  Snag provenance plus `snagZapdosJob`, then offers KEEP, SELL, or RELEASE:
+  KEEP retains the bird, SELL removes it for 20 SNAG BALLs and 10 HEIST BALLs,
+  and RELEASE removes it, restores the witnesses' calm-weather epilogues, and
+  awards the inert SEA SONG TAPE key item.
+- Trophy Case 0.1.1 was inspected and has no trophy-registration API, so this
+  build deliberately does not guess one. The tape remains a future-compatible
+  key item until that mod publishes an integration surface.
+- Remaining follow-up: renewable post-contract remnant ambushes. Version
+  0.15.9 has no repeatable contract loop to attach their promised "sometimes
+  after a successful snag" trigger to, so this pass keeps the repeatable beat
+  out rather than faking a competing trigger.
+- New dialogue is at most two lines per page and every authored line is at
+  most 18 glyphs. This is a private logic-tested build; the three derived
+  Mahogany placements and full presentation still need device confirmation.
+
 ## 0.15.9 - Johto
 
 **Updating from v0.14.11? Pokemon Snag works on Pokemon Gold now.** Not a

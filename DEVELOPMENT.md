@@ -42,6 +42,7 @@ check it at runtime instead of relying on a note that goes stale:
 local sq = mod.find("snag_quest")
 sq.exports.owns        -- { balls = { SNAG_BALL = {...} }, monFields = {...} }
 sq.exports.ballColors  -- { SNAG_BALL = { body = {...}, accent = {...} } }
+sq.exports.ballPalettesGen2 -- palette names and four-tone Gold rows
 ```
 
 **What this mod owns:** the whole `SNAG_BALL` ball record — registration,
@@ -49,16 +50,21 @@ sq.exports.ballColors  -- { SNAG_BALL = { body = {...}, accent = {...} } }
 this mod silently, because the last folded op wins with no error. Check
 `exports.owns` and back off instead.
 
-**What's open:** the colour. `pokeball_colors` keys its palette off ball
-id and exposes `exports.colors` for other mods to register into, so this
-mod registers its own entry there on `game.ready` (only if the key is
-absent — a colour that mod deliberately ships wins). That inverts the
-dependency: renaming, recolouring or adding a second ball here needs no
-change in `pokeball_colors`, ever.
+**Colour ownership is generation-specific.** On Gen 1,
+`pokeball_colors` keys its palette off ball id and exposes
+`exports.colors`; this mod fills only absent entries on `game.ready`.
+On Gold, Pokemon Snag owns the palette rows and ball-id mapping for SNAG,
+HEIST, and KINGPIN BALL. Rows enter through the normal `palettes` registry;
+a narrow stash-originals wrapper answers only those three ids and forwards
+every other id to the previous `BattleState:ballPalette`. Too Many Balls
+therefore remains compatible in either loadout without being required.
 
-**Why `game.ready` and not load time:** `mod.find` can't see a mod that
+Pokeball Colors reads the current Gold mapping and registered row for its
+Center display, so the same source of truth drives both visuals.
+
+**Why Gen 1 waits for `game.ready`:** `mod.find` can't see a mod that
 hasn't loaded yet, and load order between two independent mods isn't
-guaranteed either way. By `game.ready` both exist, and it still lands
+guaranteed either way. By `game.ready` both exist, and registration lands
 long before anything draws a ball.
 
 **The general rule this follows:** a mod that *owns* a thing registers

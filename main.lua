@@ -44,12 +44,12 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.15.9"
+  local VERSION = "0.15.20"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
-  -- valuation is built for opportunistic theft -- base 1, and the bonuses only
-  -- fire for a high level, a rare species or a VIP owner -- so the first
+  -- valuation was built for opportunistic theft -- formerly base 1, with
+  -- bonuses only for a high level, rare species or VIP owner -- so the first
   -- contract target, a level 16 YANMA with a catch rate of 75 owned by a BUG
   -- CATCHER, priced out at exactly 1 ball.  A job the player chose, tracked
   -- across a city and spent balls on paid the same as a mon grabbed in passing.
@@ -60,40 +60,58 @@ return function(mod)
   -- worth more than an early one.
   local BOUNTY_FLOOR = 3
 
-  -- And nothing is worth only one ball (0.14.42).  Giving up a Pokemon is the
+  -- And nothing is worth only one ball (0.14.42). Giving up a Pokemon is the
   -- most expensive thing the player can do at a fence -- it leaves the party
   -- for good -- and one ball back could not even repeat the throw that caught
-  -- it.  A floor rather than a higher base: the bonuses keep their spread and
-  -- only the bottom rung moves, so a level 45 rarity from a Gym Leader is
-  -- still worth more than a common one off a Youngster.
+  -- it. 0.15.16 makes that minimum the actual base so every earned bonus keeps
+  -- its value; a level 45 rarity from a Gym Leader remains worth more than a
+  -- common one off a Youngster.
   --
   -- This does NOT address the real complaint behind it.  Snagging at full HP
   -- is ~catchRate/3 out of 256 per throw (src/battle/gen2/Catching.lua:301),
-  -- so a 45-catch-rate target is about 6% a ball and the player reloads rather
-  -- than spends.  A payout floor changes the drain, not the wall.  Deferred
-  -- deliberately, one change at a time.
+  -- so a 45-catch-rate target is about 6% a ball and the player may reload
+  -- rather than spend. Valuation changes the drain, not the catch wall.
   local MIN_PAYOUT = 2
 
-  -- Shared fence valuation. Gold stamps snagVip at encounter time; the legacy
-  -- Gen 1 path may still supply a class table for old captured Pokemon.
-  local function computeSnagPayout(game, mon, vipClasses)
-    local n = 1
+  -- Shared fence valuation. The guaranteed two-ball minimum is the BASE, not
+  -- a floor applied after bonuses: applying it last swallowed the first bonus,
+  -- so a low-level rarity or VIP paid exactly the same as a common Pokemon.
+  -- Gold stamps snagVip at encounter time; the legacy Gen 1 path may still
+  -- supply a class table for old captured Pokemon.
+  local function computeSnagPayoutBreakdown(game, mon, vipClasses)
+    local detail = {
+      base = MIN_PAYOUT,
+      levelBonus = 0,
+      rarityBonus = 0,
+      vipBonus = 0,
+      bountyFloor = mon and mon.snagBounty == true,
+    }
     local lv = tonumber(mon and (mon.snagLevel or mon.level)) or 1
-    if lv >= 25 then n = n + 1 end
-    if lv >= 45 then n = n + 1 end
+    if lv >= 25 then detail.levelBonus = detail.levelBonus + 1 end
+    if lv >= 45 then detail.levelBonus = detail.levelBonus + 1 end
     local data = game and game.data
     local def = data and data.pokemon and mon and data.pokemon[mon.species]
-    if def and tonumber(def.catchRate) and def.catchRate <= 45 then n = n + 1 end
+    if def and tonumber(def.catchRate) and def.catchRate <= 45 then
+      detail.rarityBonus = 1
+    end
     local vip = mon and mon.snagVip == true
     if not vip and vipClasses and mon and mon.snagFrom then
       vip = vipClasses[mon.snagFrom] == true
     end
-    if vip then n = n + 1 end
-    if n < MIN_PAYOUT then n = MIN_PAYOUT end
-    if mon and mon.snagBounty == true and n < BOUNTY_FLOOR then
+    if vip then detail.vipBonus = 1 end
+    local n = detail.base + detail.levelBonus
+      + detail.rarityBonus + detail.vipBonus
+    if detail.bountyFloor and n < BOUNTY_FLOOR then
       n = BOUNTY_FLOOR
     end
-    return math.min(5, n)
+    detail.uncapped = n
+    detail.total = math.min(5, n)
+    detail.capped = n > detail.total
+    return detail
+  end
+
+  local function computeSnagPayout(game, mon, vipClasses)
+    return computeSnagPayoutBreakdown(game, mon, vipClasses).total
   end
 
   -- GOLD PRIVATE TEST PATH (0.14.17): keep the existing Kanto quest code
@@ -109,6 +127,7 @@ return function(mod)
     local Runtime = require("src.mods.Runtime")
     local Bag = require("src.inventory.Bag")
     local Mon = require("src.battle.gen2.Mon")
+    local Boxes = require("src.core.gen2.Boxes")
     local ListMenu = require("src.ui.ListMenu")
 
     local MAP = "CHERRYGROVE_CITY"
@@ -184,6 +203,236 @@ return function(mod)
     local GIRL_SEEN = "SNAG_G2_GIRL_SEEN"
     local GIRL_WIN  = "SNAG_G2_GIRL_WIN"
     local GIRL_LOSS = "SNAG_G2_GIRL_LOSS"
+
+    ------------------------------------------------------------------
+    -- ZAPDOS JOB (0.15.10 first pass).
+    --
+    -- Gold's EVENT_TEAM_ROCKET_DISBANDED is numeric at runtime.  The
+    -- generated FlagNames table identifies it as 1889, and the Radio Tower
+    -- script sets that exact event immediately after Archer's farewell.
+    -- WorldAPI:getFlag is the supported live query; no map or vanilla NPC is
+    -- patched by this arc.
+    ------------------------------------------------------------------
+    local Z = {
+      DISBANDED_FLAG = 1889,
+      BASE_CLEARED_FLAG = 1754,
+      NONE = 0, GRUNT_M = 1, GRUNT_F = 2, PROTON = 3, CAUGHT = 4, RESOLVED = 5,
+      GRUNT_M_MAP = "TEAM_ROCKET_BASE_B1F",
+      GRUNT_F_MAP = "TEAM_ROCKET_BASE_B2F",
+      PROTON_MAP = "TEAM_ROCKET_BASE_B3F",
+      GRUNT_M_NAME = "SNAG_ZAPDOS_GRUNT_M",
+      GRUNT_F_NAME = "SNAG_ZAPDOS_GRUNT_F",
+      PROTON_NAME = "SNAG_ZAPDOS_PROTON",
+      carriers = {}, battleActive = false, battleName = nil, cleanupPending = false,
+    }
+
+    ------------------------------------------------------------------
+    -- CIANWOOD SEWERS (0.15.11 first demo).
+    --
+    -- The city entrance is a runtime NPC at a cell verified by the developer's
+    -- 2026-08-20 Position Reporter dump. The interior is a new mod-owned map,
+    -- assembled at game.ready from the user's extracted UNDERGROUND tileset;
+    -- no ROM blocks ship in this mod and CIANWOOD_CITY itself is never patched.
+    ------------------------------------------------------------------
+    local S = {
+      MAP = "SNAG_CIANWOOD_SEWERS",
+      CITY_MAP = "CIANWOOD_CITY",
+      SOURCE_MAP = "GOLDENROD_UNDERGROUND_WAREHOUSE",
+      LOOKOUT_NAME = "SNAG_SEWER_LOOKOUT",
+      PETREL_NAME = "SNAG_SEWER_PETREL",
+      FOE_NAME = "SNAG_SEWER_FOE",
+      SPEC_A_NAME = "SNAG_SEWER_SPEC_A",
+      SPEC_B_NAME = "SNAG_SEWER_SPEC_B",
+      EXIT_NAME = "SNAG_SEWER_EXIT",
+      IDLE = 0, SEMI = 1, FINAL = 2, CHAMPION = 3,
+      CITY_LOOKOUT = { x = 26, y = 44 },
+      CITY_RETURN = { x = 25, y = 44, facing = "right" },
+      cells = {
+        arrival = { x = 10, y = 13 }, petrel = { x = 10, y = 14 },
+        foe = { x = 10, y = 5 }, specA = { x = 6, y = 8 },
+        specB = { x = 14, y = 8 }, exit = { x = 3, y = 14 },
+      },
+      spawned = {}, carriers = {}, battleActive = false, battleKey = nil,
+      cleanupPending = false, scopedTeam = nil,
+    }
+    S.roster = {
+      GRUNT = {
+        name = "ROCKET GRUNT", class = "GRUNTM", member = "SNAG_SEWER_GRUNT",
+        sprite = "SPRITE_SNAG_ROCKET_M", seen = "SNAG_SEWER_GRUNT_SEEN",
+        win = "SNAG_SEWER_GRUNT_WIN", loss = "SNAG_SEWER_GRUNT_LOSS",
+        party = {
+          { species = "RATICATE", delta = -1 },
+          { species = "GOLBAT", delta = 0 },
+          { species = "MUK", delta = 1 },
+        },
+      },
+      ARIANA = {
+        name = "ARIANA", class = "EXECUTIVEF", member = "SNAG_SEWER_ARIANA",
+        sprite = "SPRITE_SNAG_ARIANA", seen = "SNAG_SEWER_ARIANA_SEEN",
+        win = "SNAG_SEWER_ARIANA_WIN", loss = "SNAG_SEWER_ARIANA_LOSS",
+        party = {
+          { species = "ARBOK", delta = 0 },
+          { species = "VILEPLUME", delta = 1 },
+          { species = "MURKROW", delta = 1 },
+        },
+      },
+      BRUNO = {
+        name = "BRUNO", class = "BRUNO", member = "SNAG_SEWER_BRUNO",
+        sprite = "SPRITE_BRUNO", seen = "SNAG_SEWER_BRUNO_SEEN",
+        win = "SNAG_SEWER_BRUNO_WIN", loss = "SNAG_SEWER_BRUNO_LOSS",
+        party = {
+          { species = "HITMONTOP", delta = 0 },
+          { species = "HITMONCHAN", delta = 1 },
+          { species = "MACHAMP", delta = 2 },
+        },
+      },
+    }
+
+    -- Every cell below is inherited from a vanilla object hidden by
+    -- EVENT_TEAM_ROCKET_BASE_POPULATION after the Mahogany story clear:
+    -- B1F's scientist (18,12), B2F's grunt (25,13), and B3F's scientist
+    -- (25,12).  They are derived standable cells, not guessed placements.
+    Z.actors = {
+      [Z.GRUNT_M_NAME] = {
+        map = Z.GRUNT_M_MAP, x = 18, y = 12,
+        sprite = "SPRITE_SNAG_ROCKET_M", class = "GRUNTM",
+        member = "SNAG_REMNANT_M", stage = Z.GRUNT_M,
+        seen = "SNAG_ZAP_GRUNT_M_SEEN", win = "SNAG_ZAP_GRUNT_M_WIN",
+        loss = "SNAG_ZAP_GRUNT_M_LOSS",
+        party = {
+          { species = "RATICATE", level = 36 },
+          { species = "MURKROW", level = 37 },
+          { species = "HOUNDOUR", level = 36 },
+        },
+      },
+      [Z.GRUNT_F_NAME] = {
+        map = Z.GRUNT_F_MAP, x = 25, y = 13,
+        sprite = "SPRITE_SNAG_ROCKET_F", class = "GRUNTF",
+        member = "SNAG_REMNANT_F", stage = Z.GRUNT_F,
+        seen = "SNAG_ZAP_GRUNT_F_SEEN", win = "SNAG_ZAP_GRUNT_F_WIN",
+        loss = "SNAG_ZAP_GRUNT_F_LOSS",
+        party = {
+          { species = "ARBOK", level = 38 },
+          { species = "VILEPLUME", level = 39 },
+          { species = "MURKROW", level = 38 },
+        },
+      },
+      [Z.PROTON_NAME] = {
+        map = Z.PROTON_MAP, x = 25, y = 12,
+        sprite = "SPRITE_SNAG_PROTON", class = "EXECUTIVEM",
+        member = "SNAG_PROTON", stage = Z.PROTON,
+        seen = "SNAG_ZAP_PROTON_SEEN", win = "SNAG_ZAP_PROTON_WIN",
+        loss = "SNAG_ZAP_PROTON_LOSS",
+        party = {
+          { species = "CROBAT", level = 42 },
+          { species = "WEEZING", level = 43 },
+          { species = "ZAPDOS", level = 45 },
+        },
+      },
+    }
+
+    -- Voice is data: remnants blurt out the money problem; Proton never
+    -- jokes and is the only one who names the disbandment plainly.
+    do
+    local REMNANT_VOICE = {
+      maleSeen = "TEAM's gone.\nWe still got bills",
+      maleWin = "No uniform.\nNo retirement.",
+      maleLoss = "That bird buys us\na new life.",
+      femaleSeen = "We saw your score.\nHand over the mon.",
+      femaleWin = "No sale. No exit.",
+      femaleLoss = "Buyer pays tonight\nWe eat tomorrow.",
+    }
+    local PROTON_VOICE = {
+      seen = "ARCHER quit.\nI did not.",
+      win = "The sale is dead.\nSo is my cell.",
+      loss = "Slow. Clean. Final\nJust as planned.",
+    }
+    local SEWER_VOICE = {
+      gruntSeen = "GRUNT: Pit rules.\nNo clean teams.",
+      gruntWin = "GRUNT: Rigged!\nCount it again.",
+      gruntLoss = "GRUNT: Finally!\nA real payday.",
+      arianaSeen = "ARIANA: Three mons\nTry to keep up.",
+      arianaWin = "ARIANA: Crude.\nBut effective.",
+      arianaLoss = "ARIANA: Planned.\nKnow your place.",
+      brunoSeen = "BRUNO: No cameras.\nWe train in peace.",
+      brunoWin = "BRUNO: Strong team\nWrong arena.",
+      brunoLoss = "BRUNO: Good match.\nCall it training.",
+    }
+
+    mod.content.text:register("SNAG_ZAP_GRUNT_M_SEEN", REMNANT_VOICE.maleSeen)
+    mod.content.text:register("SNAG_ZAP_GRUNT_M_WIN", REMNANT_VOICE.maleWin)
+    mod.content.text:register("SNAG_ZAP_GRUNT_M_LOSS", REMNANT_VOICE.maleLoss)
+    mod.content.text:register("SNAG_ZAP_GRUNT_F_SEEN", REMNANT_VOICE.femaleSeen)
+    mod.content.text:register("SNAG_ZAP_GRUNT_F_WIN", REMNANT_VOICE.femaleWin)
+    mod.content.text:register("SNAG_ZAP_GRUNT_F_LOSS", REMNANT_VOICE.femaleLoss)
+    mod.content.text:register("SNAG_ZAP_PROTON_SEEN", PROTON_VOICE.seen)
+    mod.content.text:register("SNAG_ZAP_PROTON_WIN", PROTON_VOICE.win)
+    mod.content.text:register("SNAG_ZAP_PROTON_LOSS", PROTON_VOICE.loss)
+    mod.content.text:register("SNAG_SEWER_GRUNT_SEEN", SEWER_VOICE.gruntSeen)
+    mod.content.text:register("SNAG_SEWER_GRUNT_WIN", SEWER_VOICE.gruntWin)
+    mod.content.text:register("SNAG_SEWER_GRUNT_LOSS", SEWER_VOICE.gruntLoss)
+    mod.content.text:register("SNAG_SEWER_ARIANA_SEEN", SEWER_VOICE.arianaSeen)
+    mod.content.text:register("SNAG_SEWER_ARIANA_WIN", SEWER_VOICE.arianaWin)
+    mod.content.text:register("SNAG_SEWER_ARIANA_LOSS", SEWER_VOICE.arianaLoss)
+    mod.content.text:register("SNAG_SEWER_BRUNO_SEEN", SEWER_VOICE.brunoSeen)
+    mod.content.text:register("SNAG_SEWER_BRUNO_WIN", SEWER_VOICE.brunoWin)
+    mod.content.text:register("SNAG_SEWER_BRUNO_LOSS", SEWER_VOICE.brunoLoss)
+
+    local function registerZapdosSprite(id, file, palette, paletteId)
+      mod.content.sprites:register(id, {
+        id = id, image = mod.path .. "/assets/" .. file,
+        frames = 6, walker = true, spriteType = "WALKING_SPRITE",
+        palette = palette, paletteId = paletteId,
+      })
+    end
+    registerZapdosSprite("SPRITE_SNAG_PROTON", "proton.png", "PAL_OW_PINK", 4)
+    registerZapdosSprite("SPRITE_SNAG_ROCKET_M", "rocket_grunt_m.png",
+      "PAL_OW_BROWN", 3)
+    registerZapdosSprite("SPRITE_SNAG_ROCKET_F", "rocket_grunt_f.png",
+      "PAL_OW_BROWN", 3)
+    registerZapdosSprite("SPRITE_SNAG_PETREL", "petrel.png",
+      "PAL_OW_GREEN", 2)
+    registerZapdosSprite("SPRITE_SNAG_ARIANA", "ariana.png",
+      "PAL_OW_RED", 0)
+
+    -- Private member rows preserve every vanilla trainer and give these three
+    -- battles their own displayed names.  Runtime trainer.party substitution
+    -- below owns the actual teams; these rows are safe fallbacks only.
+    local zapdosAppends = { GRUNTM = {}, GRUNTF = {}, EXECUTIVEM = {} }
+    for _, actor in pairs(Z.actors) do
+      local fallback = {}
+      for _, spec in ipairs(actor.party) do
+        fallback[#fallback + 1] = { species = spec.species, level = spec.level }
+      end
+      zapdosAppends[actor.class][#zapdosAppends[actor.class] + 1] = {
+        id = actor.member,
+        name = actor == Z.actors[Z.PROTON_NAME] and "PROTON" or "GRUNT",
+        trainerType = "TRAINERTYPE_NORMAL",
+        party = fallback,
+      }
+    end
+    for class, rows in pairs(zapdosAppends) do
+      mod.content.trainers:patch(class, { trainers = { __append = rows } })
+    end
+
+    -- Private carriers only. The live teams are constructed with Gold's
+    -- Mon.new path in this mod's positively-scoped trainer.party hook; no
+    -- shared trainer member or vanilla party is replaced.
+    local sewerAppends = { GRUNTM = {}, EXECUTIVEF = {}, BRUNO = {} }
+    for _, foe in pairs(S.roster) do
+      local fallback = {}
+      for _, spec in ipairs(foe.party) do
+        fallback[#fallback + 1] = { species = spec.species, level = 30 }
+      end
+      sewerAppends[foe.class][#sewerAppends[foe.class] + 1] = {
+        id = foe.member, name = foe.name,
+        trainerType = "TRAINERTYPE_NORMAL", party = fallback,
+      }
+    end
+    for class, rows in pairs(sewerAppends) do
+      mod.content.trainers:patch(class, { trainers = { __append = rows } })
+    end
+    end
 
     -- Gold intro quest text.  The sailor is mod-owned dialogue; the girl's
     -- three rows are VM text keys consumed by the cart's trainer script.
@@ -416,6 +665,48 @@ return function(mod)
     local ECRUTEAK_ORDER = { "SMEARGLE", "MISDREAVUS", "GIRAFARIG" }
     local OLIVINE_ORDER = { "WATERFRONT", "CUSTOMS", "GANGWAY" }
 
+    ------------------------------------------------------------------
+    -- REPEATABLE NETWORK JOBS (0.15.13 first pass).
+    --
+    -- The broker builds three deterministic dossiers from four independent
+    -- fields: target, carrier, location, and terms.  The chosen fields and a
+    -- monotonically increasing job id are saved, so reloads never reroll a
+    -- job or allow the wrong same-species Pokemon to satisfy its turn-in.
+    ------------------------------------------------------------------
+    local R = {
+      NONE = 0, ACTIVE = 1, CAUGHT = 2,
+      MARK_NAME = "SNAG_REPEAT_MARK",
+      battleActive = false, cleanupPending = false,
+      targets = {
+        "NATU", "AIPOM", "YANMA", "SMEARGLE", "MISDREAVUS",
+        "GIRAFARIG", "CORSOLA", "MAGNETON", "QWILFISH",
+      },
+      carriers = { "SMEARGLE", "MISDREAVUS", "GIRAFARIG" },
+      terms = {
+        KEEP = { label = "KEEP", payout = 3 },
+        DELIVER = { label = "DELIVER", payout = 6 },
+        RELEASE = { label = "RELEASE", payout = 0 },
+      },
+      locations = {
+        { key = "UNDERGROUND", label = "GOLDENROD", map = MARK_MAP,
+          x = MARK_X, y = MARK_Y },
+        { key = "THEATER", label = "THEATER", map = "DANCE_THEATER",
+          x = 1, y = 10 },
+        { key = "ECRUTEAK", label = "ECRUTEAK", map = "ECRUTEAK_CITY",
+          x = 7, y = 8 },
+        { key = "WEST_GATE", label = "WEST GATE",
+          map = "ROUTE_38_ECRUTEAK_GATE", x = 4, y = 5 },
+        { key = "WATERFRONT", label = "WATERFRONT", map = OLIVINE_MAP,
+          x = 24, y = 23 },
+        { key = "GANGWAY", label = "GANGWAY", map = OLIVINE_PORT_MAP,
+          x = 10, y = 10 },
+      },
+    }
+
+    mod.content.text:register("SNAG_REPEAT_SEEN", "You after my\nPOKEMON?")
+    mod.content.text:register("SNAG_REPEAT_WIN", "That BALL!\nYou're a thief!")
+    mod.content.text:register("SNAG_REPEAT_LOSS", "Wrong mark.\nWalk away.")
+
     local function menuItems(order, contracts)
       local items = {}
       for _, key in ipairs(order) do
@@ -455,6 +746,10 @@ return function(mod)
         name = "HEIST BALL", multiplier = 2.0, price = 20000,
         description = "Steals a POKeMON.\nGood catch rate.",
       },
+      KINGPIN_BALL = {
+        name = "KINGPIN BALL", guaranteed = true, price = 0,
+        description = "Steals a POKeMON.\nNever misses.",
+      },
     }
     for id, tier in pairs(SNAG_BALL_TIERS) do
       mod.content.items:register(id, {
@@ -462,6 +757,14 @@ return function(mod)
         description = tier.description,
       })
     end
+    -- Trophy Case 0.1.1 is an empty presentation spike and publishes no
+    -- registration API.  Keep the release reward as a real, inert key item so
+    -- a future Trophy Case contract can display it without inventing an API.
+    mod.content.items:register("OPEN_WATER_TAPE", {
+      id = "OPEN_WATER_TAPE", name = "SEA SONG TAPE", price = 0,
+      tossable = false,
+      description = "Song from open sea\nNo station airs it",
+    })
 
     local function stage()
       return tonumber(mod.save:get("g2_intro_stage", STAGE_NEW)) or STAGE_NEW
@@ -568,6 +871,176 @@ return function(mod)
       mod.save:set("g2_contract3_heistpaid", v and true or false)
     end
 
+    local errs
+
+    function R.stage()
+      return tonumber(mod.save:get("g2_repeat_stage", R.NONE)) or R.NONE
+    end
+    function R.setStage(v)
+      mod.save:set("g2_repeat_stage", tonumber(v) or R.NONE)
+    end
+    function R.completed()
+      return tonumber(mod.save:get("g2_repeat_completed", 0)) or 0
+    end
+    function R.heartReleases()
+      return tonumber(mod.save:get("g2_repeat_heart_releases", 0)) or 0
+    end
+    function R.heartPoints()
+      -- Trainer Journey's planned ledger is point-based. Keep this integer:
+      -- two completed releases reconstruct as one Heart point.
+      return math.floor(R.heartReleases() / 2)
+    end
+    function R.heartAwards()
+      return tonumber(mod.save:get("g2_repeat_heart_awards", 0)) or 0
+    end
+    function R.journeyApi()
+      local handle = mod.find("trainer_journey")
+      local root = handle and handle.exports
+      local api = root and (root.trainer_journey or root)
+      if api and api.api_version == 1
+          and type(api.awardOnceAndQueue) == "function" then
+        return api
+      end
+      return nil
+    end
+    function R.awardHeart(jobId, releaseCount)
+      if releaseCount % 2 ~= 0 then return false, nil, "not due" end
+      local api = R.journeyApi()
+      if not api then
+        return false, nil, "unavailable"
+      end
+      local sourceTag = "snag_quest:release:" .. tostring(jobId)
+      local ok, result, err = pcall(
+        api.awardOnceAndQueue, "HEART", 1, sourceTag)
+      if not ok then
+        errs("HEART AWARD\n%s", tostring(result))
+        return false, nil, "error"
+      end
+      if type(result) ~= "table" then
+        errs("HEART AWARD\n%s", tostring(err))
+        return false, nil, err or "refused"
+      end
+      local awarded = (tonumber(result.awarded) or 0) > 0
+      if awarded then
+        mod.save:set("g2_repeat_heart_awards", R.heartAwards() + 1)
+      end
+      return awarded, result.total, result.reason
+    end
+    function R.jobId()
+      return tonumber(mod.save:get("g2_repeat_job_id", 0)) or 0
+    end
+    function R.contract()
+      if R.stage() == R.NONE then return nil end
+      local target = mod.save:get("g2_repeat_target", "")
+      local carrier = mod.save:get("g2_repeat_carrier", "")
+      local locationKey = mod.save:get("g2_repeat_location", "")
+      local termsKey = mod.save:get("g2_repeat_terms", "")
+      local targetOk = false
+      for _, species in ipairs(R.targets) do
+        if species == target then targetOk = true; break end
+      end
+      local carrierOk = false
+      for _, key in ipairs(R.carriers) do
+        if key == carrier then carrierOk = true; break end
+      end
+      local location
+      for _, row in ipairs(R.locations) do
+        if row.key == locationKey then location = row; break end
+      end
+      local terms = R.terms[termsKey]
+      if not (targetOk and carrierOk and location and terms) then return nil end
+      return {
+        id = R.jobId(), target = target, carrier = carrier,
+        location = location, termsKey = termsKey, terms = terms,
+      }
+    end
+    function R.eligible()
+      return contractStage() == CONTRACT_DONE and contractRewarded()
+        and ecruteakStage() == CONTRACT_DONE and ecruteakFeePaid()
+        and ecruteakHeistPaid() and olivineStage() == CONTRACT_DONE
+        and olivineRewarded() and olivineHeistPaid()
+    end
+    function R.offer(slot)
+      local n = R.completed()
+      local target = R.targets[((n * 3 + slot - 1) % #R.targets) + 1]
+      local carrier = R.carriers[((n + slot - 2) % #R.carriers) + 1]
+      local location = R.locations[((n * 2 + slot - 2) % #R.locations) + 1]
+      local termKeys = { "KEEP", "DELIVER", "RELEASE" }
+      local termsKey = termKeys[((n + slot * 2 - 2) % #termKeys) + 1]
+      return { target = target, carrier = carrier, location = location,
+        termsKey = termsKey, terms = R.terms[termsKey] }
+    end
+    function R.accept(offer)
+      if R.stage() ~= R.NONE or not offer then return false end
+      local id = tonumber(mod.save:get("g2_repeat_serial", 0)) or 0
+      id = id + 1
+      mod.save:set("g2_repeat_serial", id)
+      mod.save:set("g2_repeat_job_id", id)
+      mod.save:set("g2_repeat_target", offer.target)
+      mod.save:set("g2_repeat_carrier", offer.carrier)
+      mod.save:set("g2_repeat_location", offer.location.key)
+      mod.save:set("g2_repeat_terms", offer.termsKey)
+      R.setStage(R.ACTIVE)
+      return true
+    end
+    function R.clear()
+      R.setStage(R.NONE)
+      mod.save:set("g2_repeat_target", "")
+      mod.save:set("g2_repeat_carrier", "")
+      mod.save:set("g2_repeat_location", "")
+      mod.save:set("g2_repeat_terms", "")
+    end
+
+    function Z.stage()
+      return tonumber(mod.save:get("g2_zapdos_stage", Z.NONE)) or Z.NONE
+    end
+    function Z.setStage(v) mod.save:set("g2_zapdos_stage", v) end
+    function Z.outcome()
+      local value = mod.save:get("g2_zapdos_outcome", "")
+      return (value == "KEEP" or value == "SELL" or value == "RELEASE")
+        and value or nil
+    end
+    function Z.setOutcome(v)
+      mod.save:set("g2_zapdos_outcome",
+        (v == "KEEP" or v == "SELL" or v == "RELEASE") and v or "")
+    end
+    function Z.clueSeen(place)
+      return mod.save:get("g2_zapdos_clue_" .. place, false) == true
+    end
+    function Z.setClueSeen(place)
+      mod.save:set("g2_zapdos_clue_" .. place, true)
+    end
+    function Z.allClues()
+      return Z.clueSeen("goldenrod") and Z.clueSeen("ecruteak")
+        and Z.clueSeen("olivine")
+    end
+    function Z.kingpinIssued()
+      return mod.save:get("g2_zapdos_kingpin_issued", false) == true
+    end
+    function Z.setKingpinIssued(v)
+      mod.save:set("g2_zapdos_kingpin_issued", v and true or false)
+    end
+    function Z.rocketDisbanded()
+      if not (mod.world and mod.world.getFlag) then return false end
+      local ok, value = pcall(mod.world.getFlag, mod.world,
+        Z.DISBANDED_FLAG)
+      return ok and value == true
+    end
+    function Z.baseCleared()
+      if not (mod.world and mod.world.getFlag) then return false end
+      local ok, value = pcall(mod.world.getFlag, mod.world, Z.BASE_CLEARED_FLAG)
+      return ok and value == true
+    end
+    function Z.eligible()
+      return olivineStage() == CONTRACT_DONE and olivineRewarded()
+        and olivineHeistPaid() and R.completed() >= 2
+        and Z.rocketDisbanded() and Z.baseCleared()
+    end
+    function Z.witnessVisible()
+      if not Z.eligible() then return false end
+      return Z.stage() ~= Z.RESOLVED or Z.outcome() == "RELEASE"
+    end
+
     local introBattleActive = false
     local contractBattleActive = false
     local contractCleanupPending = false
@@ -580,6 +1053,8 @@ return function(mod)
     local contractCarriers = {}
     local ecruteakCarriers = {}
     local olivineCarriers = {}
+    local giveSnagBalls
+    local battlers
 
     -- Gold VIP provenance.  Keep this list conservative: the rival, all 16
     -- Gym Leaders, the Elite Four/Champion, and Red.  The value is stamped on
@@ -620,7 +1095,7 @@ return function(mod)
     -- so the one line that reports a broken snag.vip hook would itself
     -- have thrown "attempt to call a nil value". Confirmed from the
     -- bytecode: it was the only global read in the whole file.
-    local function errs(fmt, ...)
+    errs = function(fmt, ...)
       local ok, msg = pcall(string.format, fmt, ...)
       pcall(Runtime.reportError, "snag_quest", ok and msg or tostring(fmt))
     end
@@ -646,14 +1121,78 @@ return function(mod)
 
     mod.exports.owns = mod.exports.owns or {}
     mod.exports.owns.monFields =
-      { "snagged", "snagFrom", "snagLevel", "snagVip", "snagBounty" }
+      { "snagged", "snagFrom", "snagLevel", "snagVip", "snagBounty",
+        "snagZapdosJob", "snagRepeatJobId", "snagRepeatTerms" }
+    mod.exports.owns.items =
+      { "SNAG_BALL", "HEIST_BALL", "KINGPIN_BALL", "OPEN_WATER_TAPE" }
+    mod.exports.owns.sprites =
+      { "SPRITE_SNAG_PROTON", "SPRITE_SNAG_ROCKET_M",
+        "SPRITE_SNAG_ROCKET_F", "SPRITE_SNAG_PETREL",
+        "SPRITE_SNAG_ARIANA" }
+    mod.exports.owns.runtimeObjects =
+      { Z.GRUNT_M_NAME, Z.GRUNT_F_NAME, Z.PROTON_NAME,
+        S.LOOKOUT_NAME, S.PETREL_NAME, S.FOE_NAME, S.SPEC_A_NAME,
+        S.SPEC_B_NAME, S.EXIT_NAME, R.MARK_NAME }
+    mod.exports.owns.maps = { S.MAP }
+    mod.exports.owns.ballPalettesGen2 =
+      { "SNAG_BALL", "HEIST_BALL", "KINGPIN_BALL" }
     mod.exports.vipClasses = GOLD_VIP_CLASSES
+    mod.exports.ballColors = {
+      SNAG_BALL = { body = { 40, 36, 40 }, accent = { 216, 48, 40 } },
+      HEIST_BALL = { body = { 36, 40, 56 }, accent = { 232, 176, 48 } },
+      KINGPIN_BALL = { body = { 248, 240, 216 }, accent = { 232, 176, 48 } },
+    }
+    -- Gold's module-local ball-to-palette table only covers cartridge balls.
+    -- Pokemon Snag therefore owns the mapping and palette rows for its three
+    -- ids. Rows are { highlight, light/accent, main body, outline }; Too Many
+    -- Balls' on-device work confirmed that the third entry is the dominant
+    -- body tone.
+    local GOLD_BALL_PALETTES = {
+      SNAG_BALL = {
+        name = "PAL_SQ_SNAG",
+        row = { {255,255,255}, {216,48,40}, {40,36,40}, {24,24,24} },
+      },
+      HEIST_BALL = {
+        name = "PAL_SQ_HEIST",
+        row = { {255,255,255}, {232,176,48}, {36,40,56}, {24,24,24} },
+      },
+      KINGPIN_BALL = {
+        name = "PAL_SQ_KINGPIN",
+        row = { {255,255,255}, {232,176,48}, {248,240,216}, {24,24,24} },
+      },
+    }
+    mod.exports.ballPalettesGen2 = GOLD_BALL_PALETTES
+
+    local goldPaletteRows, goldPaletteNames = {}, {}
+    for ballId, palette in pairs(GOLD_BALL_PALETTES) do
+      goldPaletteRows[palette.name] = palette.row
+      goldPaletteNames[ballId] = palette.name
+    end
+    mod.content.palettes:patch("battleObjects", goldPaletteRows)
+
+    -- The registry supplies the palette values, but Gold's ball-id mapping is
+    -- module-local. Intercept only our ids and forward every other ball to the
+    -- function that was present when Snag first loaded. Stash-originals makes
+    -- a hot reload rebuild this wrapper instead of stacking another copy.
+    local GoldBattleState = require("src.ui.gen2.BattleState")
+    GoldBattleState._snagQuestPaletteOriginals =
+      GoldBattleState._snagQuestPaletteOriginals
+      or { ballPalette = GoldBattleState.ballPalette }
+    local downstreamBallPalette =
+      GoldBattleState._snagQuestPaletteOriginals.ballPalette
+    GoldBattleState.ballPalette = function(self, itemId)
+      return goldPaletteNames[itemId] or downstreamBallPalette(self, itemId)
+    end
 
     -- Same valuation function is used by both generations.
     local function snagPayout(mon)
       return computeSnagPayout(mod.game, mon, nil)
     end
+    local function snagPayoutBreakdown(mon)
+      return computeSnagPayoutBreakdown(mod.game, mon, nil)
+    end
     mod.exports.snagPayout = snagPayout
+    mod.exports.snagPayoutBreakdown = snagPayoutBreakdown
 
     local function monName(mon)
       if not mon then return "POKEMON" end
@@ -938,6 +1477,738 @@ return function(mod)
       return true
     end
 
+    local function repeatCarrier(contract)
+      local source = contract and ECRUTEAK_CONTRACTS[contract.carrier]
+      local carrier = contract and ecruteakCarriers[contract.carrier]
+      return source, carrier
+    end
+
+    function R.armMark(world)
+      local c = R.contract()
+      local _, carrier = repeatCarrier(c)
+      local obj = c and objectNamed(world, c.location.map, R.MARK_NAME)
+      if not (c and carrier and obj) then return false end
+      obj.trainer = {
+        class = carrier.classIx, member = carrier.memberIx,
+        seenText = "SNAG_REPEAT_SEEN", winText = "SNAG_REPEAT_WIN",
+        lossText = "SNAG_REPEAT_LOSS",
+      }
+      return true
+    end
+
+    function R.ensureMark(world)
+      local c = R.contract()
+      if not c or R.stage() ~= R.ACTIVE then return true end
+      local source, carrier = repeatCarrier(c)
+      if not (source and carrier) then return false end
+
+      -- These are all mod-owned actors. A repeat job can reuse their verified
+      -- cells only after the three story contracts and rewards are complete.
+      removeNamed(world, c.location.map, MARK_NAME)
+      removeNamed(world, c.location.map, ECRUTEAK_MARK_NAME)
+      removeNamed(world, c.location.map, OLIVINE_MARK_NAME)
+
+      local obj = objectNamed(world, c.location.map, R.MARK_NAME)
+      if obj then
+        if not obj.trainer then R.armMark(world) end
+        return true
+      end
+      local id, err = mod.world:spawnNpc(c.location.map, {
+        name = R.MARK_NAME, sprite = source.sprite,
+        x = c.location.x, y = c.location.y, movement = MOVE_STANDING_DOWN,
+        trainer = {
+          class = carrier.classIx, member = carrier.memberIx,
+          seenText = "SNAG_REPEAT_SEEN", winText = "SNAG_REPEAT_WIN",
+          lossText = "SNAG_REPEAT_LOSS",
+        },
+      })
+      if not id then errs("REPEAT MARK\n%s", tostring(err)); return false end
+      return true
+    end
+
+    function R.sync(world, mapId)
+      local c = R.contract()
+      for _, location in ipairs(R.locations) do
+        if not c or R.stage() == R.NONE
+            or location.map ~= c.location.map then
+          removeNamed(world, location.map, R.MARK_NAME)
+        end
+      end
+      if c and mapId == c.location.map then
+        if R.stage() == R.ACTIVE then
+          R.ensureMark(world)
+        elseif R.stage() == R.CAUGHT then
+          removeNamed(world, c.location.map, R.MARK_NAME)
+        end
+      end
+      R.cleanupPending = false
+    end
+
+    function R.findJobMon()
+      local save = mod.game and mod.game.save
+      local wanted = R.jobId()
+      if not save or wanted < 1 then return nil end
+      for i, mon in ipairs(save.party or {}) do
+        if mon and tonumber(mon.snagRepeatJobId) == wanted then
+          return mon, "party", i
+        end
+      end
+      for boxIndex = 1, Boxes.NUM_BOXES do
+        local box = save.boxes and save.boxes[boxIndex]
+        for slot, mon in ipairs(box or {}) do
+          if mon and tonumber(mon.snagRepeatJobId) == wanted then
+            return mon, "box", boxIndex, slot
+          end
+        end
+      end
+      return nil
+    end
+
+    function R.canRemoveJobMon()
+      local mon, where = R.findJobMon()
+      if not mon then return false, "missing" end
+      if where == "box" then return true end
+      local party = mod.game and mod.game.save and mod.game.save.party
+      return battlers(party, mon) > 0, "last"
+    end
+
+    function R.removeJobMon()
+      local allowed, reason = R.canRemoveJobMon()
+      if not allowed then return false, reason end
+      local _, where, a, b = R.findJobMon()
+      local save = mod.game and mod.game.save
+      if not (save and where) then return false, "missing" end
+      if where == "party" then
+        return Boxes.releaseFromParty(save, a) == true
+      end
+      return Boxes.release(save, a, b) == true
+    end
+
+    function R.finish()
+      local c = R.contract()
+      local mon = R.findJobMon()
+      if not (c and mon and R.stage() == R.CAUGHT) then
+        return false, "missing"
+      end
+      if c.termsKey ~= "KEEP" then
+        local canRemove, reason = R.canRemoveJobMon()
+        if not canRemove then return false, reason end
+      end
+      if c.terms.payout > 0 and not giveSnagBalls(c.terms.payout) then
+        return false, "bag"
+      end
+      if c.termsKey ~= "KEEP" then
+        local removed, reason = R.removeJobMon()
+        if not removed then return false, reason or "remove" end
+      end
+      local heartAwarded, heartTotal = false, nil
+      local releases, heartReason, journeyAvailable = nil, nil, false
+      if c.termsKey == "RELEASE" then
+        releases = R.heartReleases() + 1
+        mod.save:set("g2_repeat_heart_releases", releases)
+        journeyAvailable = R.journeyApi() ~= nil
+        heartAwarded, heartTotal, heartReason = R.awardHeart(c.id, releases)
+      end
+      mod.save:set("g2_repeat_completed", R.completed() + 1)
+      R.clear()
+      R.cleanupPending = true
+      return true, c, heartAwarded, heartTotal, releases,
+        heartReason, journeyAvailable
+    end
+
+    function Z.resolveCarrier(name)
+      local actor = Z.actors[name]
+      if not actor then return false end
+      local td = mod.game and mod.game.data and mod.game.data.gen2Trainers
+      local cls = td and td.classes and td.classes[actor.class]
+      if not (cls and cls.index and cls.trainers) then return false end
+      for i, row in ipairs(cls.trainers) do
+        if row.id == actor.member then
+          Z.carriers[name] = { classIx = cls.index, memberIx = i }
+          return true
+        end
+      end
+      return false
+    end
+
+    function Z.armActor(world, name)
+      local actor = Z.actors[name]
+      local carrier = Z.carriers[name]
+      local obj = actor and objectNamed(world, actor.map, name)
+      if not (actor and carrier and obj) then return false end
+      obj.trainer = {
+        class = carrier.classIx, member = carrier.memberIx,
+        seenText = actor.seen, winText = actor.win, lossText = actor.loss,
+      }
+      return true
+    end
+
+    function Z.expectedActor(mapId)
+      local s = Z.stage()
+      if s == Z.GRUNT_M and mapId == Z.GRUNT_M_MAP then
+        return Z.GRUNT_M_NAME
+      elseif s == Z.GRUNT_F and mapId == Z.GRUNT_F_MAP then
+        return Z.GRUNT_F_NAME
+      elseif (s == Z.PROTON or s == Z.CAUGHT)
+          and mapId == Z.PROTON_MAP then
+        return Z.PROTON_NAME
+      end
+      return nil
+    end
+
+    function Z.ensureActor(world, mapId)
+      for name, actor in pairs(Z.actors) do
+        if actor.map == mapId and name ~= Z.expectedActor(mapId) then
+          removeNamed(world, mapId, name)
+        end
+      end
+      local name = Z.expectedActor(mapId)
+      if not name then return true end
+      local actor = Z.actors[name]
+      local carrier = Z.carriers[name]
+      if not (actor and carrier) then return false end
+      local obj = objectNamed(world, mapId, name)
+      if obj then
+        if Z.stage() == Z.CAUGHT then
+          obj.trainer = nil
+        elseif not obj.trainer then
+          Z.armActor(world, name)
+        end
+        return true
+      end
+      local trainer
+      if Z.stage() ~= Z.CAUGHT then
+        trainer = {
+          class = carrier.classIx, member = carrier.memberIx,
+          seenText = actor.seen, winText = actor.win, lossText = actor.loss,
+        }
+      end
+      local id, err = mod.world:spawnNpc(mapId, {
+        name = name, sprite = actor.sprite,
+        x = actor.x, y = actor.y, movement = MOVE_STANDING_DOWN,
+        trainer = trainer,
+      })
+      if not id then errs("ZAPDOS SPAWN\n%s", tostring(err)); return false end
+      return true
+    end
+
+    function Z.giveKingpinBall()
+      local game = mod.game
+      local save, data = game and game.save, game and game.data
+      if not (save and save.inventory and data) then return false end
+      return Bag.add(save, "KINGPIN_BALL", 1, data) == true
+    end
+
+    function Z.findJobMon()
+      local save = mod.game and mod.game.save
+      if not save then return nil end
+      for i, mon in ipairs(save.party or {}) do
+        if mon and mon.snagZapdosJob == true then
+          return mon, "party", i
+        end
+      end
+      for boxIndex = 1, Boxes.NUM_BOXES do
+        local box = save.boxes and save.boxes[boxIndex]
+        for slot, mon in ipairs(box or {}) do
+          if mon and mon.snagZapdosJob == true then
+            return mon, "box", boxIndex, slot
+          end
+        end
+      end
+      return nil
+    end
+
+    function Z.canRemoveJobMon()
+      local mon, where = Z.findJobMon()
+      if not mon then return false, "missing" end
+      if where == "box" then return true end
+      local party = mod.game and mod.game.save and mod.game.save.party
+      local others = 0
+      for _, candidate in ipairs(party or {}) do
+        if candidate ~= mon and type(candidate) == "table"
+            and candidate.isEgg ~= true then
+          others = others + 1
+        end
+      end
+      if others < 1 then return false, "last" end
+      return true
+    end
+
+    function Z.removeJobMon()
+      local allowed, reason = Z.canRemoveJobMon()
+      if not allowed then return false, reason end
+      local _, where, a, b = Z.findJobMon()
+      local save = mod.game and mod.game.save
+      if not (save and where) then return false end
+      if where == "party" then
+        return Boxes.releaseFromParty(save, a) == true
+      end
+      return Boxes.release(save, a, b) == true
+    end
+
+    function S.stage()
+      return tonumber(mod.save:get("g2_sewer_stage", S.IDLE)) or S.IDLE
+    end
+    function S.setStage(value)
+      mod.save:set("g2_sewer_stage", tonumber(value) or S.IDLE)
+    end
+    function S.draw()
+      local out = {}
+      local value = mod.save:get("g2_sewer_draw", "")
+      for key in tostring(value):gmatch("[^|]+") do
+        if S.roster[key] then out[#out + 1] = key end
+      end
+      return #out == 3 and out or nil
+    end
+    function S.setDraw(keys)
+      mod.save:set("g2_sewer_draw",
+        type(keys) == "table" and table.concat(keys, "|") or "")
+    end
+    function S.afterBattle()
+      local value = mod.save:get("g2_sewer_after", "")
+      return (value == "lose" or value == "semi" or value == "final")
+        and value or nil
+    end
+    function S.setAfterBattle(value)
+      mod.save:set("g2_sewer_after",
+        (value == "lose" or value == "semi" or value == "final")
+          and value or "")
+    end
+    function S.wins()
+      return tonumber(mod.save:get("g2_sewer_wins", 0)) or 0
+    end
+    function S.eligible()
+      return olivineStage() == CONTRACT_DONE and olivineRewarded()
+        and olivineHeistPaid()
+    end
+    function S.shortName(key)
+      return key == "GRUNT" and "GRUNT" or key or "FOE"
+    end
+    function S.currentKey()
+      local draw = S.draw()
+      local s = S.stage()
+      if not draw then return nil end
+      if s == S.SEMI then return draw[1] end
+      if s == S.FINAL then return draw[2] end
+      return nil
+    end
+
+    function S.chooseMapBlocks(base, tileset)
+      local Permissions = require("src.world.gen2.Permissions")
+      local floors, walls = {}, {}
+      for _, id in ipairs(base.blocks or {}) do
+        local quad = tileset.collision and tileset.collision[id + 1]
+        if quad then
+          local allWalk, anyWalk = true, false
+          for i = 1, 4 do
+            local yes = Permissions.isWalkable(quad[i]) == true
+            allWalk = allWalk and yes
+            anyWalk = anyWalk or yes
+          end
+          if allWalk then floors[id] = (floors[id] or 0) + 1 end
+          if not anyWalk then walls[id] = (walls[id] or 0) + 1 end
+        end
+      end
+      local function mostUsed(rows)
+        local best, count = nil, -1
+        for id, n in pairs(rows) do
+          if n > count then best, count = id, n end
+        end
+        return best
+      end
+      return mostUsed(floors), mostUsed(walls)
+    end
+
+    function S.installMap(game)
+      local data = game and game.data
+      local maps = data and data.gen2Maps
+      local tilesets = data and data.gen2Tilesets
+      local base = maps and maps[S.SOURCE_MAP]
+      local city = maps and maps[S.CITY_MAP]
+      local tileset = base and tilesets and tilesets[base.tileset]
+      if not (maps and base and city and tileset) then
+        errs("SEWER MAP\nsource missing")
+        return false
+      end
+      local floorBlock, wallBlock = S.chooseMapBlocks(base, tileset)
+      if floorBlock == nil or wallBlock == nil then
+        errs("SEWER MAP\nblocks missing")
+        return false
+      end
+      local width, height, blocks = 10, 9, {}
+      for by = 0, height - 1 do
+        for bx = 0, width - 1 do
+          local boundary = bx == 0 or by == 0
+            or bx == width - 1 or by == height - 1
+          blocks[#blocks + 1] = boundary and wallBlock or floorBlock
+        end
+      end
+      maps[S.MAP] = {
+        id = S.MAP, label = "CianwoodSewers", generation = 2,
+        index = 1001, width = width, height = height,
+        tileset = base.tileset, tilesetId = base.tilesetId,
+        blocks = blocks, borderBlock = wallBlock,
+        environment = base.environment, environmentId = base.environmentId,
+        landmark = city.landmark, music = base.music,
+        phoneService = false, palette = base.palette,
+        fishGroup = base.fishGroup, connections = {}, warps = {},
+        coordEvents = {}, bgEvents = {}, objects = {},
+        sceneScripts = {}, callbacks = {}, source = "mod:snag_quest",
+      }
+      local world = mod.world:overworld()
+      if world and world.maps then world.maps[S.MAP] = maps[S.MAP] end
+      return true
+    end
+
+    function S.resolveCarriers()
+      local td = mod.game and mod.game.data and mod.game.data.gen2Trainers
+      for key, foe in pairs(S.roster) do
+        local cls = td and td.classes and td.classes[foe.class]
+        local found
+        for i, row in ipairs(cls and cls.trainers or {}) do
+          if row.id == foe.member then
+            S.carriers[key] = { classIx = cls.index, memberIx = i }
+            found = true
+            break
+          end
+        end
+        if not found then errs("SEWER CARRIER\n%s missing", key) end
+      end
+    end
+
+    function S.selectTeam()
+      local save = mod.game and mod.game.save
+      local indices = {}
+      for i, mon in ipairs(save and save.party or {}) do
+        if mon and mon.snagged == true and mon.isEgg ~= true then
+          indices[#indices + 1] = i
+          if #indices == 3 then break end
+        end
+      end
+      if #indices < 3 then return nil end
+      S.scopedTeam = indices
+      return indices
+    end
+
+    function S.partyForBattle()
+      local save = mod.game and mod.game.save
+      local party = save and save.party
+      local indices = S.scopedTeam or S.selectTeam()
+      if not (party and indices and #indices == 3) then return nil end
+      local out = {}
+      for _, index in ipairs(indices) do
+        local mon = party[index]
+        if not (mon and mon.snagged == true and mon.isEgg ~= true) then
+          S.scopedTeam = nil
+          return nil
+        end
+        out[#out + 1] = mon
+      end
+      return out
+    end
+
+    function S.healTeam()
+      for _, mon in ipairs(S.partyForBattle() or {}) do
+        local maxHp = mon.stats and mon.stats.hp or mon.maxHp or mon.hp
+        if maxHp then mon.hp = maxHp end
+        mon.status = nil
+        for _, move in ipairs(mon.moves or {}) do
+          move.pp = move.maxPp or move.pp
+        end
+      end
+    end
+
+    function S.anchorLevel()
+      local level = 28
+      for _, mon in ipairs(S.partyForBattle() or {}) do
+        level = math.max(level, tonumber(mon.level) or 1)
+      end
+      return math.min(55, level)
+    end
+
+    function S.newDraw()
+      local keys = { "GRUNT", "ARIANA", "BRUNO" }
+      for i = #keys, 2, -1 do
+        local j = math.random(i)
+        keys[i], keys[j] = keys[j], keys[i]
+      end
+      return keys
+    end
+
+    function S.beginRun()
+      if not S.selectTeam() then return false end
+      S.healTeam()
+      S.setDraw(S.newDraw())
+      S.setStage(S.SEMI)
+      S.setAfterBattle(nil)
+      S.cleanupPending = true
+      return true
+    end
+
+    function S.removeActor(world, mapId, name)
+      local id = S.spawned[name]
+      S.spawned[name] = nil
+      if id then pcall(function() mod.world:removeNpc(id) end) end
+      removeNamed(world, mapId, name)
+    end
+
+    function S.spawnActor(mapId, def)
+      local id, err = mod.world:spawnNpc(mapId, def)
+      if not id then
+        errs("SEWER SPAWN\n%s", tostring(err))
+        return false
+      end
+      S.spawned[def.name] = id
+      return true
+    end
+
+    function S.syncCity(world)
+      if not (world and world.map and world.map.id == S.CITY_MAP) then
+        return false
+      end
+      if not S.eligible() then
+        S.removeActor(world, S.CITY_MAP, S.LOOKOUT_NAME)
+        return true
+      end
+      if objectNamed(world, S.CITY_MAP, S.LOOKOUT_NAME) then return true end
+      local spots = {
+        S.CITY_LOOKOUT, { x = 27, y = 44 }, { x = 26, y = 45 },
+      }
+      local spot
+      for _, candidate in ipairs(spots) do
+        if usable(world, candidate.x, candidate.y) then spot = candidate break end
+      end
+      if not spot then return false end
+      return S.spawnActor(S.CITY_MAP, {
+        name = S.LOOKOUT_NAME, sprite = "SPRITE_SNAG_ROCKET_F",
+        x = spot.x, y = spot.y, movement = MOVE_STANDING_LEFT,
+      })
+    end
+
+    function S.makeTrainer(key)
+      local foe, carrier = S.roster[key], S.carriers[key]
+      if not (foe and carrier) then return nil end
+      return {
+        class = carrier.classIx, member = carrier.memberIx,
+        seenText = foe.seen, winText = foe.win, lossText = foe.loss,
+      }
+    end
+
+    function S.syncInterior(world)
+      if not (world and world.map and world.map.id == S.MAP) then return false end
+      for _, name in ipairs({ S.PETREL_NAME, S.FOE_NAME, S.SPEC_A_NAME,
+          S.SPEC_B_NAME, S.EXIT_NAME }) do
+        S.removeActor(world, S.MAP, name)
+      end
+      S.spawnActor(S.MAP, {
+        name = S.PETREL_NAME, sprite = "SPRITE_SNAG_PETREL",
+        x = S.cells.petrel.x, y = S.cells.petrel.y,
+        movement = MOVE_STANDING_UP, sewerRole = "petrel",
+      })
+      S.spawnActor(S.MAP, {
+        name = S.EXIT_NAME, sprite = "SPRITE_SNAG_ROCKET_M",
+        x = S.cells.exit.x, y = S.cells.exit.y,
+        movement = MOVE_STANDING_LEFT, sewerRole = "exit",
+      })
+
+      local current = S.currentKey()
+      if current then
+        local foe = S.roster[current]
+        S.spawnActor(S.MAP, {
+          name = S.FOE_NAME, sprite = foe.sprite,
+          x = S.cells.foe.x, y = S.cells.foe.y,
+          movement = MOVE_STANDING_DOWN, sewerKey = current,
+          trainer = S.makeTrainer(current),
+        })
+      end
+
+      local spectators = {}
+      for _, key in ipairs(S.draw() or { "ARIANA", "BRUNO", "GRUNT" }) do
+        if key ~= current then spectators[#spectators + 1] = key end
+      end
+      for i, name in ipairs({ S.SPEC_A_NAME, S.SPEC_B_NAME }) do
+        local key = spectators[i]
+        local foe = key and S.roster[key]
+        local cell = i == 1 and S.cells.specA or S.cells.specB
+        if foe then
+          S.spawnActor(S.MAP, {
+            name = name, sprite = foe.sprite, x = cell.x, y = cell.y,
+            movement = MOVE_STANDING_DOWN, sewerKey = key,
+          })
+        end
+      end
+      return true
+    end
+
+    function S.announceDraw()
+      local draw = S.draw()
+      if not draw then return false end
+      mod.world:queueScript({
+        { "text", "PETREL: Four slots\nTwo rounds." },
+        { "text", "YOU vs " .. S.shortName(draw[1]) .. "\n"
+          .. S.shortName(draw[2]) .. " vs " .. S.shortName(draw[3]) },
+        { "text", "First three stolen\nmons do the work." },
+        { "text", "PETREL: Yes.\nThat is BRUNO." },
+        { "text", "He calls it\ncross-training." },
+      })
+      return true
+    end
+
+    function S.openEntryMenu()
+      local game = mod.game
+      if not (game and game.stack) then return false end
+      local menu
+      menu = ListMenu.new(game, "SEWER CIRCUIT", {
+        { label = "ENTER", value = "ENTER" },
+        { label = "NOT NOW", value = "LEAVE" },
+      }, {
+        kind = "snag.sewer_entry",
+        onChoose = function(item, list)
+          list:close()
+          if item and item.value == "ENTER" then
+            if S.beginRun() then
+              S.syncInterior(mod.world:overworld())
+              S.announceDraw()
+            else
+              mod.world:queueScript({
+                { "text", "Three stolen mons.\nNot two. Not four." },
+              })
+            end
+          end
+        end,
+      })
+      game.stack:push(menu)
+      return true
+    end
+
+    function S.talkPetrel()
+      local s = S.stage()
+      if s == S.IDLE then
+        if not S.selectTeam() then
+          mod.world:queueScript({
+            { "text", "PETREL: Three\nstolen mons only." },
+            { "text", "Not two. Not four.\nNo clean teams." },
+          })
+          return true
+        end
+        local first = S.wins() > 0 and "PETREL: Again?\nCrowd knows you."
+          or "PETREL: Welcome.\nWet circuit rules."
+        mod.world:queueScript({
+          { "text", first },
+          { "text", "Three stolen mons.\nTwo rounds. No law" },
+        }, { onDone = function() S.openEntryMenu() end })
+        return true
+      elseif s == S.SEMI or s == S.FINAL then
+        local label = S.shortName(S.currentKey())
+        local title = s == S.SEMI and "PETREL: Semifinal."
+          or "PETREL: The final."
+        mod.world:queueScript({
+          { "text", title .. "\nTalk to " .. label .. "." },
+        })
+        return true
+      elseif s == S.CHAMPION then
+        local game = mod.game
+        local save, data = game and game.save, game and game.data
+        if not (save and data) then return false end
+        if Bag.add(save, "HEIST_BALL", 1, data) ~= true then
+          mod.world:queueScript({
+            { "text", "PETREL: BALL bag\nneeds room." },
+          })
+          return true
+        end
+        mod.save:set("g2_sewer_wins", S.wins() + 1)
+        S.setStage(S.IDLE)
+        S.setDraw(nil)
+        S.setAfterBattle(nil)
+        S.scopedTeam = nil
+        S.cleanupPending = true
+        mod.world:queueScript({
+          { "text", "PETREL: Champion.\nOne HEIST BALL." },
+          { "text", "House keeps quiet.\nPurse is yours." },
+        })
+        return true
+      end
+      return false
+    end
+
+    function S.talkSpectator(key)
+      local rows = key == "BRUNO" and {
+          { "text", "BRUNO: I heard\nthis pit had bite." },
+        } or key == "ARIANA" and {
+          { "text", "ARIANA: He calls\nit cross-training." },
+        } or {
+          { "text", "That's BRUNO.\nFrom the LEAGUE!" },
+        }
+      mod.world:queueScript(rows)
+      return true
+    end
+
+    function S.talkLookout()
+      mod.world:queueScript({
+        { "text", "LOOKOUT: Three\nstolen fighters?" },
+        { "text", "Drain is open.\nNo clean teams." },
+        { "warp", S.MAP, S.cells.arrival.x, S.cells.arrival.y, "up" },
+      })
+      return true
+    end
+
+    function S.talkExit()
+      mod.world:queueScript({
+        { "text", "GRUNT: Fresh air?\nUse the ladder." },
+        { "warp", S.CITY_MAP, S.CITY_RETURN.x, S.CITY_RETURN.y,
+          S.CITY_RETURN.facing },
+      })
+      return true
+    end
+
+    function S.installPartyScope()
+      local ok, err = pcall(function()
+        local World = require("src.world.gen2.World")
+        World._snagSewerOriginals = World._snagSewerOriginals
+          or { startBattle = World.startBattle }
+        local original = World._snagSewerOriginals.startBattle
+        if type(original) ~= "function" then error("startBattle missing") end
+        World.startBattle = function(self, opts, onDone)
+          if S.battleActive then
+            local party = S.partyForBattle()
+            if party and #party == 3 then
+              opts = opts or {}
+              opts.party = party
+            end
+          end
+          return original(self, opts, onDone)
+        end
+      end)
+      if not ok then errs("SEWER PARTY\n%s", tostring(err)) end
+    end
+
+    function S.handleBattleEnd(result)
+      if not S.battleActive then return false end
+      local stageNow = S.stage()
+      S.battleActive = false
+      S.battleKey = nil
+      local world = mod.world:overworld()
+      local foe = world and objectNamed(world, S.MAP, S.FOE_NAME)
+      if foe then foe.trainer = nil end
+      S.healTeam()
+      if result ~= "win" then
+        S.setStage(S.IDLE)
+        S.setDraw(nil)
+        S.setAfterBattle("lose")
+        S.scopedTeam = nil
+      elseif stageNow == S.SEMI then
+        S.setStage(S.FINAL)
+        S.setAfterBattle("semi")
+      elseif stageNow == S.FINAL then
+        S.setStage(S.CHAMPION)
+        S.setAfterBattle("final")
+      end
+      S.cleanupPending = true
+      return true
+    end
+
+    S.installPartyScope()
+
     local function giveHeistBalls(n)
       local game = mod.game
       local save, data = game and game.save, game and game.data
@@ -997,7 +2268,7 @@ return function(mod)
     -- the whole reward -- so a contract cost balls and returned none.
     local CONTRACT_REWARD_BALLS = 5
 
-    local function giveSnagBalls(n)
+    giveSnagBalls = function(n)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and save.inventory and data) then return false end
@@ -1052,7 +2323,7 @@ return function(mod)
     -- What can actually FIGHT, not what fills a party slot (0.15.8). An egg
     -- occupies a slot and cannot battle, so it must never be what keeps a
     -- player "not empty" -- see the note on hasSellableSnaggedMon below.
-    local function battlers(party, excluding)
+    battlers = function(party, excluding)
       local n = 0
       for _, mon in ipairs(party or {}) do
         if mon ~= excluding and type(mon) == "table" and mon.isEgg ~= true then
@@ -1089,7 +2360,22 @@ return function(mod)
     -- is a few balls in the player's favour once, and is worth less than
     -- leaving a real bounty underpaid.
     local function ensureBountyFlag(mon)
-      if not mon or mon.snagged ~= true or mon.snagBounty ~= nil then return end
+      if not mon or mon.snagged ~= true then return end
+      -- 0.15.16 migration: Gold's named intro target was accidentally stamped
+      -- as ordinary merchandise. The exact shiny Lv.5 LASS Meowth signature
+      -- makes this narrow enough to repair an existing test save without
+      -- promoting unrelated Meowth caught later.
+      local dvs = mon.dvs
+      local introMeowth = stage() == STAGE_DONE and mon.species == "MEOWTH"
+        and (tonumber(mon.snagLevel or mon.level) or 0) == INTRO_LEVEL
+        and mon.snagFrom == "LASS" and type(dvs) == "table"
+        and dvs.attack == 14 and dvs.defense == 10 and dvs.speed == 10
+        and dvs.special == 10
+      if introMeowth then
+        mon.snagBounty = true
+        return
+      end
+      if mon.snagBounty ~= nil then return end
       local c1 = CONTRACTS[contractChoice() or ""]
       local c2 = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
       local c3 = OLIVINE_CONTRACTS[olivineChoice() or ""]
@@ -1125,13 +2411,24 @@ return function(mod)
       local kantoBalls = mod.find("kanto_balls")
       local api = kantoBalls and kantoBalls.exports
       if api and type(api.requestBallSlots) == "function" then
-        api.requestBallSlots(2)
+        api.requestBallSlots(3)
       end
       if game and game.data and game.data.items then
         local def = game.data.items.SNAG_BALL
         if def then def.pocket = "BALL" end
         local heist = game.data.items.HEIST_BALL
         if heist then heist.pocket = "BALL" end
+        local kingpin = game.data.items.KINGPIN_BALL
+        if kingpin then kingpin.pocket = "BALL" end
+        local tape = game.data.items.OPEN_WATER_TAPE
+        if tape then tape.pocket = "KEY_ITEM" end
+      end
+      local colours = mod.find("pokeball_colors")
+      local colourApi = colours and colours.exports
+      if colourApi and type(colourApi.colors) == "table" then
+        for id, colour in pairs(mod.exports.ballColors) do
+          if colourApi.colors[id] == nil then colourApi.colors[id] = colour end
+        end
       end
       if not resolveGirlCarrier() then errs("GIRL CARRIER\nLASS missing") end
       for key in pairs(CONTRACTS) do
@@ -1149,6 +2446,36 @@ return function(mod)
           errs("OLI CARRIER\n%s missing", key)
         end
       end
+      if R.stage() ~= R.NONE and not R.contract() then
+        errs("REPEAT JOB\ninvalid save")
+        R.clear()
+      end
+      for name in pairs(Z.actors) do
+        if not Z.resolveCarrier(name) then
+          errs("ZAP CARRIER\n%s missing", name)
+        end
+      end
+      S.installMap(game)
+      S.resolveCarriers()
+    end)
+
+    -- Cianwood itself remains vanilla.  Entering either relevant map only
+    -- reconciles this mod's own actors; the doorway is the lookout's script.
+    mod.events:on("map.entered", function(ev)
+      if not ev then return end
+      local world = mod.world:overworld()
+      if not world then return end
+      if ev.mapId == S.CITY_MAP then
+        S.syncCity(world)
+      elseif ev.mapId == S.MAP then
+        S.syncInterior(world)
+      end
+    end)
+
+    mod.events:on("map.entered", function(ev)
+      if not ev or not R.eligible() then return end
+      local world = mod.world:overworld()
+      if world then R.sync(world, ev.mapId) end
     end)
 
     -- Cherrygrove placement/recovery.  A stale ARMED state cannot normally be
@@ -1175,10 +2502,15 @@ return function(mod)
               ensureBroker(world)
             end
             if rewardClaimed() and ev.mapId == GOLDENROD_CITY_MAP
-                and contractStage() == CONTRACT_ACTIVE then
+                and (contractStage() == CONTRACT_ACTIVE
+                  or Z.witnessVisible()) then
               ensureClueNpc(world)
+            elseif rewardClaimed() and ev.mapId == GOLDENROD_CITY_MAP
+                and contractStage() == CONTRACT_DONE then
+              removeNamed(world, GOLDENROD_CITY_MAP, CLUE_NAME)
             elseif contractStage() == CONTRACT_DONE
-                and ev.mapId ~= GOLDENROD_CITY_MAP then
+                and ev.mapId ~= GOLDENROD_CITY_MAP
+                and not Z.witnessVisible() then
               removeNamed(world, GOLDENROD_CITY_MAP, CLUE_NAME)
             end
             if rewardClaimed() and ev.mapId == MARK_MAP then
@@ -1199,7 +2531,8 @@ return function(mod)
               local ec = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
               if ev.mapId == ECRUTEAK_MAP then
                 ensureEcruteakContact(world)
-                if ecruteakStage() == CONTRACT_ACTIVE then
+                if ecruteakStage() == CONTRACT_ACTIVE
+                    or Z.witnessVisible() then
                   ensureEcruteakWitness(world)
                 elseif ecruteakStage() == CONTRACT_DONE then
                   removeNamed(world, ECRUTEAK_MAP, ECRUTEAK_WITNESS_NAME)
@@ -1225,7 +2558,8 @@ return function(mod)
               local oc = OLIVINE_CONTRACTS[olivineChoice() or ""]
               if ev.mapId == OLIVINE_MAP then
                 ensureOlivineContact(world)
-                if olivineStage() == CONTRACT_ACTIVE then
+                if olivineStage() == CONTRACT_ACTIVE
+                    or Z.witnessVisible() then
                   ensureOlivineWitness(world)
                 else
                   removeNamed(world, OLIVINE_MAP, OLIVINE_WITNESS_NAME)
@@ -1254,6 +2588,23 @@ return function(mod)
         end
       end)
       if not ok then errs("ENTER\n%s", tostring(err)) end
+    end)
+
+    -- Runtime-only actors are recreated whenever the relevant cleared base
+    -- floor becomes active. A saved issued receipt wins over a missing stage
+    -- write, so a crash between the two cannot duplicate the one KINGPIN BALL.
+    mod.events:on("map.entered", function(ev)
+      if not ev then return end
+      if ev.mapId ~= Z.GRUNT_M_MAP and ev.mapId ~= Z.GRUNT_F_MAP
+          and ev.mapId ~= Z.PROTON_MAP then return end
+      local ok, err = pcall(function()
+        if Z.kingpinIssued() and Z.stage() == Z.NONE then
+          Z.setStage(Z.GRUNT_M)
+        end
+        local world = mod.world:overworld()
+        if world then Z.ensureActor(world, ev.mapId) end
+      end)
+      if not ok then errs("ZAP ENTER\n%s", tostring(err)) end
     end)
 
     -- Sailor dialogue.  Gold mod-owned NPCs fall through to kind="none";
@@ -1401,10 +2752,29 @@ return function(mod)
               return
             end
             ensureBountyFlag(picked)
-            local n = snagPayout(picked)
+            local detail = snagPayoutBreakdown(picked)
+            local n = detail.total
             local name = monName(picked)
-            mod.world:queueScript({ { "text", string.format(
-              voice.quote, name, n, n == 1 and "" or "s") } }, {
+            local quoteRows = { { "text", "BASE: " .. detail.base } }
+            if detail.levelBonus > 0 then
+              quoteRows[#quoteRows + 1] = {
+                "text", "LEVEL: +" .. detail.levelBonus }
+            end
+            if detail.rarityBonus > 0 then
+              quoteRows[#quoteRows + 1] = { "text", "RARITY: +1" }
+            end
+            if detail.vipBonus > 0 then
+              quoteRows[#quoteRows + 1] = { "text", "VIP: +1" }
+            end
+            if detail.bountyFloor then
+              quoteRows[#quoteRows + 1] = { "text", "BOUNTY FLOOR: 3" }
+            end
+            if detail.capped then
+              quoteRows[#quoteRows + 1] = { "text", "VALUE CAP: 5" }
+            end
+            quoteRows[#quoteRows + 1] = { "text", string.format(
+              voice.quote, name, n, n == 1 and "" or "s") }
+            mod.world:queueScript(quoteRows, {
               onDone = function()
                 local ChoiceBox = require("src.ui.ChoiceBox")
                 local g = mod.game
@@ -1514,6 +2884,408 @@ return function(mod)
         .. "Bring me something\nworth shipping.",
     }
 
+    local function repeatDossierRows(c)
+      local reward = c.termsKey == "RELEASE" and "PAY: NO BALLS"
+        or string.format("PAY: %d SNAG BALLs", c.terms.payout)
+      local rows = {
+        { "text", "MARK: " .. c.target },
+        { "text", "CARRIER: " .. ECRUTEAK_CONTRACTS[c.carrier].label },
+        { "text", "PLACE: " .. c.location.label },
+        { "text", "TERMS: " .. c.terms.label },
+        { "text", reward },
+      }
+      if c.termsKey == "RELEASE" then
+        if R.journeyApi() then
+          rows[#rows + 1] = { "text", "HEART: EVERY 2" }
+          rows[#rows + 1] = { "text", string.format(
+            "PROGRESS: %d/2", R.heartReleases() % 2) }
+        else
+          rows[#rows + 1] = { "text", "REWARD: NONE" }
+        end
+      end
+      return rows
+    end
+
+    function R.openStatus()
+      local c = R.contract()
+      if not c then
+        mod.world:queueScript({ { "text", "BROKER: No job\non your ledger." } })
+        return
+      end
+      local rows = repeatDossierRows(c)
+      rows[#rows + 1] = { "text", R.stage() == R.CAUGHT
+        and "TARGET SECURED.\nReturn to broker."
+        or "JOB: ACTIVE\nTarget only." }
+      mod.world:queueScript(rows, {
+        onDone = function()
+          if R.stage() ~= R.CAUGHT then return end
+          local ChoiceBox = require("src.ui.ChoiceBox")
+          local g = mod.game
+          if not (g and g.stack) then return end
+          g.stack:push(ChoiceBox.new(g, function(yes)
+            if not yes then return end
+            local ok, why, heartAwarded, _, releases,
+              heartReason, journeyAvailable = R.finish()
+            if ok then
+              local result = c.termsKey == "KEEP"
+                  and "BROKER: Proof\naccepted."
+                or c.termsKey == "DELIVER"
+                  and "BROKER: Package\nreceived."
+                or "BROKER: Release\nlogged."
+              local doneRows = {
+                { "text", result },
+                { "text", c.termsKey == "RELEASE"
+                    and "PAY: NO BALLS"
+                  or string.format("PAY: %d SNAG BALLs", c.terms.payout) },
+              }
+              if not heartAwarded and c.termsKey == "RELEASE"
+                  and journeyAvailable then
+                doneRows[#doneRows + 1] = { "text",
+                  heartReason == "not due"
+                    and string.format("HEART: %d/2", releases % 2)
+                    or "HEART: PENDING" }
+              elseif c.termsKey == "RELEASE" then
+                doneRows[#doneRows + 1] = { "text", "REWARD: NONE" }
+              end
+              mod.world:queueScript(doneRows)
+            elseif why == "last" then
+              mod.world:queueScript({ { "text",
+                "BROKER: Keep one\nother battler." } })
+            elseif why == "bag" then
+              mod.world:queueScript({ { "text",
+                "BROKER: BAG full.\nMake room first." } })
+            else
+              mod.world:queueScript({ { "text",
+                "BROKER: Target\nnot in storage." } })
+            end
+          end, { defaultNo = true }))
+        end,
+      })
+    end
+
+    function R.openOffers()
+      if R.stage() ~= R.NONE then R.openStatus(); return end
+      mod.world:queueScript({
+        { "text", "BROKER: Three jobs\non today's board." },
+        { "text", "Read the terms.\nTarget only." },
+      }, {
+        onDone = function()
+          local g = mod.game
+          if not (g and g.stack) then return end
+          local items = {}
+          for slot = 1, 3 do
+            local offer = R.offer(slot)
+            items[#items + 1] = { label = offer.target, value = slot }
+          end
+          local menu
+          menu = ListMenu.new(g, "JOB DOSSIERS", items, {
+            kind = "snag.repeat.offers",
+            onChoose = function(item, list)
+              list:close()
+              local offer = item and R.offer(item.value)
+              if not offer then return end
+              mod.world:queueScript(repeatDossierRows(offer), {
+                onDone = function()
+                  local ChoiceBox = require("src.ui.ChoiceBox")
+                  local game = mod.game
+                  if not (game and game.stack) then return end
+                  game.stack:push(ChoiceBox.new(game, function(yes)
+                    if not yes then return end
+                    if not R.accept(offer) then return end
+                    mod.world:queueScript({
+                      { "text", "BROKER: Logged.\nTarget only." },
+                      { "text", "Go to " .. offer.location.label .. "." },
+                    })
+                  end, { defaultNo = true }))
+                end,
+              })
+            end,
+          })
+          g.stack:push(menu)
+        end,
+      })
+    end
+
+    function R.openBroker()
+      local items = {
+        { label = "SELL", value = "SELL" },
+        { label = R.stage() == R.NONE and "JOBS" or "STATUS",
+          value = "JOBS" },
+        { label = "LEAVE", value = "LEAVE" },
+      }
+      local g = mod.game
+      if not (g and g.stack) then return end
+      local menu
+      menu = ListMenu.new(g, "BROKER", items, {
+        kind = "snag.repeat.broker",
+        onChoose = function(item, list)
+          list:close()
+          if not item or item.value == "LEAVE" then return end
+          if item.value == "SELL" then runFenceSale(BROKER_VOICE)
+          else R.openOffers() end
+        end,
+      })
+      g.stack:push(menu)
+    end
+
+    mod.exports.trainerJourney = {
+      pathId = "snag_quest:pokemon_thief",
+      evidence = function()
+        return {
+          intro = stage() == STAGE_DONE,
+          goldenrod = contractStage() == CONTRACT_DONE,
+          ecruteak = ecruteakStage() == CONTRACT_DONE,
+          olivine = olivineStage() == CONTRACT_DONE,
+          zapdos = Z.stage() == Z.RESOLVED,
+          zapdosOutcome = Z.outcome(),
+          repeatJobs = R.completed(),
+          heartReleases = R.heartReleases(),
+          heartPoints = R.heartPoints(),
+          heartAwards = R.heartAwards(),
+          heartUncredited = math.max(0,
+            R.heartPoints() - R.heartAwards()),
+        }
+      end,
+    }
+    mod.exports.trainerJourneyEvidence = mod.exports.trainerJourney.evidence
+
+    function Z.talkWitness(place)
+      if not Z.witnessVisible() then return false end
+      local released = Z.stage() == Z.RESOLVED
+        and Z.outcome() == "RELEASE"
+      local rows
+      if place == "goldenrod" then
+        rows = released and {
+          { "text", "Sky over the docks\nis blue again." },
+          { "text", "No night crates.\nStorm has passed." },
+        } or {
+          { "text", "Night crates moved\nNo marks. No names" },
+          { "text", "Sky over the sea\nwent yellow-green." },
+        }
+      elseif place == "ecruteak" then
+        rows = released and {
+          { "text", "Old verse ends.\nSea's guard sleeps" },
+        } or {
+          { "text", "Old tower verse.\nCage the lightning" },
+          { "text", "Sea's guard wakes.\nOld water stirs." },
+        }
+      elseif place == "olivine" then
+        rows = released and {
+          { "text", "The sea went quiet\nMy tape did too." },
+        } or {
+          { "text", "Caught a song from\nopen water." },
+          { "text", "No station knows\nwhat made it." },
+        }
+      end
+      if not rows then return false end
+      mod.world:queueScript(rows, {
+        onDone = function()
+          if not released then Z.setClueSeen(place) end
+        end,
+      })
+      return true
+    end
+
+    function Z.handleForeman()
+      if not Z.eligible() or Z.stage() == Z.RESOLVED then
+        return false
+      end
+      local s = Z.stage()
+      if s == Z.NONE then
+        if not Z.allClues() then
+          mod.world:queueScript({
+            { "text", "FOREMAN: Three\ntown reports" },
+            { "text", "See what locals\nsaw and heard." },
+          })
+          return true
+        end
+        mod.world:queueScript({
+          { "text", "FOREMAN: Old crew.\nMAHOGANY base." },
+          { "text", "They boxed thunder\nBuyer pays tonight" },
+          { "text", "One KINGPIN BALL.\nIt does not miss." },
+        }, {
+          onDone = function()
+            if Z.kingpinIssued() then
+              if Z.stage() == Z.NONE then
+                Z.setStage(Z.GRUNT_M)
+              end
+              return
+            end
+            if not Z.giveKingpinBall() then
+              mod.world:queueScript({ { "text",
+                "FOREMAN: BAG full.\nClear BALL space." } })
+              return
+            end
+            Z.setKingpinIssued(true)
+            Z.setStage(Z.GRUNT_M)
+          end,
+        })
+        return true
+      elseif s == Z.GRUNT_M then
+        mod.world:queueScript({
+          { "text", "FOREMAN: First\nfloor. Old lab." },
+          { "text", "MAHOGANY base.\nMove quiet." },
+        })
+      elseif s == Z.GRUNT_F then
+        mod.world:queueScript({
+          { "text", "FOREMAN: Second\nfloor. East hall." },
+        })
+      elseif s == Z.PROTON then
+        mod.world:queueScript({
+          { "text", "FOREMAN: PROTON.\nBottom floor." },
+          { "text", "Save that BALL.\nIt is for ZAPDOS." },
+        })
+      elseif s == Z.CAUGHT then
+        mod.world:queueScript({
+          { "text", "FOREMAN: Bird's\nyours. Settle it." },
+          { "text", "Finish where you\ntook it." },
+        })
+      end
+      return true
+    end
+
+    function Z.setResolved(outcome)
+      Z.setOutcome(outcome)
+      Z.setStage(Z.RESOLVED)
+      local world = mod.world:overworld()
+      if world then Z.ensureActor(world, Z.PROTON_MAP) end
+    end
+
+    function Z.finishKeep()
+      local mon = Z.findJobMon()
+      if not mon then
+        mod.world:queueScript({ { "text", "The bird is gone.\nNo choice remains." } })
+        return false
+      end
+      Z.setResolved("KEEP")
+      mod.world:queueScript({
+        { "text", "Keep the bird.\nNo payment follows" },
+        { "text", "The weather eases\nover the sea." },
+      })
+      return true
+    end
+
+    function Z.finishSell()
+      local mon = Z.findJobMon()
+      if not mon then
+        mod.world:queueScript({ { "text", "The bird is gone.\nNo deal to make." } })
+        return false
+      end
+      local removable, reason = Z.canRemoveJobMon()
+      if not removable then
+        if reason == "last" then
+          mod.world:queueScript({ { "text", "Keep one partner.\nThen decide." } })
+        end
+        return false
+      end
+      local game = mod.game
+      local save, data = game and game.save, game and game.data
+      if not (save and data) then return false end
+      if mod.save:get("g2_zapdos_sell_snag_paid", false) ~= true then
+        if Bag.add(save, "SNAG_BALL", 20, data) ~= true then
+          mod.world:queueScript({ { "text", "No BALL room.\nClear your BAG." } })
+          return false
+        end
+        mod.save:set("g2_zapdos_sell_snag_paid", true)
+      end
+      if mod.save:get("g2_zapdos_sell_heist_paid", false) ~= true then
+        if Bag.add(save, "HEIST_BALL", 10, data) ~= true then
+          mod.world:queueScript({ { "text", "No HEIST room.\nClear your BAG." } })
+          return false
+        end
+        mod.save:set("g2_zapdos_sell_heist_paid", true)
+      end
+      if not Z.removeJobMon() then
+        errs("ZAPDOS SELL\nmon missing")
+        return false
+      end
+      Z.setResolved("SELL")
+      mod.world:queueScript({
+        { "text", "One call. No names\nThe bird is gone." },
+        { "text", "Twenty SNAG BALLs.\nTen HEIST BALLs." },
+      })
+      return true
+    end
+
+    function Z.finishRelease()
+      local mon = Z.findJobMon()
+      if not mon then
+        mod.world:queueScript({ { "text", "The bird is gone.\nNo bird to release" } })
+        return false
+      end
+      local removable, reason = Z.canRemoveJobMon()
+      if not removable then
+        if reason == "last" then
+          mod.world:queueScript({ { "text", "Keep one partner.\nThen decide." } })
+        end
+        return false
+      end
+      local game = mod.game
+      local save, data = game and game.save, game and game.data
+      if not (save and data) then return false end
+      if mod.save:get("g2_zapdos_tape_paid", false) ~= true then
+        local held = save.inventory
+          and (tonumber(save.inventory.OPEN_WATER_TAPE) or 0) > 0
+        if not held and Bag.add(save, "OPEN_WATER_TAPE", 1, data) ~= true then
+          mod.world:queueScript({ { "text", "No KEY ITEM room.\nClear your BAG." } })
+          return false
+        end
+        mod.save:set("g2_zapdos_tape_paid", true)
+      end
+      if not Z.removeJobMon() then
+        errs("ZAP RELEASE\nmon missing")
+        return false
+      end
+      Z.setResolved("RELEASE")
+      mod.world:queueScript({
+        { "text", "The crate opens.\nZAPDOS takes wing." },
+        { "text", "The storm breaks.\nThe sea goes still" },
+        { "text", "SEA SONG TAPE.\nNo station airs it" },
+      })
+      return true
+    end
+
+    function Z.openOutcome()
+      local pending = Z.outcome()
+      if pending == "SELL" then return Z.finishSell() end
+      if pending == "RELEASE" then return Z.finishRelease() end
+      if not Z.findJobMon() then
+        mod.world:queueScript({ { "text", "The bird is gone.\nNo choice remains." } })
+        return false
+      end
+      mod.world:queueScript({
+        { "text", "The bird is yours.\nWhat happens now?" },
+      }, {
+        onDone = function()
+          local g = mod.game
+          if not (g and g.stack) then return end
+          local menu
+          menu = ListMenu.new(g, "THE BIRD'S FATE", {
+            { label = "KEEP", value = "KEEP" },
+            { label = "SELL", value = "SELL" },
+            { label = "RELEASE", value = "RELEASE" },
+          }, {
+            kind = "snag.zapdos_outcome",
+            onChoose = function(item, list)
+              list:close()
+              local choice = item and item.value
+              if choice == "KEEP" then
+                Z.finishKeep()
+              elseif choice == "SELL" then
+                Z.setOutcome("SELL")
+                Z.finishSell()
+              elseif choice == "RELEASE" then
+                Z.setOutcome("RELEASE")
+                Z.finishRelease()
+              end
+            end,
+          })
+          g.stack:push(menu)
+        end,
+      })
+      return true
+    end
+
     -- Goldenrod contract #1.  The broker introduces the first real choice:
     -- PSYCHIC/NORMAL/BUG.  The choice is durable for this contract and spawns
     -- one real trainer mark elsewhere in the city.  There is no free ball and
@@ -1545,6 +3317,7 @@ return function(mod)
       if h and cur and cur.facing then pcall(h.face, h, opposite[cur.facing]) end
 
       if isClue then
+        if Z.talkWitness("goldenrod") then return end
         local c = CONTRACTS[contractChoice() or ""]
         if contractStage() == CONTRACT_ACTIVE and c and c.gossip then
           mod.world:queueScript({
@@ -1592,7 +3365,8 @@ return function(mod)
             end,
           })
         else
-          runFenceSale(BROKER_VOICE)
+          if R.eligible() then R.openBroker()
+          else runFenceSale(BROKER_VOICE) end
         end
         return
       end
@@ -1675,6 +3449,7 @@ return function(mod)
       if h and cur and cur.facing then pcall(h.face, h, opposite[cur.facing]) end
 
       if isWitness then
+        if Z.talkWitness("ecruteak") then return end
         if ecruteakStage() == CONTRACT_ACTIVE and ec and ec.gossip then
           mod.world:queueScript({
             { "text", ec.gossip[1] },
@@ -1819,6 +3594,7 @@ return function(mod)
       if h and cur and cur.facing then pcall(h.face, h, opposite[cur.facing]) end
 
       if isWitness then
+        if Z.talkWitness("olivine") then return end
         if olivineStage() == CONTRACT_ACTIVE and oc and oc.gossip then
           mod.world:queueScript({
             { "text", "Recording for the\nRADIO, from\vGOLDENROD." },
@@ -1842,6 +3618,8 @@ return function(mod)
         end
         return
       end
+
+      if isContact and Z.handleForeman() then return end
 
       if olivineStage() == CONTRACT_DONE then
         if not (olivineRewarded() and olivineHeistPaid()) then
@@ -1940,6 +3718,31 @@ return function(mod)
       runFenceSale(ROUTE36_VOICE)
     end)
 
+    -- After the guaranteed snag, Proton remains as the silent defeated actor
+    -- long enough to anchor the first post-theft outcome choice.
+    mod.events:on("world.interacted", function(ev)
+      if not ev or ev.mapId ~= Z.PROTON_MAP or ev.kind ~= "none" then
+        return
+      end
+      if Z.stage() ~= Z.CAUGHT then return end
+      local world = mod.world:overworld()
+      local proton = objectNamed(world, Z.PROTON_MAP, Z.PROTON_NAME)
+      if not proton or ev.x ~= proton.x or ev.y ~= proton.y then return end
+      Z.openOutcome()
+    end)
+
+    mod.events:on("world.interacted", function(ev)
+      if not ev or ev.kind ~= "none" or not R.eligible() then return end
+      local c = R.contract()
+      if not c or ev.mapId ~= c.location.map then return end
+      local world = mod.world:overworld()
+      local mark = objectNamed(world, c.location.map, R.MARK_NAME)
+      if not mark or ev.x ~= mark.x or ev.y ~= mark.y then return end
+      if R.stage() == R.CAUGHT then
+        mod.world:queueScript({ { "text", "You got the target\nLeave me alone." } })
+      end
+    end)
+
     -- The auto-start girl's battle is identified by OUR object, not by every
     -- LASS in the game.  This flag scopes the shiny party and guaranteed catch
     -- to this single scripted intro encounter.
@@ -1972,7 +3775,103 @@ return function(mod)
       elseif npc and npc.def and npc.def.name == OLIVINE_MARK_NAME
           and olivineStage() == CONTRACT_ACTIVE then
         olivineBattleActive = true
+      elseif npc and npc.def and npc.def.name == R.MARK_NAME
+          and R.stage() == R.ACTIVE then
+        R.battleActive = true
+        -- Repeat jobs are retryable and never consume the player's blackout.
+        if world and world.scriptVars then world.scriptVars[0x03] = 1 end
+      elseif npc and npc.def and Z.actors[npc.def.name]
+          and Z.stage() == Z.actors[npc.def.name].stage then
+        Z.battleActive = true
+        Z.battleName = npc.def.name
+        if Z.battleName == Z.PROTON_NAME then
+          ctx.vip = true
+        end
+      elseif npc and npc.def and npc.def.name == S.FOE_NAME
+          and S.currentKey() == npc.def.sewerKey then
+        S.battleActive = true
+        S.battleKey = npc.def.sewerKey
+        ctx.vip = S.battleKey == "ARIANA" or S.battleKey == "BRUNO"
+        -- Make a circuit loss retryable instead of blacking the player out.
+        if world and world.scriptVars then world.scriptVars[0x03] = 1 end
       end
+    end)
+
+    -- Scope custom fronts to these three already-created battle screens. The
+    -- shared GRUNT/EXECUTIVE class portraits remain untouched everywhere else.
+    do
+      local ok, err = pcall(function()
+        local BattleState = require("src.ui.gen2.BattleState")
+        local Assets = require("src.render.Assets")
+        BattleState._snagZapdosOriginals = BattleState._snagZapdosOriginals or {}
+        BattleState._snagZapdosOriginals.new =
+          BattleState._snagZapdosOriginals.new or BattleState.new
+        local original = BattleState._snagZapdosOriginals.new
+        BattleState.new = function(game, opts)
+          local state = original(game, opts)
+          local file = Z.battleActive
+              and (Z.battleName == Z.PROTON_NAME and "proton_front.png"
+                or Z.battleName == Z.GRUNT_M_NAME and "rocket_grunt_m_front.png"
+                or Z.battleName == Z.GRUNT_F_NAME and "rocket_grunt_f_front.png")
+            or S.battleActive
+              and (S.battleKey == "ARIANA" and "ariana_front.png"
+                or S.battleKey == "GRUNT" and "rocket_grunt_m_front.png")
+            or nil
+          if file and state then
+            local path = mod.path .. "/assets/" .. file
+            local loaded, image = pcall(Assets.image, path)
+            if loaded and image then
+              state.enemyTrainerImage = image
+              state.enemyTrainerPath = path
+              state.enemyTrainerTrueColor = true
+              state.showEnemyTrainer = true
+            else
+              errs("ZAP PIC\n%s", tostring(image))
+            end
+          end
+          return state
+        end
+      end)
+      if not ok then errs("ZAP PICS\n%s", tostring(err)) end
+    end
+
+    mod.hooks:wrap("trainer.party", function(next_, class, member, party)
+      local base = next_()
+      if not Z.battleActive or not Z.battleName then return base end
+      local actor = Z.actors[Z.battleName]
+      local carrier = Z.carriers[Z.battleName]
+      if not (actor and carrier) then return base end
+      if class ~= actor.class and class ~= carrier.classIx then return base end
+      local data = mod.game and mod.game.data
+      if not data then return base end
+      local out = {}
+      for _, spec in ipairs(actor.party or {}) do
+        local mon = Mon.new(data, spec.species, spec.level)
+        if not mon then return base end
+        out[#out + 1] = mon
+      end
+      return #out > 0 and out or base
+    end)
+
+    -- The circuit uses fresh Mon.new teams, never a party copied from Indigo
+    -- Conference or a replacement of a shared Gold trainer member.
+    mod.hooks:wrap("trainer.party", function(next_, class, member, party)
+      local base = next_()
+      if not S.battleActive or not S.battleKey then return base end
+      local foe = S.roster[S.battleKey]
+      local carrier = S.carriers[S.battleKey]
+      if not (foe and carrier) then return base end
+      if class ~= foe.class and class ~= carrier.classIx then return base end
+      local data = mod.game and mod.game.data
+      if not data then return base end
+      local anchor, out = S.anchorLevel(), {}
+      for _, spec in ipairs(foe.party or {}) do
+        local level = math.max(1, math.min(100, anchor + (spec.delta or 0)))
+        local mon = Mon.new(data, spec.species, level)
+        if not mon then return base end
+        out[#out + 1] = mon
+      end
+      return #out == 3 and out or base
     end)
 
     -- Real shiny Gen 2 MEOWTH: the Lake of Rage shiny DV pattern (14/10/10/10),
@@ -2048,10 +3947,45 @@ return function(mod)
       return #out > 0 and out or base
     end)
 
+    -- Repeat marks use a fresh three-Pokemon party. The advertised target is
+    -- always the middle member and the only catch that completes the job.
+    mod.hooks:wrap("trainer.party", function(next_, class, member, party)
+      local base = next_()
+      if not R.battleActive then return base end
+      local c = R.contract()
+      local source, carrier = repeatCarrier(c)
+      if not (c and source and carrier) then return base end
+      if class ~= source.class and class ~= carrier.classIx then return base end
+      local protectors = {
+        SMEARGLE = { "CLEFAIRY", "MR_MIME" },
+        MISDREAVUS = { "GASTLY", "HAUNTER" },
+        GIRAFARIG = { "DUNSPARCE", "PORYGON" },
+      }
+      local pair = protectors[c.carrier]
+      local data = mod.game and mod.game.data
+      if not (pair and data) then return base end
+      local level = math.max(28, math.min(55, 28 + R.completed()))
+      local out = {}
+      for _, species in ipairs({ pair[1], c.target, pair[2] }) do
+        local mon = Mon.new(data, species, level)
+        if not mon then return base end
+        out[#out + 1] = mon
+      end
+      return out
+    end)
+
     -- Intro exception: this ONE SNAG BALL against this ONE shiny MEOWTH is a
     -- guaranteed catch.  Normal Snag Balls everywhere else keep their normal
     -- odds and behavior.
     mod.hooks:wrap("catch.rate", function(next_, ball, mon, def, o)
+      if Z.battleActive and Z.battleName == Z.PROTON_NAME
+          and type(o) == "table" and o.species == "ZAPDOS"
+          and ball ~= "KINGPIN_BALL" then
+        return false, 0
+      end
+      if ball == "KINGPIN_BALL" then
+        return true, 255
+      end
       if introBattleActive and ball == "SNAG_BALL"
           and type(o) == "table" and o.species == "MEOWTH" then
         return true, 255
@@ -2153,6 +4087,9 @@ return function(mod)
       -- advertised species is stamped below.
       mon.snagBounty = false
       if introBattleActive and mon.species == "MEOWTH" and stage() == STAGE_ARMED then
+        -- The sailor named this exact target, so it is a bounty like every
+        -- later advertised mark rather than ordinary fence merchandise.
+        mon.snagBounty = true
         setStage(STAGE_DONE)
         -- Do not despawn the sailor/girl here.  They remain for the rest of
         -- this Cherrygrove visit and are removed after the player leaves town.
@@ -2182,15 +4119,38 @@ return function(mod)
           olivineCleanupPending = false
         end
       end
+      if R.battleActive and R.stage() == R.ACTIVE then
+        local c = R.contract()
+        if c and mon.species == c.target then
+          mon.snagBounty = true
+          mon.snagRepeatJobId = c.id
+          mon.snagRepeatTerms = c.termsKey
+          R.setStage(R.CAUGHT)
+          R.cleanupPending = false
+        end
+      end
+      if Z.battleActive and Z.battleName == Z.PROTON_NAME
+          and Z.stage() == Z.PROTON and mon.species == "ZAPDOS"
+          and payload.ball == "KINGPIN_BALL" then
+        mon.snagBounty = true
+        mon.snagVip = true
+        mon.snagZapdosJob = true
+        Z.setStage(Z.CAUGHT)
+        Z.cleanupPending = false
+      end
     end)
 
     -- No world mutation during battle teardown.  Defang is only a field write;
     -- physical cleanup happens on the first normal world step afterwards.
-    mod.events:on("battle.ended", function()
+    mod.events:on("battle.ended", function(ev)
       local wasIntro = introBattleActive
       local wasContract = contractBattleActive
       local wasEcruteak = ecruteakBattleActive
       local wasOlivine = olivineBattleActive
+      local wasRepeat = R.battleActive
+      local wasZapdos = Z.battleActive
+      local zapdosName = Z.battleName
+      local battleResult = ev and ev.result
       activeTrainer = nil
 
       if wasIntro then
@@ -2241,6 +4201,89 @@ return function(mod)
           olivineCleanupPending = true
         end
       end
+
+      if wasRepeat then
+        local world = mod.world:overworld()
+        local c = R.contract()
+        local obj = c and objectNamed(world, c.location.map, R.MARK_NAME)
+        R.battleActive = false
+        if R.stage() == R.CAUGHT then
+          if obj then obj.trainer = nil end
+        else
+          R.cleanupPending = true
+        end
+      end
+
+      if wasZapdos and zapdosName then
+        local world = mod.world:overworld()
+        local actor = Z.actors[zapdosName]
+        local obj = actor and objectNamed(world, actor.map, zapdosName)
+        Z.battleActive = false
+        Z.battleName = nil
+        if zapdosName == Z.GRUNT_M_NAME and battleResult == "win" then
+          Z.setStage(Z.GRUNT_F)
+          if obj then obj.trainer = nil end
+        elseif zapdosName == Z.GRUNT_F_NAME and battleResult == "win" then
+          Z.setStage(Z.PROTON)
+          if obj then obj.trainer = nil end
+        elseif zapdosName == Z.PROTON_NAME
+            and Z.stage() == Z.CAUGHT then
+          if obj then obj.trainer = nil end
+        end
+        Z.cleanupPending = true
+      end
+    end)
+
+    mod.events:on("battle.ended", function(ev)
+      S.handleBattleEnd(ev and ev.result)
+    end)
+
+    mod.events:on("world.interacted", function(ev)
+      if not ev or ev.kind ~= "none" then return end
+      local world = mod.world:overworld()
+      if not world then return end
+      if ev.mapId == S.CITY_MAP then
+        local lookout = objectNamed(world, S.CITY_MAP, S.LOOKOUT_NAME)
+        if lookout and ev.x == lookout.x and ev.y == lookout.y then
+          S.talkLookout()
+        end
+        return
+      end
+      if ev.mapId ~= S.MAP then return end
+      local petrel = objectNamed(world, S.MAP, S.PETREL_NAME)
+      local exit = objectNamed(world, S.MAP, S.EXIT_NAME)
+      local specA = objectNamed(world, S.MAP, S.SPEC_A_NAME)
+      local specB = objectNamed(world, S.MAP, S.SPEC_B_NAME)
+      if petrel and ev.x == petrel.x and ev.y == petrel.y then
+        S.talkPetrel()
+      elseif exit and ev.x == exit.x and ev.y == exit.y then
+        S.talkExit()
+      elseif specA and ev.x == specA.x and ev.y == specA.y then
+        S.talkSpectator(specA.def and specA.def.sewerKey)
+      elseif specB and ev.x == specB.x and ev.y == specB.y then
+        S.talkSpectator(specB.def and specB.def.sewerKey)
+      end
+    end)
+
+    mod.events:on("world.stepped", function(ev)
+      if not ev or (ev.mapId ~= S.CITY_MAP and ev.mapId ~= S.MAP) then return end
+      local world = mod.world:overworld()
+      if not world then return end
+      if ev.mapId == S.CITY_MAP then
+        S.syncCity(world)
+        return
+      end
+      if S.cleanupPending then
+        S.syncInterior(world)
+        S.cleanupPending = false
+      end
+      local after = S.afterBattle()
+      if not after then return end
+      S.setAfterBattle(nil)
+      local line = after == "lose" and "PETREL: Out early.\nTry another card."
+        or after == "semi" and "PETREL: One down.\nFinal is ready."
+        or "PETREL: Champion.\nCome get the purse"
+      mod.world:queueScript({ { "text", line } })
     end)
 
     mod.events:on("world.stepped", function(ev)
@@ -2258,6 +4301,19 @@ return function(mod)
 
     mod.events:on("world.stepped", function(ev)
       if not ev then return end
+      if ev.mapId ~= Z.GRUNT_M_MAP and ev.mapId ~= Z.GRUNT_F_MAP
+          and ev.mapId ~= Z.PROTON_MAP then return end
+      if not Z.cleanupPending and not Z.expectedActor(ev.mapId) then
+        return
+      end
+      local world = mod.world:overworld()
+      if not world then return end
+      Z.ensureActor(world, ev.mapId)
+      Z.cleanupPending = false
+    end)
+
+    mod.events:on("world.stepped", function(ev)
+      if not ev then return end
       if ev.mapId ~= GOLDENROD_MAP
           and ev.mapId ~= GOLDENROD_CITY_MAP
           and ev.mapId ~= MARK_MAP then return end
@@ -2267,9 +4323,12 @@ return function(mod)
       -- Reconcile even when installed while already standing on either map.
       if stage() == STAGE_DONE and rewardClaimed() then
         if ev.mapId == GOLDENROD_MAP then ensureBroker(world) end
-        if ev.mapId == GOLDENROD_CITY_MAP
-            and contractStage() == CONTRACT_ACTIVE then
-          ensureClueNpc(world)
+        if ev.mapId == GOLDENROD_CITY_MAP then
+          if contractStage() == CONTRACT_ACTIVE or Z.witnessVisible() then
+            ensureClueNpc(world)
+          elseif contractStage() == CONTRACT_DONE then
+            removeNamed(world, GOLDENROD_CITY_MAP, CLUE_NAME)
+          end
         end
         if ev.mapId == MARK_MAP and contractStage() == CONTRACT_ACTIVE then
           ensureContractMark(world)
@@ -2293,7 +4352,7 @@ return function(mod)
 
       if ev.mapId == ECRUTEAK_MAP then
         ensureEcruteakContact(world)
-        if ecruteakStage() == CONTRACT_ACTIVE then
+        if ecruteakStage() == CONTRACT_ACTIVE or Z.witnessVisible() then
           ensureEcruteakWitness(world)
         end
       end
@@ -2322,7 +4381,7 @@ return function(mod)
         ensureOlivineContact(world)
         -- The recordist is only in town while there is a job running; she
         -- packs up once the contract is done, like the other two witnesses.
-        if olivineStage() == CONTRACT_ACTIVE then
+        if olivineStage() == CONTRACT_ACTIVE or Z.witnessVisible() then
           ensureOlivineWitness(world)
         else
           removeNamed(world, OLIVINE_MAP, OLIVINE_WITNESS_NAME)
@@ -2339,6 +4398,17 @@ return function(mod)
         end
         olivineCleanupPending = false
       end
+    end)
+
+    mod.events:on("world.stepped", function(ev)
+      if not ev or not R.eligible() then return end
+      local c = R.contract()
+      local relevant = c and ev.mapId == c.location.map
+      if not relevant and not R.cleanupPending then return end
+      local world = mod.world:overworld()
+      if not world then return end
+      R.sync(world, ev.mapId)
+      if relevant and R.stage() == R.ACTIVE then R.armMark(world) end
     end)
 
     mod.log:info("Pokemon Snag %s loaded (Gold)", VERSION)

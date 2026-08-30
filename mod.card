@@ -42,6 +42,7 @@ return {
     { who = "Custom Pokeballs", for_ = "the item+ball registry pattern this mod's Snag Ball follows, and the mart list its shop unlock reuses" },
     { who = "Team Rocket Returns", for_ = "the map_scripts/Flags/base_talk dialogue pattern and custom trainer-class registration this mod follows" },
     { who = "Shiny Pokemon", for_ = "the optional shiny-DV generator this mod's Meowth uses when that mod is installed" },
+    { who = "SirWhibbles", for_ = "the Proton, Ariana, Petrel, and Rocket Grunt overworld and battle sprites used by Gold's Zapdos job and Cianwood Sewers (Free to use, with credits please!)" },
   },
 
   compat = { engine = ">=0.1.38 <2.0.0", modApi = 2 },

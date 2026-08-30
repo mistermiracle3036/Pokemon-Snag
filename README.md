@@ -135,13 +135,17 @@ log prints the running version so you can confirm what's live.
 - **[Pokéball Colors](https://github.com/mistermiracle3036/Pokeball-Colors)** —
   optional. On **Red, Blue and Yellow** it paints the Snag Ball's throw in
   Team Rocket black and red; this mod hands it those colours at startup, so
-  there is nothing to set up.
+  there is nothing to set up. On Gold, Pokemon Snag supplies native throw
+  palettes for all three of its balls; Pokéball Colors can read those same
+  rows for its Pokémon Center display.
 - **[Too Many Balls](https://github.com/mistermiracle3036/Too-Many-Balls)** —
   optional, and worth having on Gold. Gold's Ball pocket is small and this
-  mod adds two more ids to it, so Pokemon Snag asks Too Many Balls for two
-  slots of extra headroom when it is installed. Without it nothing breaks —
-  the pocket is simply tighter, and if a reward will not fit, whoever owes
-  it keeps that half until you have made room.
+  mod adds three ids to it, so Pokemon Snag asks Too Many Balls for three
+  slots of extra headroom when it is installed.
+
+  Without it the pocket is simply tighter; all three Snag ball colors still
+  work. If a reward will not fit, whoever owes it keeps that half until you
+  have made room.
 
   Its **Ball Case** tidies away its own balls, which is the quickest way to
   stop scrolling past a dozen of them. Your Snag Balls stay in the pocket

@@ -40,6 +40,19 @@ selling to fences, and contract payouts.
 </details>
 
 <details>
+<summary>Why do the Snag balls look grey on Gold?</summary>
+
+Gold's engine only maps its cartridge balls, so unknown custom ids use grey.
+Pokemon Snag 0.15.19 now supplies all three mappings itself: Rocket black/red
+for SNAG, dark navy/gold for HEIST, and cream/gold for KINGPIN.
+
+Too Many Balls is not required for these colors. If a throw remains grey,
+fully quit and relaunch, then confirm the load log says Pokemon Snag 0.15.19.
+The colors are cosmetic: SNAG remains Normal/1x, HEIST remains Good/2x, and
+KINGPIN remains guaranteed.
+</details>
+
+<details>
 <summary>Can I run out of Snag Balls and get stuck?</summary>
 
 No. If you turn up at the Route 36 fence with **no Snag Balls of any kind
@@ -132,6 +145,20 @@ targets the opponent's current Pokémon.
 </details>
 
 <details>
+<summary>What is the Snag Ball's catch rate?</summary>
+
+On Gold, a plain **Snag Ball is 1×**, exactly the same multiplier as a
+Poké Ball. A **Heist Ball is 2×**, while the Kingpin Ball is guaranteed.
+The scripted shiny intro Meowth is also a one-encounter guaranteed exception.
+
+Gold then applies its normal HP and status formula. At full HP and with no
+status, the final chance is approximately one third of the adjusted species
+catch rate out of 256. For example, a catch-rate-45 Hitmonchan is about
+**15/256 (5.9%)** with a Snag Ball or **30/256 (11.7%)** with a Heist Ball.
+Weakening it and inflicting sleep or freeze improves those odds.
+</details>
+
+<details>
 <summary>Anything odd about snagging vs. a normal catch?</summary>
 
 Because a snag reuses the engine's real faint pipeline to let the battle
@@ -155,19 +182,20 @@ On **Red, Blue and Yellow** it continues by default, and you can turn
 <details>
 <summary>How is the payout calculated? (numbers)</summary>
 
-Starting from **1 Snag Ball**:
+Starting from the guaranteed **2 Snag Ball** base:
 
 - +1 if the mon was snagged at level 25+
 - +1 if it was snagged at level 45+
 - +1 if the species is hard to catch (catch rate ≤ 45)
 - +1 if you stole it from a **VIP**
 
-Then two floors are applied, so a sale never drops below them:
+The named Gold intro Meowth and later contract targets are bounties and pay
+at least **3**. All payouts remain capped at **5**.
 
-- **2 minimum** for any sale at all, on either game.
-- **3 minimum** if it was a contract's advertised target.
+Gold fences show the applicable parts of that calculation before the final
+quote, so the player can see exactly why a Pokemon has its value.
 
-Capped at **5**. The level used is the level it was *stolen* at — training
+The level used is the level it was *stolen* at — training
 it up afterwards doesn't raise the price.
 
 **Who counts as a VIP** differs by game. In Kanto: your rival, the eight
