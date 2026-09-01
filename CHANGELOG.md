@@ -1,3 +1,13 @@
+## 0.15.21 - Grunts use Gold's own Rocket sprites (private test)
+
+- The rank-and-file Rocket grunts in the Zapdos job and the Cianwood Sewers
+  now use Gold's own Rocket and Rocket Girl sprites instead of custom copies,
+  in the overworld and in battle. They looked near-identical; the cartridge
+  already had them, and a shipped copy is one more thing to keep in step with
+  every other mod using the same art.
+- Proton, Petrel and Ariana keep their custom sprites — Gold has no distinct
+  overworld art for any of them.
+
 ## 0.15.20 - Shared Trainer Journey stat-up UI (private test)
 
 - Gold RELEASE contracts now use Trainer Journey's durable one-time award and

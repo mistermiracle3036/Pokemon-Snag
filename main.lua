@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.15.20"
+  local VERSION = "0.15.21"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -258,7 +258,7 @@ return function(mod)
     S.roster = {
       GRUNT = {
         name = "ROCKET GRUNT", class = "GRUNTM", member = "SNAG_SEWER_GRUNT",
-        sprite = "SPRITE_SNAG_ROCKET_M", seen = "SNAG_SEWER_GRUNT_SEEN",
+        sprite = "SPRITE_ROCKET", seen = "SNAG_SEWER_GRUNT_SEEN",
         win = "SNAG_SEWER_GRUNT_WIN", loss = "SNAG_SEWER_GRUNT_LOSS",
         party = {
           { species = "RATICATE", delta = -1 },
@@ -295,7 +295,7 @@ return function(mod)
     Z.actors = {
       [Z.GRUNT_M_NAME] = {
         map = Z.GRUNT_M_MAP, x = 18, y = 12,
-        sprite = "SPRITE_SNAG_ROCKET_M", class = "GRUNTM",
+        sprite = "SPRITE_ROCKET", class = "GRUNTM",
         member = "SNAG_REMNANT_M", stage = Z.GRUNT_M,
         seen = "SNAG_ZAP_GRUNT_M_SEEN", win = "SNAG_ZAP_GRUNT_M_WIN",
         loss = "SNAG_ZAP_GRUNT_M_LOSS",
@@ -307,7 +307,7 @@ return function(mod)
       },
       [Z.GRUNT_F_NAME] = {
         map = Z.GRUNT_F_MAP, x = 25, y = 13,
-        sprite = "SPRITE_SNAG_ROCKET_F", class = "GRUNTF",
+        sprite = "SPRITE_ROCKET_GIRL", class = "GRUNTF",
         member = "SNAG_REMNANT_F", stage = Z.GRUNT_F,
         seen = "SNAG_ZAP_GRUNT_F_SEEN", win = "SNAG_ZAP_GRUNT_F_WIN",
         loss = "SNAG_ZAP_GRUNT_F_LOSS",
@@ -386,10 +386,8 @@ return function(mod)
       })
     end
     registerZapdosSprite("SPRITE_SNAG_PROTON", "proton.png", "PAL_OW_PINK", 4)
-    registerZapdosSprite("SPRITE_SNAG_ROCKET_M", "rocket_grunt_m.png",
-      "PAL_OW_BROWN", 3)
-    registerZapdosSprite("SPRITE_SNAG_ROCKET_F", "rocket_grunt_f.png",
-      "PAL_OW_BROWN", 3)
+    -- The rank-and-file grunts use Gold's own SPRITE_ROCKET and
+    -- SPRITE_ROCKET_GIRL. Only the named executives need custom art.
     registerZapdosSprite("SPRITE_SNAG_PETREL", "petrel.png",
       "PAL_OW_GREEN", 2)
     registerZapdosSprite("SPRITE_SNAG_ARIANA", "ariana.png",
@@ -1126,8 +1124,7 @@ return function(mod)
     mod.exports.owns.items =
       { "SNAG_BALL", "HEIST_BALL", "KINGPIN_BALL", "OPEN_WATER_TAPE" }
     mod.exports.owns.sprites =
-      { "SPRITE_SNAG_PROTON", "SPRITE_SNAG_ROCKET_M",
-        "SPRITE_SNAG_ROCKET_F", "SPRITE_SNAG_PETREL",
+      { "SPRITE_SNAG_PROTON", "SPRITE_SNAG_PETREL",
         "SPRITE_SNAG_ARIANA" }
     mod.exports.owns.runtimeObjects =
       { Z.GRUNT_M_NAME, Z.GRUNT_F_NAME, Z.PROTON_NAME,
@@ -1980,7 +1977,7 @@ return function(mod)
       end
       if not spot then return false end
       return S.spawnActor(S.CITY_MAP, {
-        name = S.LOOKOUT_NAME, sprite = "SPRITE_SNAG_ROCKET_F",
+        name = S.LOOKOUT_NAME, sprite = "SPRITE_ROCKET_GIRL",
         x = spot.x, y = spot.y, movement = MOVE_STANDING_LEFT,
       })
     end
@@ -2006,7 +2003,7 @@ return function(mod)
         movement = MOVE_STANDING_UP, sewerRole = "petrel",
       })
       S.spawnActor(S.MAP, {
-        name = S.EXIT_NAME, sprite = "SPRITE_SNAG_ROCKET_M",
+        name = S.EXIT_NAME, sprite = "SPRITE_ROCKET",
         x = S.cells.exit.x, y = S.cells.exit.y,
         movement = MOVE_STANDING_LEFT, sewerRole = "exit",
       })
@@ -3809,13 +3806,12 @@ return function(mod)
         local original = BattleState._snagZapdosOriginals.new
         BattleState.new = function(game, opts)
           local state = original(game, opts)
+          -- Only the named executives override their front pic; the
+          -- grunts fall through to their vanilla trainer class art.
           local file = Z.battleActive
-              and (Z.battleName == Z.PROTON_NAME and "proton_front.png"
-                or Z.battleName == Z.GRUNT_M_NAME and "rocket_grunt_m_front.png"
-                or Z.battleName == Z.GRUNT_F_NAME and "rocket_grunt_f_front.png")
+              and (Z.battleName == Z.PROTON_NAME and "proton_front.png")
             or S.battleActive
-              and (S.battleKey == "ARIANA" and "ariana_front.png"
-                or S.battleKey == "GRUNT" and "rocket_grunt_m_front.png")
+              and (S.battleKey == "ARIANA" and "ariana_front.png")
             or nil
           if file and state then
             local path = mod.path .. "/assets/" .. file
