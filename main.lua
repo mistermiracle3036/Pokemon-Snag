@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.15.21"
+  local VERSION = "0.15.22"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -244,7 +244,12 @@ return function(mod)
       SPEC_A_NAME = "SNAG_SEWER_SPEC_A",
       SPEC_B_NAME = "SNAG_SEWER_SPEC_B",
       EXIT_NAME = "SNAG_SEWER_EXIT",
-      IDLE = 0, SEMI = 1, FINAL = 2, CHAMPION = 3,
+      -- CHAMPION keeps its original 3 on purpose: the stage is persisted,
+      -- so a save sitting mid-circuit when this version lands must still
+      -- read as "collect your purse".  New stages take fresh numbers.
+      IDLE = 0, SEMI = 1, FINAL = 2, CHAMPION = 3, PURSE = 4, HOUSE = 5,
+      fronts = { ARIANA = "ariana_front.png", PETREL = "petrel_front.png" },
+      vips = { ARIANA = true, BRUNO = true, PETREL = true },
       CITY_LOOKOUT = { x = 26, y = 44 },
       CITY_RETURN = { x = 25, y = 44, facing = "right" },
       cells = {
@@ -274,6 +279,20 @@ return function(mod)
           { species = "ARBOK", delta = 0 },
           { species = "VILEPLUME", delta = 1 },
           { species = "MURKROW", delta = 1 },
+        },
+      },
+      -- The house itself.  Never entered into the draw (see S.newDraw) --
+      -- he is reachable only as the optional double-or-nothing round once
+      -- the card is clear.
+      PETREL = {
+        name = "PETREL", class = "EXECUTIVEM",
+        member = "SNAG_SEWER_PETREL_HOUSE",
+        sprite = "SPRITE_SNAG_PETREL", seen = "SNAG_SEWER_PETREL_SEEN",
+        win = "SNAG_SEWER_PETREL_WIN", loss = "SNAG_SEWER_PETREL_LOSS",
+        party = {
+          { species = "WEEZING", delta = 1 },
+          { species = "RATICATE", delta = 2 },
+          { species = "CROBAT", delta = 3 },
         },
       },
       BRUNO = {
@@ -357,6 +376,9 @@ return function(mod)
       brunoSeen = "BRUNO: No cameras.\nWe train in peace.",
       brunoWin = "BRUNO: Strong team\nWrong arena.",
       brunoLoss = "BRUNO: Good match.\nCall it training.",
+      petrelSeen = "PETREL: The house\nplays for itself.",
+      petrelWin = "PETREL: The house\nfolds. Take it.",
+      petrelLoss = "PETREL: House wins\nas the house does.",
     }
 
     mod.content.text:register("SNAG_ZAP_GRUNT_M_SEEN", REMNANT_VOICE.maleSeen)
@@ -377,6 +399,9 @@ return function(mod)
     mod.content.text:register("SNAG_SEWER_BRUNO_SEEN", SEWER_VOICE.brunoSeen)
     mod.content.text:register("SNAG_SEWER_BRUNO_WIN", SEWER_VOICE.brunoWin)
     mod.content.text:register("SNAG_SEWER_BRUNO_LOSS", SEWER_VOICE.brunoLoss)
+    mod.content.text:register("SNAG_SEWER_PETREL_SEEN", SEWER_VOICE.petrelSeen)
+    mod.content.text:register("SNAG_SEWER_PETREL_WIN", SEWER_VOICE.petrelWin)
+    mod.content.text:register("SNAG_SEWER_PETREL_LOSS", SEWER_VOICE.petrelLoss)
 
     local function registerZapdosSprite(id, file, palette, paletteId)
       mod.content.sprites:register(id, {
@@ -416,7 +441,8 @@ return function(mod)
     -- Private carriers only. The live teams are constructed with Gold's
     -- Mon.new path in this mod's positively-scoped trainer.party hook; no
     -- shared trainer member or vanilla party is replaced.
-    local sewerAppends = { GRUNTM = {}, EXECUTIVEF = {}, BRUNO = {} }
+    local sewerAppends =
+      { GRUNTM = {}, EXECUTIVEF = {}, EXECUTIVEM = {}, BRUNO = {} }
     for _, foe in pairs(S.roster) do
       local fallback = {}
       for _, spec in ipairs(foe.party) do
@@ -1761,15 +1787,16 @@ return function(mod)
       mod.save:set("g2_sewer_draw",
         type(keys) == "table" and table.concat(keys, "|") or "")
     end
+    -- "house" = beat the house match, "housed" = lost it.  Losing the
+    -- double is not washing out of the card and must not say that it is.
+    S.AFTER = { lose = true, semi = true, final = true,
+      house = true, housed = true }
     function S.afterBattle()
       local value = mod.save:get("g2_sewer_after", "")
-      return (value == "lose" or value == "semi" or value == "final")
-        and value or nil
+      return S.AFTER[value] and value or nil
     end
     function S.setAfterBattle(value)
-      mod.save:set("g2_sewer_after",
-        (value == "lose" or value == "semi" or value == "final")
-          and value or "")
+      mod.save:set("g2_sewer_after", S.AFTER[value] and value or "")
     end
     function S.wins()
       return tonumber(mod.save:get("g2_sewer_wins", 0)) or 0
@@ -1787,6 +1814,7 @@ return function(mod)
       if not draw then return nil end
       if s == S.SEMI then return draw[1] end
       if s == S.FINAL then return draw[2] end
+      if s == S.HOUSE then return "PETREL" end
       return nil
     end
 
@@ -1936,6 +1964,7 @@ return function(mod)
       if not S.selectTeam() then return false end
       S.healTeam()
       S.setDraw(S.newDraw())
+      mod.save:set("g2_sewer_double", 0)
       S.setStage(S.SEMI)
       S.setAfterBattle(nil)
       S.cleanupPending = true
@@ -1997,11 +2026,15 @@ return function(mod)
           S.SPEC_B_NAME, S.EXIT_NAME }) do
         S.removeActor(world, S.MAP, name)
       end
-      S.spawnActor(S.MAP, {
-        name = S.PETREL_NAME, sprite = "SPRITE_SNAG_PETREL",
-        x = S.cells.petrel.x, y = S.cells.petrel.y,
-        movement = MOVE_STANDING_UP, sewerRole = "petrel",
-      })
+      -- During the house match PETREL is down in the pit as the foe, so his
+      -- host actor must not also stand at the rail.
+      if S.stage() ~= S.HOUSE then
+        S.spawnActor(S.MAP, {
+          name = S.PETREL_NAME, sprite = "SPRITE_SNAG_PETREL",
+          x = S.cells.petrel.x, y = S.cells.petrel.y,
+          movement = MOVE_STANDING_UP, sewerRole = "petrel",
+        })
+      end
       S.spawnActor(S.MAP, {
         name = S.EXIT_NAME, sprite = "SPRITE_ROCKET",
         x = S.cells.exit.x, y = S.cells.exit.y,
@@ -2103,29 +2136,69 @@ return function(mod)
           { "text", title .. "\nTalk to " .. label .. "." },
         })
         return true
+      elseif s == S.PURSE then
+        mod.world:queueScript({
+          { "text", "PETREL: Card is\nclear. Your purse." },
+          { "text", "One HEIST BALL now\nor two. Fight me." },
+        }, { onDone = function() S.openHouseMenu() end })
+        return true
       elseif s == S.CHAMPION then
         local game = mod.game
         local save, data = game and game.save, game and game.data
         if not (save and data) then return false end
-        if Bag.add(save, "HEIST_BALL", 1, data) ~= true then
+        local doubled = tonumber(mod.save:get("g2_sewer_double", 0)) == 1
+        if Bag.add(save, "HEIST_BALL", doubled and 2 or 1, data) ~= true then
           mod.world:queueScript({
             { "text", "PETREL: BALL bag\nneeds room." },
           })
           return true
         end
         mod.save:set("g2_sewer_wins", S.wins() + 1)
+        mod.save:set("g2_sewer_double", 0)
         S.setStage(S.IDLE)
         S.setDraw(nil)
         S.setAfterBattle(nil)
         S.scopedTeam = nil
         S.cleanupPending = true
         mod.world:queueScript({
-          { "text", "PETREL: Champion.\nOne HEIST BALL." },
+          { "text", doubled and "PETREL: You beat\nthe house. Two."
+            or "PETREL: Champion.\nOne HEIST BALL." },
           { "text", "House keeps quiet.\nPurse is yours." },
         })
         return true
       end
       return false
+    end
+
+    -- Double or nothing.  Declining routes straight back through the
+    -- CHAMPION payout above rather than duplicating the Bag.add guard.
+    function S.openHouseMenu()
+      local game = mod.game
+      if not (game and game.stack) then return false end
+      local menu
+      menu = ListMenu.new(game, "THE HOUSE", {
+        { label = "TAKE PURSE", value = "PURSE" },
+        { label = "FIGHT PETREL", value = "HOUSE" },
+      }, {
+        kind = "snag.sewer_house",
+        onChoose = function(item, list)
+          list:close()
+          if item and item.value == "HOUSE" then
+            S.setStage(S.HOUSE)
+            S.healTeam()
+            S.cleanupPending = true
+            S.syncInterior(mod.world:overworld())
+            mod.world:queueScript({
+              { "text", "PETREL: Then step\ndown to the water." },
+            })
+          else
+            S.setStage(S.CHAMPION)
+            S.talkPetrel()
+          end
+        end,
+      })
+      game.stack:push(menu)
+      return true
     end
 
     function S.talkSpectator(key)
@@ -2191,14 +2264,18 @@ return function(mod)
       if result ~= "win" then
         S.setStage(S.IDLE)
         S.setDraw(nil)
-        S.setAfterBattle("lose")
+        S.setAfterBattle(stageNow == S.HOUSE and "housed" or "lose")
         S.scopedTeam = nil
       elseif stageNow == S.SEMI then
         S.setStage(S.FINAL)
         S.setAfterBattle("semi")
       elseif stageNow == S.FINAL then
-        S.setStage(S.CHAMPION)
+        S.setStage(S.PURSE)
         S.setAfterBattle("final")
+      elseif stageNow == S.HOUSE then
+        S.setStage(S.CHAMPION)
+        mod.save:set("g2_sewer_double", 1)
+        S.setAfterBattle("house")
       end
       S.cleanupPending = true
       return true
@@ -3497,7 +3574,7 @@ return function(mod)
               if not ecruteakHeistPaid() then
                 if not giveHeistBalls(1) then
                   mod.world:queueScript({ { "text",
-                    "CONTACT: No room\nfor the HEIST BALL." } })
+                    "CONTACT: No room\nfor a HEIST BALL." } })
                   return
                 end
                 setEcruteakHeistPaid(true)
@@ -3788,7 +3865,7 @@ return function(mod)
           and S.currentKey() == npc.def.sewerKey then
         S.battleActive = true
         S.battleKey = npc.def.sewerKey
-        ctx.vip = S.battleKey == "ARIANA" or S.battleKey == "BRUNO"
+        ctx.vip = S.vips[S.battleKey] == true
         -- Make a circuit loss retryable instead of blacking the player out.
         if world and world.scriptVars then world.scriptVars[0x03] = 1 end
       end
@@ -3810,8 +3887,7 @@ return function(mod)
           -- grunts fall through to their vanilla trainer class art.
           local file = Z.battleActive
               and (Z.battleName == Z.PROTON_NAME and "proton_front.png")
-            or S.battleActive
-              and (S.battleKey == "ARIANA" and "ariana_front.png")
+            or (S.battleActive and S.fronts[S.battleKey])
             or nil
           if file and state then
             local path = mod.path .. "/assets/" .. file
@@ -4278,7 +4354,9 @@ return function(mod)
       S.setAfterBattle(nil)
       local line = after == "lose" and "PETREL: Out early.\nTry another card."
         or after == "semi" and "PETREL: One down.\nFinal is ready."
-        or "PETREL: Champion.\nCome get the purse"
+        or after == "housed" and "PETREL: All mine.\nPurse and pride."
+        or after == "house" and "PETREL: Two BALLS.\nCome and take em."
+        or "PETREL: Card done.\nCome and see me."
       mod.world:queueScript({ { "text", line } })
     end)
 

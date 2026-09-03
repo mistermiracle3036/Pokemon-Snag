@@ -1,3 +1,19 @@
+## 0.15.22 - Fight PETREL for double the purse (private test)
+
+- The Cianwood Sewers circuit now has a third, optional round. Clear the card
+  and PETREL offers you a choice: take the purse and go, or put it on the
+  table and fight the house. Win and you walk out with two HEIST BALLs
+  instead of one. Lose and you get nothing — the card you already cleared
+  does not save you.
+- PETREL fights as a TEAM ROCKET executive with WEEZING, RATICATE and CROBAT,
+  each a level above the last, and he is scaled off your own team like the
+  rest of the circuit. He steps down into the pit for the match, so the two
+  fighters you already beat are the ones watching from the rail.
+- His battle portrait is the custom PETREL art that shipped in 0.15.20 but
+  had nowhere to appear until now.
+- Fixed a line in the ECRUTEAK contract that ran one character past the text
+  box when your BALL pocket was full.
+
 ## 0.15.21 - Grunts use Gold's own Rocket sprites (private test)
 
 - The rank-and-file Rocket grunts in the Zapdos job and the Cianwood Sewers
