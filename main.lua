@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.15.22"
+  local VERSION = "0.16.0"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -1261,6 +1261,41 @@ return function(mod)
       return true
     end
 
+    -- A fixed spawn cell is a guess about a map we do not own: another mod
+    -- may have put an NPC there, and vanilla NPCs wander.  Rather than
+    -- stacking two sprites on one tile, take the nearest cell that passes
+    -- `usable`.  Ring order is deterministic so a given collision always
+    -- degrades to the same tile, which keeps device reports reproducible.
+    local SHIFT_RING = {
+      { 0, 0 },
+      { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 },
+      { 1, -1 }, { 1, 1 }, { -1, 1 }, { -1, -1 },
+      { 0, -2 }, { 2, 0 }, { 0, 2 }, { -2, 0 },
+    }
+
+    -- Returns x, y of the cell actually used, or nil if the whole ring is
+    -- blocked.  Callers MUST handle nil by not spawning -- a caller that
+    -- spawns anyway has defeated the point.
+    --
+    -- mapId is NOT optional.  `usable` answers about world.map, the map the
+    -- player is standing on, and three spawners below are called from a
+    -- ListMenu while the player is somewhere else entirely: the Goldenrod
+    -- broker sends a mark to GOLDENROD_UNDERGROUND, the Ecruteak contact to
+    -- DANCE_THEATER, the Olivine foreman to OLIVINE_LIGHTHOUSE_1F.  Shifting
+    -- those against the wrong map's collision refused two of them outright
+    -- and moved the third a tile off for good.  When the target map is not
+    -- live there is nothing to measure, so hand back the fixed cell and
+    -- behave exactly as the mod did before 0.16.0.
+    local function placeOrShift(world, mapId, x, y)
+      if not (world and x and y) then return nil end
+      if not (world.map and world.map.id == mapId) then return x, y end
+      for _, d in ipairs(SHIFT_RING) do
+        local cx, cy = x + d[1], y + d[2]
+        if usable(world, cx, cy) then return cx, cy end
+      end
+      return nil
+    end
+
     -- Fixed placement test for Cherrygrove.  This is intentionally a guessed
     -- coordinate so device feedback can tune it by exact tile offsets.  Keep
     -- it away from known vanilla objects, doors, signs, and the rival scene.
@@ -1274,6 +1309,8 @@ return function(mod)
       if objectNamed(world, MAP, SAILOR_NAME) then return true end
       local x, y = sailorCell(world)
       if not x then return false end
+      x, y = placeOrShift(world, MAP, x, y)
+      if not x then errs("SAILOR SPAWN\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(MAP, {
         name = SAILOR_NAME, sprite = "SPRITE_SAILOR",
         x = x, y = y, movement = MOVE_STANDING_DOWN,
@@ -1284,9 +1321,11 @@ return function(mod)
 
     local function ensureFence(world)
       if objectNamed(world, FENCE_MAP, FENCE_NAME) then return true end
+      local x, y = placeOrShift(world, FENCE_MAP, FENCE_X, FENCE_Y)
+      if not x then errs("FENCE SPAWN\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(FENCE_MAP, {
         name = FENCE_NAME, sprite = "SPRITE_SUPER_NERD",
-        x = FENCE_X, y = FENCE_Y, movement = MOVE_STANDING_UP,
+        x = x, y = y, movement = MOVE_STANDING_UP,
       })
       if not id then errs("FENCE SPAWN\n%s", tostring(err)); return false end
       return true
@@ -1294,9 +1333,11 @@ return function(mod)
 
     local function ensureBroker(world)
       if objectNamed(world, GOLDENROD_MAP, BROKER_NAME) then return true end
+      local x, y = placeOrShift(world, GOLDENROD_MAP, BROKER_X, BROKER_Y)
+      if not x then errs("BROKER SPAWN\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(GOLDENROD_MAP, {
         name = BROKER_NAME, sprite = "SPRITE_SUPER_NERD",
-        x = BROKER_X, y = BROKER_Y, movement = MOVE_STANDING_DOWN,
+        x = x, y = y, movement = MOVE_STANDING_DOWN,
       })
       if not id then errs("BROKER SPAWN\n%s", tostring(err)); return false end
       return true
@@ -1304,9 +1345,11 @@ return function(mod)
 
     local function ensureClueNpc(world)
       if objectNamed(world, GOLDENROD_CITY_MAP, CLUE_NAME) then return true end
+      local x, y = placeOrShift(world, GOLDENROD_CITY_MAP, CLUE_X, CLUE_Y)
+      if not x then errs("CLUE SPAWN\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(GOLDENROD_CITY_MAP, {
         name = CLUE_NAME, sprite = "SPRITE_TEACHER",
-        x = CLUE_X, y = CLUE_Y, movement = MOVE_STANDING_DOWN,
+        x = x, y = y, movement = MOVE_STANDING_DOWN,
       })
       if not id then errs("CLUE SPAWN\n%s", tostring(err)); return false end
       return true
@@ -1348,9 +1391,11 @@ return function(mod)
         if not obj.trainer then armContractMark(world) end
         return true
       end
+      local x, y = placeOrShift(world, MARK_MAP, MARK_X, MARK_Y)
+      if not x then errs("MARK SPAWN\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(MARK_MAP, {
         name = MARK_NAME, sprite = c.sprite,
-        x = MARK_X, y = MARK_Y, movement = MOVE_STANDING_DOWN,
+        x = x, y = y, movement = MOVE_STANDING_DOWN,
         trainer = {
           class = carrier.classIx, member = carrier.memberIx,
           seenText = c.seen, winText = c.win, lossText = c.loss,
@@ -1362,9 +1407,12 @@ return function(mod)
 
     local function ensureEcruteakContact(world)
       if objectNamed(world, ECRUTEAK_MAP, ECRUTEAK_CONTACT_NAME) then return true end
+      local x, y = placeOrShift(world, ECRUTEAK_MAP,
+        ECRUTEAK_CONTACT_X, ECRUTEAK_CONTACT_Y)
+      if not x then errs("ECR CONTACT\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(ECRUTEAK_MAP, {
         name = ECRUTEAK_CONTACT_NAME, sprite = "SPRITE_GENTLEMAN",
-        x = ECRUTEAK_CONTACT_X, y = ECRUTEAK_CONTACT_Y,
+        x = x, y = y,
         movement = MOVE_STANDING_DOWN,
       })
       if not id then errs("ECR CONTACT\n%s", tostring(err)); return false end
@@ -1373,9 +1421,12 @@ return function(mod)
 
     local function ensureEcruteakWitness(world)
       if objectNamed(world, ECRUTEAK_MAP, ECRUTEAK_WITNESS_NAME) then return true end
+      local x, y = placeOrShift(world, ECRUTEAK_MAP,
+        ECRUTEAK_WITNESS_X, ECRUTEAK_WITNESS_Y)
+      if not x then errs("ECR WITNESS\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(ECRUTEAK_MAP, {
         name = ECRUTEAK_WITNESS_NAME, sprite = "SPRITE_GRAMPS",
-        x = ECRUTEAK_WITNESS_X, y = ECRUTEAK_WITNESS_Y,
+        x = x, y = y,
         movement = MOVE_STANDING_DOWN,
       })
       if not id then errs("ECR WITNESS\n%s", tostring(err)); return false end
@@ -1418,9 +1469,11 @@ return function(mod)
         if not obj.trainer then armEcruteakMark(world) end
         return true
       end
+      local x, y = placeOrShift(world, c.map, c.x, c.y)
+      if not x then errs("ECR MARK\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(c.map, {
         name = ECRUTEAK_MARK_NAME, sprite = c.sprite,
-        x = c.x, y = c.y, movement = MOVE_STANDING_DOWN,
+        x = x, y = y, movement = MOVE_STANDING_DOWN,
         trainer = {
           class = carrier.classIx, member = carrier.memberIx,
           seenText = c.seen, winText = c.win, lossText = c.loss,
@@ -1432,9 +1485,12 @@ return function(mod)
 
     local function ensureOlivineContact(world)
       if objectNamed(world, OLIVINE_MAP, OLIVINE_CONTACT_NAME) then return true end
+      local x, y = placeOrShift(world, OLIVINE_MAP,
+        OLIVINE_CONTACT_X, OLIVINE_CONTACT_Y)
+      if not x then errs("OLI CONTACT\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(OLIVINE_MAP, {
         name = OLIVINE_CONTACT_NAME, sprite = "SPRITE_SAILOR",
-        x = OLIVINE_CONTACT_X, y = OLIVINE_CONTACT_Y,
+        x = x, y = y,
         movement = MOVE_STANDING_DOWN,
       })
       if not id then errs("OLI CONTACT\n%s", tostring(err)); return false end
@@ -1443,9 +1499,12 @@ return function(mod)
 
     local function ensureOlivineWitness(world)
       if objectNamed(world, OLIVINE_MAP, OLIVINE_WITNESS_NAME) then return true end
+      local x, y = placeOrShift(world, OLIVINE_MAP,
+        OLIVINE_WITNESS_X, OLIVINE_WITNESS_Y)
+      if not x then errs("OLV WITNESS\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(OLIVINE_MAP, {
         name = OLIVINE_WITNESS_NAME, sprite = "SPRITE_ROCKER",
-        x = OLIVINE_WITNESS_X, y = OLIVINE_WITNESS_Y,
+        x = x, y = y,
         movement = MOVE_STANDING_DOWN,
       })
       if not id then errs("OLV WITNESS\n%s", tostring(err)); return false end
@@ -1488,9 +1547,11 @@ return function(mod)
         if not obj.trainer then armOlivineMark(world) end
         return true
       end
+      local x, y = placeOrShift(world, c.map, c.x, c.y)
+      if not x then errs("OLI MARK\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(c.map, {
         name = OLIVINE_MARK_NAME, sprite = c.sprite,
-        x = c.x, y = c.y, movement = MOVE_STANDING_DOWN,
+        x = x, y = y, movement = MOVE_STANDING_DOWN,
         trainer = {
           class = carrier.classIx, member = carrier.memberIx,
           seenText = c.seen, winText = c.win, lossText = c.loss,
@@ -1536,9 +1597,12 @@ return function(mod)
         if not obj.trainer then R.armMark(world) end
         return true
       end
+      local x, y = placeOrShift(world, c.location.map,
+        c.location.x, c.location.y)
+      if not x then errs("REPEAT MARK\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(c.location.map, {
         name = R.MARK_NAME, sprite = source.sprite,
-        x = c.location.x, y = c.location.y, movement = MOVE_STANDING_DOWN,
+        x = x, y = y, movement = MOVE_STANDING_DOWN,
         trainer = {
           class = carrier.classIx, member = carrier.memberIx,
           seenText = "SNAG_REPEAT_SEEN", winText = "SNAG_REPEAT_WIN",
@@ -1706,9 +1770,11 @@ return function(mod)
           seenText = actor.seen, winText = actor.win, lossText = actor.loss,
         }
       end
+      local x, y = placeOrShift(world, mapId, actor.x, actor.y)
+      if not x then errs("ZAPDOS SPAWN\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(mapId, {
         name = name, sprite = actor.sprite,
-        x = actor.x, y = actor.y, movement = MOVE_STANDING_DOWN,
+        x = x, y = y, movement = MOVE_STANDING_DOWN,
         trainer = trainer,
       })
       if not id then errs("ZAPDOS SPAWN\n%s", tostring(err)); return false end

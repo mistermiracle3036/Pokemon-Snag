@@ -1,3 +1,20 @@
+## 0.16.0 - Snag NPCs step aside instead of stacking (private test)
+
+- Every Pokemon Snag NPC on Gold now checks its tile before appearing. If
+  another mod's character, a vanilla one, or you are already standing
+  there, the Snag NPC takes the nearest free tile instead of sharing the
+  square. Thirteen characters are covered: the Cherrygrove sailor, the
+  Route 36 fence, the Goldenrod broker and his gossip, the Ecruteak
+  contact and witness, the Olivine contact and witness, every contract
+  mark, the repeat-job marks, and the Zapdos job's Rocket actors.
+- No character has moved. This only changes what happens when their usual
+  spot is already taken.
+- Three of them are an exception, and deliberately so: the marks the
+  Goldenrod broker, the Ecruteak contact and the Olivine foreman send you
+  after are placed the moment you pick the job, while you are still
+  standing somewhere else. Those keep their exact spot, because the game
+  can only see the tiles of the map you are actually on.
+
 ## 0.15.22 - Fight PETREL for double the purse (private test)
 
 - The Cianwood Sewers circuit now has a third, optional round. Clear the card
