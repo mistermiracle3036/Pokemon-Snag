@@ -1,3 +1,55 @@
+## 0.16.1 - The fence pays before it takes (private test)
+
+**Updating from v0.15.9?** Everything since then has been private test
+builds, so this is what has changed for a player:
+
+- **The Zapdos job.** Once the network trusts you, a Rocket operation is
+  running in Mahogany, with Proton at the end of it and a KINGPIN BALL as
+  the tool for the job. Three outcomes: keep the bird, sell it, or let it go.
+- **The Cianwood Sewers.** A lookout in Cianwood City opens a fighting pit
+  under the town. Your first three snagged Pokemon fight a two-round card
+  against a Rocket grunt, Ariana and Bruno, scaled to your own team, for a
+  HEIST BALL. Clear it and Petrel offers double or nothing.
+- **Repeat jobs.** After all three city contracts, the Goldenrod broker keeps
+  a board of KEEP / DELIVER / RELEASE jobs. RELEASE can earn HEART through
+  Trainer Journey when it is installed.
+- **Payouts are bounties.** A quest mark never fences for less than 3 SNAG
+  BALLs, no sale pays less than 2, and finishing a contract pays 5 on top.
+  Release and sale are clearly different things now.
+- **Colored throws on Gold.** SNAG, HEIST and KINGPIN BALLs each have their
+  own throw colors, with or without Too Many Balls installed.
+- **The rank-and-file Rocket grunts use Gold's own sprites.** Proton, Ariana
+  and Petrel keep theirs.
+- **Snag NPCs step aside.** If another mod's character, a vanilla one, or you
+  are standing on a Snag NPC's tile, it takes the nearest free one instead of
+  sharing the square.
+
+**New in 0.16.1 — fixes from a full audit of the mod:**
+
+- **The Kanto fence pays before it takes.** If your bag could not hold the
+  SNAG BALLs, the fence used to take the Pokemon anyway, pay nothing, and
+  call it a sale. Now it pays first and refuses if it can't.
+- **Wild catches are not thefts.** Throwing a SNAG, HEIST or KINGPIN BALL at
+  a wild Pokemon still catches it, but the Pokemon is no longer marked as
+  stolen -- so it is not fenceable and does not count for the Sewers. Only
+  a Pokemon taken from a trainer is.
+- **A repeat job can be called off.** If the job's target was sold, released
+  or never appeared, the broker used to redirect you to a dead status screen
+  forever, and the Zapdos job stayed locked behind it. Talk to him, choose
+  CALL IT OFF, and the board reopens -- no pay, no credit. Fences also now
+  refuse to buy a Pokemon that a live job still needs ("that one's spoken
+  for").
+- **Held mail stays with the right Pokemon** after a Gold fence sale.
+- **Sewer spectators know who they are.** Bruno no longer sounds surprised to
+  see Bruno.
+- **RELEASE no longer says "REWARD: NONE"** after a successful HEART award.
+- **The Sewers explain the team rule correctly:** the first three snagged,
+  non-egg Pokemon in party order fight; extra party members sit out.
+- **Docs caught up.** README, FAQ and the mod card now describe Olivine, the
+  Sewers, the Zapdos job, repeat jobs and every source of HEIST BALLs.
+- Known, unchanged: the repeat board currently cycles nine fixed jobs rather
+  than mixing its fields freely. That is next.
+
 ## 0.16.0 - Snag NPCs step aside instead of stacking (private test)
 
 - Every Pokemon Snag NPC on Gold now checks its tile before appearing. If

@@ -96,10 +96,25 @@ least 3 Snag Balls rather than the going rate for casual theft, and
 finishing a contract pays a flat **5** on top. The rest of a mark's team is
 fair game, but only the advertised target carries the bounty.
 
-Once they have paid you, **both contacts start buying** — the Goldenrod
+Once they have paid you, **those contacts start buying** — the Goldenrod
 broker directly, and the Ecruteak contact in a colder voice and at a higher
 level. Same rules either way: your last Pokémon is never sellable, and the
 payment always lands before the Pokémon leaves.
+
+### Olivine and the later jobs
+
+The Olivine foreman offers a choice of interception routes. Completing
+his contract pays **5 SNAG BALLs and 3 HEIST BALLs**, then opens his fence.
+After collecting all three city contracts' rewards, the Goldenrod broker
+also offers repeat jobs with KEEP, DELIVER or RELEASE terms. Read the
+terms before accepting; RELEASE pays no balls and can request HEART from
+the optional Trainer Journey mod every second completed release.
+
+Olivine also opens the **Cianwood Sewers** circuit. Your first three
+snagged, non-egg party members fight a two-round card, with an optional
+double-or-nothing match against Petrel. The later **Zapdos job** has its
+own story gates and KEEP, SELL or RELEASE outcomes. See the FAQ for reward
+details and current limitations.
 
 ## How snag payouts work
 

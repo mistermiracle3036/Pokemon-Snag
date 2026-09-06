@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.16.0"
+  local VERSION = "0.16.1"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -692,9 +692,11 @@ return function(mod)
     ------------------------------------------------------------------
     -- REPEATABLE NETWORK JOBS (0.15.13 first pass).
     --
-    -- The broker builds three deterministic dossiers from four independent
-    -- fields: target, carrier, location, and terms.  The chosen fields and a
-    -- monotonically increasing job id are saved, so reloads never reroll a
+    -- The broker builds three deterministic dossiers from target, carrier,
+    -- location, and terms. The current formula repeats after three completed
+    -- jobs: nine fixed combinations, rather than independent field choices.
+    -- The chosen fields and a monotonically increasing job id are saved,
+    -- so reloads never reroll a
     -- job or allow the wrong same-species Pokemon to satisfy its turn-in.
     ------------------------------------------------------------------
     local R = {
@@ -1013,6 +1015,20 @@ return function(mod)
       mod.save:set("g2_repeat_carrier", "")
       mod.save:set("g2_repeat_location", "")
       mod.save:set("g2_repeat_terms", "")
+    end
+    -- A job can only be settled with the EXACT Pokemon that was snagged for
+    -- it.  Sell that mon at a fence, release it from the PC, or never manage
+    -- to take it at all, and there is nothing left to settle with: the
+    -- broker kept redirecting to a status screen with no exit and no further
+    -- job could ever be taken -- and R.completed() never reached the ZAPDOS
+    -- gate.  So the broker can close the file himself.  No payout, no
+    -- completion credit: ABANDONING MUST NOT COUNT TOWARDS
+    -- g2_repeat_completed, which is that gate.
+    function R.abandon()
+      if R.stage() == R.NONE then return false end
+      R.clear()
+      R.cleanupPending = true
+      return true
     end
 
     function Z.stage()
@@ -2167,7 +2183,7 @@ return function(mod)
               S.announceDraw()
             else
               mod.world:queueScript({
-                { "text", "Three stolen mons.\nNot two. Not four." },
+                { "text", "Need three stolen\nmons in the party." },
               })
             end
           end
@@ -2183,7 +2199,7 @@ return function(mod)
         if not S.selectTeam() then
           mod.world:queueScript({
             { "text", "PETREL: Three\nstolen mons only." },
-            { "text", "Not two. Not four.\nNo clean teams." },
+            { "text", "First three stolen\nmons take the pit." },
           })
           return true
         end
@@ -2473,13 +2489,32 @@ return function(mod)
       return n
     end
 
+    -- A live job's target is spoken for.  Settling a repeat job or the
+    -- ZAPDOS job needs that one Pokemon and no other, so no fence may buy
+    -- it out from under the job.  This is a courtesy refusal, not the fix:
+    -- the PC can still release it, which is why the broker can call a job
+    -- off (R.abandon).
+    local function isReservedMon(mon)
+      if type(mon) ~= "table" then return false end
+      if mon.snagZapdosJob == true and Z.stage() ~= Z.RESOLVED then
+        return true
+      end
+      local jobId = R.jobId()
+      return R.stage() ~= R.NONE and jobId > 0
+        and tonumber(mon.snagRepeatJobId) == jobId
+    end
+
     -- "Sellable" must mean a sale would actually be ALLOWED, or the valve
-    -- and the sale disagree and the player falls between them.
+    -- and the sale disagree and the player falls between them.  A reserved
+    -- job target is NOT sellable, so a player holding only that one still
+    -- counts as dead-ended and still gets the courtesy BALL.
     local function hasSellableSnaggedMon()
       local party = mod.game and mod.game.save and mod.game.save.party
       if type(party) ~= "table" or battlers(party) < 2 then return false end
       for _, mon in ipairs(party) do
-        if mon and mon.snagged == true then return true end
+        if mon and mon.snagged == true and not isReservedMon(mon) then
+          return true
+        end
       end
       return false
     end
@@ -2891,6 +2926,10 @@ return function(mod)
               mod.world:queueScript({ { "text", voice.notSnagged } })
               return
             end
+            if isReservedMon(picked) then
+              mod.world:queueScript({ { "text", voice.reserved } })
+              return
+            end
             ensureBountyFlag(picked)
             local detail = snagPayoutBreakdown(picked)
             local n = detail.total
@@ -2936,7 +2975,19 @@ return function(mod)
                     mod.world:queueScript({ { "text", voice.noRoom } })
                     return
                   end
-                  table.remove(party, index)
+                  -- Boxes.releaseFromParty, never a bare table.remove: it
+                  -- also runs Mail.removeSlot, which shifts the slot-keyed
+                  -- held-mail table up behind the departing mon
+                  -- (src/core/gen2/Boxes.lua -> src/core/gen2/Mail.lua).
+                  -- A direct remove left every later letter attached to the
+                  -- wrong Pokemon. Same helper the repeat/Zapdos settlements
+                  -- already use. It can only return false when party[index]
+                  -- is nil, which was checked just above with nothing
+                  -- yielding between -- so a false here is a real fault and
+                  -- goes to [ERRS], not to a dialogue line that never fires.
+                  if Boxes.releaseFromParty(g.save, index) ~= true then
+                    errs("FENCE RELEASE\nslot %d empty", index)
+                  end
                   mod.world:queueScript({ { "text", string.format(
                     voice.done, n, n == 1 and "" or "s") } })
                 end, { defaultNo = true }))
@@ -2961,6 +3012,7 @@ return function(mod)
       -- nickname made 20.  It gets its own box now, the way the broker and
       -- contact voices do.  Wording is otherwise unchanged.
       notSnagged = "FENCE: That one's\nclean.\fI only buy hot\ngoods.",
+      reserved = "FENCE: That one's\nspoken for.",
       quote = "%s...\fI can do %d SNAG\nBALL%s. Deal?",
       declined = "FENCE: Your call.\nI'll be around.",
       changed = "FENCE: Something\nchanged. No deal.",
@@ -2979,6 +3031,7 @@ return function(mod)
       lastMon = "BROKER: One left?\nThat one stays.\f"
         .. "No partner, no\ncontracts.",
       notSnagged = "BROKER: Clean.\nNot on my ledger.",
+      reserved = "BROKER: That one's\non the ledger.",
       quote = "%s.\fBROKER: %d SNAG\nBALL%s. Approve?",
       declined = "BROKER: Held back.\nWe'll revisit.",
       changed = "BROKER: Inventory\nchanged. Again.",
@@ -2996,6 +3049,7 @@ return function(mod)
       lastMon = "CONTACT: Last one?\nNo.\f"
         .. "You need a partner\nto take anything.",
       notSnagged = "CONTACT: Clean.\nWorthless to me.",
+      reserved = "CONTACT: Spoken\nfor. Not that one.",
       quote = "%s.\fCONTACT: %d SNAG\nBALL%s. Decide.",
       declined = "CONTACT: Refused.\nFor now.",
       changed = "CONTACT: Changed.\nStart again.",
@@ -3013,6 +3067,7 @@ return function(mod)
       lastMon = "FOREMAN: Last one?\nKeep your crew.\f"
         .. "No hands, no\ncargo.",
       notSnagged = "FOREMAN: Papers on\nthat one. No.",
+      reserved = "FOREMAN: That's\nconsigned cargo.",
       quote = "%s.\fFOREMAN: %d SNAG\nBALL%s. Loading?",
       declined = "FOREMAN: Hold it.\nDock stays open.",
       changed = "FOREMAN: Manifest\nchanged. No deal.",
@@ -3046,18 +3101,60 @@ return function(mod)
       return rows
     end
 
+    -- The only exit from a job whose target no longer exists.  Offered
+    -- whenever the job mon cannot be found -- which is every ACTIVE job
+    -- (nothing has been snagged yet, so a freelancer may walk away from a
+    -- job they do not like) and a CAUGHT job whose target was sold or
+    -- released.  KEEP JOB is first so the cursor never rests on the
+    -- destructive row.
+    function R.openAbandonMenu()
+      local g = mod.game
+      if not (g and g.stack) then return end
+      local menu
+      menu = ListMenu.new(g, "JOB", {
+        { label = "KEEP JOB", value = "KEEP" },
+        { label = "CALL IT OFF", value = "DROP" },
+      }, {
+        kind = "snag.repeat.abandon",
+        onChoose = function(item, list)
+          list:close()
+          if not item or item.value ~= "DROP" then return end
+          mod.world:queueScript({
+            { "text", "BROKER: Drop it?\nNo pay. No credit." },
+          }, {
+            onDone = function()
+              local ChoiceBox = require("src.ui.ChoiceBox")
+              local game = mod.game
+              if not (game and game.stack) then return end
+              game.stack:push(ChoiceBox.new(game, function(yes)
+                if not yes then return end
+                if not R.abandon() then return end
+                mod.world:queueScript({
+                  { "text", "BROKER: Closed.\nBoard's open." },
+                })
+              end, { defaultNo = true }))
+            end,
+          })
+        end,
+      })
+      g.stack:push(menu)
+    end
+
     function R.openStatus()
       local c = R.contract()
       if not c then
         mod.world:queueScript({ { "text", "BROKER: No job\non your ledger." } })
         return
       end
+      local mon = R.findJobMon()
       local rows = repeatDossierRows(c)
       rows[#rows + 1] = { "text", R.stage() == R.CAUGHT
-        and "TARGET SECURED.\nReturn to broker."
+        and (mon and "TARGET SECURED.\nReturn to broker."
+          or "TARGET LOST.\nCall it off?")
         or "JOB: ACTIVE\nTarget only." }
       mod.world:queueScript(rows, {
         onDone = function()
+          if not R.findJobMon() then R.openAbandonMenu(); return end
           if R.stage() ~= R.CAUGHT then return end
           local ChoiceBox = require("src.ui.ChoiceBox")
           local g = mod.game
@@ -3084,7 +3181,7 @@ return function(mod)
                   heartReason == "not due"
                     and string.format("HEART: %d/2", releases % 2)
                     or "HEART: PENDING" }
-              elseif c.termsKey == "RELEASE" then
+              elseif c.termsKey == "RELEASE" and not journeyAvailable then
                 doneRows[#doneRows + 1] = { "text", "REWARD: NONE" }
               end
               mod.world:queueScript(doneRows)
@@ -3737,7 +3834,7 @@ return function(mod)
         if Z.talkWitness("olivine") then return end
         if olivineStage() == CONTRACT_ACTIVE and oc and oc.gossip then
           mod.world:queueScript({
-            { "text", "Recording for the\nRADIO, from\vGOLDENROD." },
+            { "text", "Recording for the\nGOLDENROD RADIO." },
             { "text", oc.gossip[1] },
             { "text", oc.gossip[2] },
           })
@@ -4213,6 +4310,20 @@ return function(mod)
     mod.events:on("pokemon.caught", function(payload)
       if not payload or not payload.mon then return end
       if not SNAG_BALL_TIERS[payload.ball] then return end
+      -- A snag is a THEFT, so it only exists in a trainer battle.  The engine
+      -- lets a Snag-tier ball be thrown at a wild Pokemon like any other ball
+      -- (src/ui/gen2/BattleState.lua useItem sends the wild arm straight to
+      -- Catching.attempt), and that catch is legitimate -- it is just not
+      -- stolen from anyone, so none of the provenance below applies to it.
+      -- `battle.trainer` is the test: src/battle/gen2/Battle.lua Battle.new
+      -- assigns `self.trainer = opts.trainer`, nil for every wild encounter.
+      -- Do NOT test `battle.wild`: throwBallAtTrainer above forces
+      -- `self.battle.wild = true` for the duration of its useItem call, and
+      -- pushCaught -> Runtime.emit("pokemon.caught") runs synchronously
+      -- INSIDE that call, so `wild` reads true during a real snag.  Mirrors
+      -- Gen 1, where the markers are written inside a throwBall wrap already
+      -- gated on `self.kind == "trainer"`.
+      if not (payload.battle and payload.battle.trainer) then return end
       local mon = payload.mon
       mon.snagged = true
       mon.snagFrom = (activeTrainer and activeTrainer.trainerClass)
@@ -4397,9 +4508,9 @@ return function(mod)
       elseif exit and ev.x == exit.x and ev.y == exit.y then
         S.talkExit()
       elseif specA and ev.x == specA.x and ev.y == specA.y then
-        S.talkSpectator(specA.def and specA.def.sewerKey)
+        S.talkSpectator(specA.sewerKey)
       elseif specB and ev.x == specB.x and ev.y == specB.y then
-        S.talkSpectator(specB.def and specB.def.sewerKey)
+        S.talkSpectator(specB.sewerKey)
       end
     end)
 
@@ -5234,11 +5345,11 @@ return function(mod)
     fn = function(ctx)
       local Screens = require("src.ui.Screens")
       local Commands = require("src.script.Commands")
-      local party = ctx.save.party
+      local party = ctx.save and ctx.save.party
       local runner = ctx.runner
 
       -- never let the fence empty the party
-      if #party < 2 then
+      if type(party) ~= "table" or #party < 2 then
         ctx.lastCheck = false
         return
       end
@@ -5273,8 +5384,19 @@ return function(mod)
         ctx.lastCheck = false
         return
       end
+      -- Pay FIRST, then remove. Commands.give_item
+      -- (src/script/Commands.lua) returns math.huge when Bag.add refuses --
+      -- a full pocket for a new item, or a stack that would pass 99
+      -- (src/inventory/Bag.lua) -- and shows its own "You can't carry any
+      -- more items!" box before returning. Removing first meant a full bag
+      -- cost the player the Pokemon, paid nothing, and still reported the
+      -- sale as done. Mirrors runFenceSale on Gen 2. The false path falls
+      -- through fenceRows to spec.refuse, so no new line is needed.
+      if Commands.give_item(ctx, "SNAG_BALL", n, false) then
+        ctx.lastCheck = false
+        return
+      end
       table.remove(party, slot)
-      Commands.give_item(ctx, "SNAG_BALL", n, false)
       ctx.lastCheck = true
     end,
   })

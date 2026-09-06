@@ -27,8 +27,9 @@ A fence on **Route 36**, near Sudowoodo. He buys Pokémon you have snagged
 and nothing else.
 
 Later, the people who hand out contracts start buying too — the Goldenrod
-broker once he has paid you for his job, and the Ecruteak contact once
-you have the HEIST BALL. Same rules and same prices, different voices.
+broker once he has paid you for his job, the Ecruteak contact after both
+parts of his reward, and the Olivine foreman after his reward is collected.
+Same rules and same prices, different voices.
 </details>
 
 <details>
@@ -47,7 +48,7 @@ Pokemon Snag 0.15.19 now supplies all three mappings itself: Rocket black/red
 for SNAG, dark navy/gold for HEIST, and cream/gold for KINGPIN.
 
 Too Many Balls is not required for these colors. If a throw remains grey,
-fully quit and relaunch, then confirm the load log says Pokemon Snag 0.15.19.
+fully quit and relaunch, then confirm the installed version is 0.15.19 or newer.
 The colors are cosmetic: SNAG remains Normal/1x, HEIST remains Good/2x, and
 KINGPIN remains guaranteed.
 </details>
@@ -116,8 +117,43 @@ it was a bounty and pays the new rate — nothing to redo.
 <details>
 <summary>What is the HEIST BALL?</summary>
 
-The reward for finishing the Ecruteak contract. It is **twice as reliable**
-as a plain Snag Ball, it is sold nowhere, and no fence will trade for one.
+It doubles the species catch-rate input, capped at 255 before the normal
+HP/status calculation; it does not promise twice the final success
+chance in every situation. It is sold nowhere and ordinary fence sales
+pay SNAG BALLs.
+
+Current sources are the Ecruteak contract (1), Olivine contract (3), the
+repeatable Cianwood Sewers circuit (1, or 2 if you win Petrel's optional
+house match), and the Zapdos SELL outcome (10).
+</details>
+
+<details>
+<summary>How do repeat jobs work?</summary>
+
+Collect all three city contracts' rewards, including their HEIST BALLs,
+then choose JOBS at the Goldenrod broker. Read the target, carrier,
+location and terms before accepting. The current board repeats its nine
+combinations after three completed jobs; it does not change with the day.
+
+KEEP pays 3 SNAG BALLs and leaves you the target. DELIVER pays 6 and
+removes it. RELEASE removes it for no balls; every second release requests
+one HEART unit from a compatible Trainer Journey installation, which owns
+pace and gain presentation. Without Trainer Journey, RELEASE has no reward.
+
+Keep the exact job Pokemon until settlement. The broker can find it in
+the party or any of the 14 boxes, but an ordinary fence sale or PC release
+before settlement currently leaves the job unable to complete.
+</details>
+
+<details>
+<summary>Which Pokemon fight in the Cianwood Sewers?</summary>
+
+After collecting the Olivine rewards, use the Cianwood lookout. Bring at
+least three snagged, non-egg Pokemon; the first three eligible party
+members fight. Other party members can travel with you but are outside
+that selected team. The circuit has two rounds and an optional Petrel
+house match. Claim one HEIST BALL after the two-round card, or risk that
+purse for two against Petrel. Losing the house match pays nothing.
 </details>
 
 <details>

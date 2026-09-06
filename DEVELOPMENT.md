@@ -72,7 +72,7 @@ it; a mod that *decorates* things reads a registry keyed by id and never
 writes to records it doesn't own. Follow that and two mods never need to
 tell each other anything.
 
-## Engine seams this mod patches
+## Engine seams this mod patches (Gen 1)
 
 Everything below was verified by reading the engine's own source, not
 inferred.
@@ -101,7 +101,7 @@ Shiny Pokémon mod is only needed for visuals.
 `Screens.push(game, "PartyMenu", { pickOnly = true, onCancel, onSwitch })`
 then `runner:yield()`, resuming from the callbacks.
 
-## Continuing a battle after a catch — the hard part
+## Continuing a Gen 1 battle after a catch — the hard part
 
 `storeCaughtMon()` does the party/box/dex/OT bookkeeping *and*
 unconditionally ends the battle (`result = "caught"`,
@@ -133,7 +133,7 @@ and plays the faint sound/slide. The "`<mon>` fainted!" text is
 suppressed, since that one is emitted synchronously and can be dropped
 cleanly.
 
-## Dialogue and merchants
+## Gen 1 dialogue and merchants
 
 There is no NPC registry. Dialogue is added by taking over an existing
 NPC's `TEXT_` constant on its map, with a `base_talk` fallback so every
@@ -153,8 +153,10 @@ Badges are a plain inventory lookup (`save.inventory.BOULDERBADGE`).
 
 ### The text-constant trap
 
-`TEXT_` constants are extracted from the ROM at load, so they **can't be
-grepped in the engine repo**, and some objects are **renamed between
+`TEXT_` constants are extracted from the ROM at load. The engine's
+`tools/rom_manifest.json`, `rom_manifest_yellow.json`,
+`rom_manifest_gold.json` and `rom_manifest_crystal.json` provide offline
+symbol references. Some objects are **renamed between
 Red/Blue and Yellow**. Register the wrong one and the mod does nothing at
 all — no error, just vanilla dialogue. It is very slow to diagnose.
 
@@ -265,6 +267,6 @@ check short-circuits it. If the three version numbers disagree, the run
 fails loudly rather than shipping a build whose in-game load log lies
 about which code is running.
 
-Note the zip's inner folder is named from the mod **id** (`snag_quest`),
-not the repo (`Pokemon-Snag`). The launcher's updater prefers an asset
-named `<id>-<version>.zip`, so that naming is deliberate.
+Install ZIPs have `manifest.json` at the archive root. The asset name uses
+the mod **id** (`snag_quest`), not the repo (`Pokemon-Snag`): the launcher's
+updater prefers `<id>-<version>.zip`.
