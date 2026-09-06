@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.16.1"
+  local VERSION = "0.16.2"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -3273,7 +3273,12 @@ return function(mod)
           goldenrod = contractStage() == CONTRACT_DONE,
           ecruteak = ecruteakStage() == CONTRACT_DONE,
           olivine = olivineStage() == CONTRACT_DONE,
-          zapdos = Z.stage() == Z.RESOLVED,
+          -- A CLOSED file is not a resolved bird.  Closing out a lost
+          -- ZAPDOS leaves the stage RESOLVED -- nothing else can move it --
+          -- but clears the outcome, and every real finish sets one.  So the
+          -- outcome is what separates "the player decided" from "the bird
+          -- was lost", and only a decision is evidence.
+          zapdos = Z.stage() == Z.RESOLVED and Z.outcome() ~= nil,
           zapdosOutcome = Z.outcome(),
           repeatJobs = R.completed(),
           heartReleases = R.heartReleases(),
@@ -3388,6 +3393,77 @@ return function(mod)
       if world then Z.ensureActor(world, Z.PROTON_MAP) end
     end
 
+    -- The ZAPDOS job settles with the EXACT bird that was snagged for it.
+    -- Release that bird from the PC and all three Z.finish* paths bail on
+    -- Z.findJobMon(), leaving the stage at CAUGHT forever: PROTON repeated
+    -- "the bird is gone", the FOREMAN kept saying settle it, and
+    -- evidence.zapdos -- gated on RESOLVED -- could never fire.  Identical
+    -- shape to the repeat broker's dead ledger and the same fix (R.abandon).
+    -- Closing the file resolves the STAGE and nothing else: no payout, no
+    -- OUTCOME, so the Trainer Journey signal stays dark, the witnesses stay
+    -- hidden (Z.witnessVisible) and no fence reservation lingers
+    -- (isReservedMon reads RESOLVED).
+    function Z.abandon()
+      if Z.stage() ~= Z.CAUGHT then return false end
+      if Z.findJobMon() then return false end
+      Z.setOutcome(nil)
+      Z.setStage(Z.RESOLVED)
+      -- The same actor cleanup a real finish runs (Z.setResolved): with the
+      -- stage past CAUGHT, Z.expectedActor returns nil for B3F and
+      -- Z.ensureActor removes PROTON.  cleanupPending is the net for a nil
+      -- overworld here -- with no expected actor on that map, world.stepped
+      -- would otherwise never look at it again.
+      local world = mod.world:overworld()
+      if world then Z.ensureActor(world, Z.PROTON_MAP) end
+      Z.cleanupPending = true
+      return true
+    end
+
+    -- The only exit from a job whose bird no longer exists.  LEAVE IT is
+    -- first so the cursor never rests on the irreversible row, and the
+    -- confirm defaults to NO.  PROTON stays the silent defeated actor he was
+    -- written as -- this scene narrates, like every other line in the
+    -- outcome flow.
+    function Z.openLost()
+      mod.world:queueScript({
+        { "text", "The crate is empty\nThe bird is gone." },
+      }, {
+        onDone = function()
+          local g = mod.game
+          if not (g and g.stack) then return end
+          local menu
+          menu = ListMenu.new(g, "THE JOB", {
+            { label = "LEAVE IT", value = "LEAVE" },
+            { label = "CLOSE THE FILE", value = "CLOSE" },
+          }, {
+            kind = "snag.zapdos_lost",
+            onChoose = function(item, list)
+              list:close()
+              if not item or item.value ~= "CLOSE" then return end
+              mod.world:queueScript({
+                { "text", "Close the file?\nNo pay. No word." },
+              }, {
+                onDone = function()
+                  local ChoiceBox = require("src.ui.ChoiceBox")
+                  local game = mod.game
+                  if not (game and game.stack) then return end
+                  game.stack:push(ChoiceBox.new(game, function(yes)
+                    if not yes then return end
+                    if not Z.abandon() then return end
+                    mod.world:queueScript({
+                      { "text", "The file closes.\nNothing is owed." },
+                    })
+                  end, { defaultNo = true }))
+                end,
+              })
+            end,
+          })
+          g.stack:push(menu)
+        end,
+      })
+      return true
+    end
+
     function Z.finishKeep()
       local mon = Z.findJobMon()
       if not mon then
@@ -3483,13 +3559,14 @@ return function(mod)
     end
 
     function Z.openOutcome()
+      -- The lost-bird check comes BEFORE the pending dispatch: a SELL or
+      -- RELEASE that stalled on a full BAG leaves the outcome set, so that
+      -- dispatch would re-enter Z.finishSell/finishRelease and only repeat
+      -- their own dead line.  Both roads out of a lost bird end here.
+      if not Z.findJobMon() then return Z.openLost() end
       local pending = Z.outcome()
       if pending == "SELL" then return Z.finishSell() end
       if pending == "RELEASE" then return Z.finishRelease() end
-      if not Z.findJobMon() then
-        mod.world:queueScript({ { "text", "The bird is gone.\nNo choice remains." } })
-        return false
-      end
       mod.world:queueScript({
         { "text", "The bird is yours.\nWhat happens now?" },
       }, {

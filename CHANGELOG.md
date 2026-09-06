@@ -1,4 +1,4 @@
-## 0.16.1 - The fence pays before it takes (private test)
+## 0.16.2 - A lost bird closes the file (private test)
 
 **Updating from v0.15.9?** Everything since then has been private test
 builds, so this is what has changed for a player:
@@ -23,6 +23,23 @@ builds, so this is what has changed for a player:
 - **Snag NPCs step aside.** If another mod's character, a vanilla one, or you
   are standing on a Snag NPC's tile, it takes the nearest free one instead of
   sharing the square.
+- **Nothing dead-ends any more.** A repeat job whose target you sold or
+  released can be called off at the broker; a Kanto fence pays before it
+  takes; wild catches are not thefts. (0.16.1)
+
+**New in 0.16.2:**
+
+- **The Zapdos job can no longer strand you.** If the bird you snagged is
+  gone from party and PC, the outcome scene now offers LEAVE IT / CLOSE THE
+  FILE instead of repeating "the bird is gone" forever. Closing the file pays
+  nothing and counts for nothing -- Trainer Journey does not see a closed
+  file as a resolved bird -- and Proton packs up as he would after a real
+  decision.
+- Also fixed: a SELL or RELEASE that stalled on a full BALL pocket used to
+  re-enter its own dead line on every later visit. Both roads out of a lost
+  bird now reach the same exit.
+
+## 0.16.1 - The fence pays before it takes (private test)
 
 **New in 0.16.1 — fixes from a full audit of the mod:**
 
