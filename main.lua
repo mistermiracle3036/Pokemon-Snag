@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.16.2"
+  local VERSION = "0.16.3"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -1401,7 +1401,10 @@ return function(mod)
       local key = contractChoice()
       local c = key and CONTRACTS[key]
       local carrier = key and contractCarriers[key]
-      if not (c and carrier) then return false end
+      if not (c and carrier) then
+        errs("GLD MARK\nno carrier")
+        return false
+      end
       local obj = objectNamed(world, MARK_MAP, MARK_NAME)
       if obj then
         if not obj.trainer then armContractMark(world) end
@@ -1479,7 +1482,10 @@ return function(mod)
       local key = ecruteakChoice()
       local c = key and ECRUTEAK_CONTRACTS[key]
       local carrier = key and ecruteakCarriers[key]
-      if not (c and carrier) then return false end
+      if not (c and carrier) then
+        errs("ECR MARK\nno carrier")
+        return false
+      end
       local obj = objectNamed(world, c.map, ECRUTEAK_MARK_NAME)
       if obj then
         if not obj.trainer then armEcruteakMark(world) end
@@ -1557,7 +1563,10 @@ return function(mod)
       local key = olivineChoice()
       local c = key and OLIVINE_CONTRACTS[key]
       local carrier = key and olivineCarriers[key]
-      if not (c and carrier) then return false end
+      if not (c and carrier) then
+        errs("OLI MARK\nno carrier")
+        return false
+      end
       local obj = objectNamed(world, c.map, OLIVINE_MARK_NAME)
       if obj then
         if not obj.trainer then armOlivineMark(world) end
@@ -2211,6 +2220,20 @@ return function(mod)
         }, { onDone = function() S.openEntryMenu() end })
         return true
       elseif s == S.SEMI or s == S.FINAL then
+        -- Unreachable today (setDraw(nil) is always paired with IDLE) but
+        -- unexitable if a roster key is ever renamed: the host would say
+        -- "Talk to FOE." forever.  Nothing is owed mid-card, so void it.
+        if not S.currentKey() then
+          S.setStage(S.IDLE)
+          S.setDraw(nil)
+          S.setAfterBattle(nil)
+          S.scopedTeam = nil
+          S.cleanupPending = true
+          mod.world:queueScript({
+            { "text", "PETREL: Card's\nvoid. Start over." },
+          })
+          return true
+        end
         local label = S.shortName(S.currentKey())
         local title = s == S.SEMI and "PETREL: Semifinal."
           or "PETREL: The final."
@@ -2471,7 +2494,16 @@ return function(mod)
       if type(inv) ~= "table" then return 0 end
       local n = 0
       for id in pairs(SNAG_BALL_TIERS) do
-        n = n + (tonumber(inv[id]) or 0)
+        -- A KINGPIN BALL reserved for a live ZAPDOS job is not stock the
+        -- player can spend -- the foreman's own line says "Save that BALL.
+        -- It is for ZAPDOS." -- exactly as isReservedMon treats the job's
+        -- target.  Counting it made a player holding only that ball read as
+        -- not dead-ended, so the valve withheld the courtesy ball and pushed
+        -- them toward the one throw that ends the arc for good.
+        if not (id == "KINGPIN_BALL" and Z.kingpinIssued()
+            and Z.stage() ~= Z.NONE and Z.stage() ~= Z.RESOLVED) then
+          n = n + (tonumber(inv[id]) or 0)
+        end
       end
       return n
     end
@@ -4598,6 +4630,15 @@ return function(mod)
       if ev.mapId == S.CITY_MAP then
         S.syncCity(world)
         return
+      end
+      -- The interior has no warps and no connections, so the EXIT grunt's
+      -- script is the ONLY way back to CIANWOOD -- an Escape Rope is refused
+      -- too (the environment is DUNGEON, but the lookout's script warp sets
+      -- no backupWarp for World:escapeRopeTarget to use).  syncInterior
+      -- otherwise runs on map.entered and on cleanupPending alone, so one
+      -- failed spawnNpc would seal the room.  Re-ensure on the step.
+      if not objectNamed(world, S.MAP, S.EXIT_NAME) then
+        S.cleanupPending = true
       end
       if S.cleanupPending then
         S.syncInterior(world)

@@ -1,4 +1,4 @@
-## 0.16.2 - A lost bird closes the file (private test)
+## 0.16.3 - The sewers always have a way out (private test)
 
 **Updating from v0.15.9?** Everything since then has been private test
 builds, so this is what has changed for a player:
@@ -26,6 +26,29 @@ builds, so this is what has changed for a player:
 - **Nothing dead-ends any more.** A repeat job whose target you sold or
   released can be called off at the broker; a Kanto fence pays before it
   takes; wild catches are not thefts. (0.16.1)
+- **A lost Zapdos closes the file** instead of stranding the job. (0.16.2)
+
+**New in 0.16.3 -- a sweep of every quest for dead ends:**
+
+- **You can never be sealed in the Cianwood Sewers.** The room has no doors
+  of its own; the grunt by the ladder is the only way back up, and if he
+  ever failed to appear there was no escape -- not even an Escape Rope.
+  He is now re-checked on every step.
+- **The free-ball safety net no longer counts a KINGPIN BALL you are saving
+  for Zapdos.** Holding only that ball used to read as "not stuck", so the
+  fences withheld the courtesy SNAG BALL and nudged you toward the one
+  throw that ends the Zapdos job for good.
+- If the Sewers' card ever becomes invalid mid-run, Petrel voids it and
+  starts you over instead of saying "talk to FOE" forever. (Not reachable
+  today; guarded so it never becomes so.)
+- A contract mark that cannot be created now says so on the [ERRS] screen
+  rather than failing silently.
+
+Verified clean by the same sweep, for the record: selling a contract mark
+before turning in costs only the fence price (the contract completes on
+the snag, not the turn-in); every mark respawns after a loss; the Sewers
+survive a broken team, a full bag and a save-and-reload; and on Red, any
+MEOWTH satisfies the turn-in and the recruiter is always reachable.
 
 **New in 0.16.2:**
 
