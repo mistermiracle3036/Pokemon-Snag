@@ -1,7 +1,7 @@
 {
   "id": "snag_quest",
   "name": "Pokemon Snag",
-  "version": "0.16.3",
+  "version": "0.16.5",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -21,7 +21,7 @@
     "trainer_journey@>=0.4.9 <1.0.0"
   ],
   "conflicts": [],
-  "description": "Steal Pokemon from other trainers with the SNAG BALL. It works in trainer battles, so any Pokemon an opponent sends out is one you can take. On Red, beat the TEAM ROCKET recruiter at Nugget Bridge to earn your first, then fence stolen Pokemon to black-market buyers across Kanto. On Gold, a sailor in Cherrygrove City starts you off and brokers in Goldenrod and Ecruteak hand out contracts. Quest System optional, for a journal entry.",
+  "description": "Steal Pokemon from trainers and fence them for more SNAG BALLs. On Red, start at Nugget Bridge. On Gold, Silver and Crystal, knowingly accept a shady job on Route 29, then join a network of fences, contracts, repeat jobs and the Cianwood Sewers circuit. Optional Trainer Journey careers improve quest-mark sale bounties; never required.",
   "github": "mistermiracle3036/Pokemon-Snag",
   "games": [
     "gen1",

@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.16.3"
+  local VERSION = "0.16.5"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -130,7 +130,8 @@ return function(mod)
     local Boxes = require("src.core.gen2.Boxes")
     local ListMenu = require("src.ui.ListMenu")
 
-    local MAP = "CHERRYGROVE_CITY"
+    local MAP = "ROUTE_29"
+    local I = {} -- intro/menu and optional career helpers; legacy save keys stay.
     local FENCE_MAP = "ROUTE_36"
     local FENCE_NAME = "SNAG_VIOLET_FENCE"
     -- Sudowoodo itself is at (35,9) in vanilla Gold.  First-pass fence
@@ -461,11 +462,11 @@ return function(mod)
     -- Gold intro quest text.  The sailor is mod-owned dialogue; the girl's
     -- three rows are VM text keys consumed by the cart's trainer script.
     mod.content.text:register(GIRL_SEEN,
-      "Hey! Stay away\nfrom my MEOWTH!")
+      "He sent you? Fine.\nMEOWTH, show them!")
     mod.content.text:register(GIRL_WIN,
-      "No! MEOWTH!\nGive it back!")
+      "I paid for those\ngoods! Ask him!")
     mod.content.text:register(GIRL_LOSS,
-      "I told you to\nstay away!")
+      "His debts aren't\nyour business.")
 
     local CONTRACTS = {
       NATU = {
@@ -1223,12 +1224,16 @@ return function(mod)
       return goldPaletteNames[itemId] or downstreamBallPalette(self, itemId)
     end
 
-    -- Same valuation function is used by both generations.
-    local function snagPayout(mon)
-      return computeSnagPayout(mod.game, mon, nil)
-    end
+    -- Existing species value remains shared; optional Gen 2 career premiums
+    -- are added after its cap and apply only to an advertised quest mark.
     local function snagPayoutBreakdown(mon)
-      return computeSnagPayoutBreakdown(mod.game, mon, nil)
+      local detail = computeSnagPayoutBreakdown(mod.game, mon, nil)
+      detail.careerBonus = I.careerBonus and I.careerBonus(mon) or 0
+      detail.total = detail.total + detail.careerBonus
+      return detail
+    end
+    local function snagPayout(mon)
+      return snagPayoutBreakdown(mon).total
     end
     mod.exports.snagPayout = snagPayout
     mod.exports.snagPayoutBreakdown = snagPayoutBreakdown
@@ -1312,10 +1317,11 @@ return function(mod)
       return nil
     end
 
-    -- Fixed placement test for Cherrygrove.  This is intentionally a guessed
-    -- coordinate so device feedback can tune it by exact tile offsets.  Keep
-    -- it away from known vanilla objects, doors, signs, and the rival scene.
-    local SAILOR_X, SAILOR_Y = 14, 11
+    -- Crystal ROUTE_29 dev-kit dump, 2026-09-07: both are open road cells.
+    -- Clear of Stantler's western bundle (6,10) and the grotto at (54,7).
+    -- CONFIRM on device: reachability and neighboring mods' moving actors.
+    -- Legacy actor names stay stable; the sailor now plays the middleman.
+    local SAILOR_X, SAILOR_Y = 40, 11
     local function sailorCell(world)
       if not (world and world.map) then return nil end
       return SAILOR_X, SAILOR_Y
@@ -1724,6 +1730,7 @@ return function(mod)
       mod.save:set("g2_repeat_completed", R.completed() + 1)
       R.clear()
       R.cleanupPending = true
+      if I.syncCareer then I.syncCareer() end
       return true, c, heartAwarded, heartTotal, releases,
         heartReason, journeyAvailable
     end
@@ -2395,34 +2402,22 @@ return function(mod)
       return Bag.add(save, "HEIST_BALL", n or 1, data) == true
     end
 
-    -- The girl is placed in the first safe orthogonal cell beside the player.
-    -- sight=1 + facing the player makes Gold's own CheckTrainerBattle engage
-    -- her automatically on the next world tick; no fake battle launcher.
+    -- Stationary collector: no sight cone. World:interactBody starts Gold's
+    -- trainer script only when the player deliberately talks to her.
     local function spawnGirlForAmbush(world)
-      removeNamed(world, MAP, GIRL_NAME)
-      local p = world and world.player
-      if not p then return false end
-      local choices = {
-        { 0, -1, "down" }, { 1, 0, "left" },
-        { 0, 1, "up" }, { -1, 0, "right" },
-      }
-      local x, y, facing
-      for _, c in ipairs(choices) do
-        local tx, ty = p.cellX + c[1], p.cellY + c[2]
-        if usable(world, tx, ty) then x, y, facing = tx, ty, c[3]; break end
-      end
-      if not x then return false end
+      if objectNamed(world, MAP, GIRL_NAME) then return true end
+      if not (world and world.map and world.map.id == MAP) then return false end
+      local x, y = placeOrShift(world, MAP, 48, 13)
+      if not x then errs("INTRO MARK\nno free cell"); return false end
       local id, err = mod.world:spawnNpc(MAP, {
         name = GIRL_NAME, sprite = "SPRITE_LASS",
-        x = x, y = y, movement = MOVE_STANDING_DOWN, sight = 1,
+        x = x, y = y, movement = MOVE_STANDING_DOWN, sight = 0,
         trainer = {
           class = girlClassIx, member = girlMemberIx,
           seenText = GIRL_SEEN, winText = GIRL_WIN, lossText = GIRL_LOSS,
         },
       })
       if not id then errs("GIRL SPAWN\n%s", tostring(err)); return false end
-      local h = mod.world:npc(MAP, GIRL_NAME)
-      if h and facing then pcall(h.face, h, facing) end
       return true
     end
 
@@ -2613,6 +2608,162 @@ return function(mod)
       return false
     end
 
+    -- Optional profession API, feature-detected after mods load. Journey owns
+    -- ranks and receipts; Snag only reconstructs durable completed-job facts.
+    function I.journey()
+      local h = mod.find("trainer_journey")
+      local api = h and h.exports and h.exports.trainer_journey
+      return api and api.api_version == 1 and api or nil
+    end
+
+    function I.syncCareer()
+      local api = I.journey()
+      if not api or type(api.registerProfession) ~= "function"
+          or type(api.awardProfessionOnce) ~= "function" then return end
+      local save = mod.game and mod.game.save
+      if not save then return end
+      if I.careerSave ~= save or I.careerApi ~= api then
+        I.careerSave, I.careerApi, I.careerCredited = save, api, 0
+      end
+      local ok, def = pcall(api.registerProfession, {
+        id = "snag_thief", name = "THIEF", owner = "snag_quest",
+        summary = "COMPLETES UNDERWORLD JOBS.",
+        thresholds = { 1, 5, 12, 25 },
+        rankNames = { "RUNNER", "OPERATOR", "SPECIALIST", "FIXER" },
+      })
+      if not ok or not def then return end
+      local jobs = (stage() == STAGE_DONE and 1 or 0)
+        + (contractStage() == CONTRACT_DONE and 1 or 0)
+        + (ecruteakStage() == CONTRACT_DONE and 1 or 0)
+        + (olivineStage() == CONTRACT_DONE and 1 or 0)
+        + R.completed()
+      -- First slice caps this profession at 25 credited jobs. These ordinal
+      -- receipts also safely backfill a later install, without storing a
+      -- second rank or point ledger in Snag's save. Abandoned jobs add zero.
+      local due = math.min(25, math.max(0, math.floor(jobs)))
+      for n = (I.careerCredited or 0) + 1, due do
+        local awarded, result = pcall(api.awardProfessionOnce,
+          "snag_thief", 1, "snag_quest:thief:completed:" .. n)
+        if not awarded or not result or result.ok ~= true then return end
+        I.careerCredited = n
+      end
+    end
+
+    function I.careerBonus(mon)
+      if not (mon and mon.snagged == true and mon.snagBounty == true) then
+        return 0
+      end
+      I.syncCareer()
+      local api, bonus = I.journey(), 0
+      if not api then return 0 end
+      if type(api.getCareer) == "function" then
+        local ok, career = pcall(api.getCareer)
+        if ok and career == "ROGUE_TRAINER" then bonus = 1 end
+      end
+      if type(api.getProfession) == "function" then
+        local ok, row = pcall(api.getProfession, "snag_thief")
+        local rank = ok and type(row) == "table" and tonumber(row.rank) or 0
+        if rank and rank >= 4 then bonus = bonus + 2
+        elseif rank and rank >= 2 then bonus = bonus + 1 end
+      end
+      return bonus
+    end
+
+    function I.say(pages, done)
+      local rows = {}
+      for _, page in ipairs(pages) do rows[#rows + 1] = { "text", page } end
+      mod.world:queueScript(rows, { onDone = function(ok)
+        if ok ~= false and done then done() end
+      end })
+    end
+
+    function I.lead()
+      I.say({ "Need more work?\nTry ROUTE 36.",
+        "Near SUDOWOODO.\nAsk for the fence.",
+        "He buys stolen\nPOKEMON for BALLs." })
+    end
+
+    function I.afterMenu()
+      local game = mod.game
+      if not (game and game.stack) then return end
+      game.stack:push(ListMenu.new(game, "YOUR NEXT MOVE", {
+        { label = "KEEP MY POKEMON", value = "keep" },
+        { label = "SELL POKEMON", value = "sell" },
+        { label = "MY CAREER", value = "career" },
+        { label = "LEAVE", value = "leave" },
+      }, { onChoose = function(item, menu)
+        menu:close()
+        if item.value == "sell" then I.sell()
+        elseif item.value == "keep" then I.lead()
+        elseif item.value == "career" then
+          I.syncCareer()
+          local api = I.journey()
+          if not api then
+            I.say({ "No career ledger.\nOrdinary pay." })
+          elseif type(api.registerProfession) ~= "function" then
+            I.say({ "DELINQUENT bonus:\nBounty sales +1.",
+              "THIEF needs newer\nTRAINER JOURNEY." })
+          else
+            I.say({ "DELINQUENT bonus:\nBounty sales +1.",
+              "THIEF grows with\ncompleted jobs.",
+              "Five jobs: +1.\nTwenty-five: +2.",
+              "Bonuses stack on\nquest-mark sales.",
+              "No bonus for\nreleasing POKEMON." })
+          end
+        end
+      end, onCancel = function() end }))
+    end
+
+    function I.accept()
+      if stage() ~= STAGE_NEW then return end
+      if not girlClassIx and not resolveGirlCarrier() then
+        errs("INTRO CARRIER\nLASS missing"); return
+      end
+      local world = mod.world:overworld()
+      if not spawnGirlForAmbush(world) then
+        I.say({ "Road's crowded.\nTry me again." }); return
+      end
+      -- New jobs receive one tool. Refusal/repeated status never gives one;
+      -- failed/KO attempts reuse any remaining SNAG BALL before restocking.
+      local inv = mod.game and mod.game.save and mod.game.save.inventory
+      if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 and not giveOneSnagBall() then
+        removeNamed(world, MAP, GIRL_NAME)
+        I.say({ "BALL pocket full.\nMake space first." }); return
+      end
+      setStage(STAGE_ARMED)
+      I.say({ "The job is yours.\nOne SNAG BALL.",
+        "Collector's east.\nTalk to the lass.",
+        "Target: MEOWTH.\nShe has only one.",
+        "This first catch\nis guaranteed.",
+        "Later marks: lower\nHP, then throw.",
+        "Bring proof back.\nYour fee: 5 BALLs." })
+    end
+
+    function I.offerMenu()
+      local game = mod.game
+      if not (game and game.stack) then return end
+      game.stack:push(ListMenu.new(game, "OUTSTANDING DEBT", {
+        { label = "WHY ME?", value = "why" },
+        { label = "THE TOOL?", value = "tool" },
+        { label = "TAKE THE JOB", value = "accept" },
+        { label = "NO DEAL", value = "leave" },
+      }, { onChoose = function(item, menu)
+        menu:close()
+        if item.value == "accept" then I.accept()
+        elseif item.value == "why" then
+          I.say({ "She knows my face.\nNot yours.",
+            "You're a trainer.\nShe'll battle you.",
+            "Take her MEOWTH.\nKeep it or sell.",
+            "Your fee: 5 BALLs.\nSale pays extra." }, I.offerMenu)
+        elseif item.value == "tool" then
+          I.say({ "Old ROCKET kit.\nThey left debts.",
+            "And useful scraps.\nThis is one.",
+            "A SNAG BALL takes\na trainer's mon.",
+            "Not borrowing.\nNot a rescue." }, I.offerMenu)
+        else I.say({ "No deal? Fine.\nKeep walking." }) end
+      end, onCancel = function() end }))
+    end
+
     mod.events:on("game.ready", function(p)
       local game = p and p.game
       local kantoBalls = mod.find("kanto_balls")
@@ -2664,6 +2815,7 @@ return function(mod)
       end
       S.installMap(game)
       S.resolveCarriers()
+      I.syncCareer()
     end)
 
     -- Cianwood itself remains vanilla.  Entering either relevant map only
@@ -2685,19 +2837,21 @@ return function(mod)
       if world then R.sync(world, ev.mapId) end
     end)
 
-    -- Cherrygrove placement/recovery.  A stale ARMED state cannot normally be
-    -- saved (the battle auto-starts immediately), but resetting it on a fresh
-    -- map entry makes a test save recover instead of getting stuck.
+    -- Route 29 placement/recovery. Accepted jobs are persistent: re-create
+    -- the stationary collector after travel/load, never reset acceptance.
     mod.events:on("map.entered", function(ev)
       if not ev then return end
       local ok, err = pcall(function()
         local world = mod.world:overworld()
         if not world then return end
 
-        -- After a successful intro, leave both actors standing in Cherrygrove
-        -- for the rest of that visit.  Clean them up only once the player has
-        -- actually entered another map; on later Cherrygrove visits they stay
-        -- gone because STAGE_DONE is durable quest state.
+        -- Retire only Snag's old actors; Stantler and vanilla objects stay.
+        removeNamed(world, "CHERRYGROVE_CITY", GIRL_NAME)
+        removeNamed(world, "CHERRYGROVE_CITY", SAILOR_NAME)
+        I.syncCareer()
+        -- After a successful intro, leave both actors standing on Route 29
+        -- for the rest of that visit. Clean up off-map; the completed
+        -- collector stays gone, while the middleman returns as a fence.
         if ev.mapId ~= MAP then
           if stage() == STAGE_DONE then
             removeNamed(world, MAP, GIRL_NAME)
@@ -2786,13 +2940,8 @@ return function(mod)
           return
         end
 
-        if stage() == STAGE_ARMED then
-          setStage(STAGE_NEW)
-          removeNamed(world, MAP, GIRL_NAME)
-        end
-        if stage() ~= STAGE_DONE or not rewardClaimed() then
-          ensureSailor(world)
-        end
+        ensureSailor(world)
+        if stage() == STAGE_ARMED then spawnGirlForAmbush(world) end
       end)
       if not ok then errs("ENTER\n%s", tostring(err)) end
     end)
@@ -2814,9 +2963,8 @@ return function(mod)
       if not ok then errs("ZAP ENTER\n%s", tostring(err)) end
     end)
 
-    -- Sailor dialogue.  Gold mod-owned NPCs fall through to kind="none";
-    -- queue one paged text box, then gift the ball and create the sight-cone
-    -- trainer only after the player dismisses the final page.
+    -- Deliberate job acceptance. Reading the pitch or cancelling the menu
+    -- never spawns the collector, issues a tool, or starts a battle.
     mod.events:on("world.interacted", function(ev)
       if not ev or ev.mapId ~= MAP or ev.kind ~= "none" then return end
       local world = mod.world:overworld()
@@ -2838,20 +2986,21 @@ return function(mod)
       if stage() == STAGE_DONE then
         if isSailor and not rewardClaimed() then
           mod.world:queueScript({
-            { "text", "SAILOR: Good.\nMEOWTH is safe." },
-            { "text", "You handled that\ncleanly." },
-            { "text", "Here. Five more\nSNAG BALLs." },
-            { "text", "Need more BALLs?\nTry Route 36." },
-            { "text", "Near SUDOWOODO,\na fence trades." },
+            { "text", "She says she paid?\nThat's her story." },
+            { "text", "You did the job.\nFive SNAG BALLs." },
+            { "text", "MEOWTH is yours.\nSelling is extra." },
           }, {
             onDone = function()
               local ok, err = pcall(function()
                 if rewardClaimed() then return end
                 if not giveRewardSnagBalls() then
                   errs("REWARD BALLS\nBAG FULL")
+                  I.say({ "No room for pay.\nCome back later." })
                   return
                 end
                 setRewardClaimed(true)
+                I.syncCareer()
+                I.afterMenu()
               end)
               if not ok then errs("SAILOR REWARD\n%s", tostring(err)) end
             end,
@@ -2859,51 +3008,37 @@ return function(mod)
           return
         end
 
-        local text
         if isSailor then
-          mod.world:queueScript({
-            { "text", "Need more BALLs?\nTry Route 36." },
-            { "text", "Near SUDOWOODO,\na fence trades." },
-          })
+          I.afterMenu()
         else
           mod.world:queueScript({
-            { "text", "LASS: You stole\nmy MEOWTH!" },
-            { "text", "Take care of\nMEOWTH." },
+            { "text", "I paid him! You\nnever asked me." },
+            { "text", "You got your cut.\nNow leave." },
           })
         end
         return
       end
 
-      -- Before the battle only the sailor is conversational; the girl is
-      -- armed as a trainer and Gold owns her engagement dialogue.
+      -- Talking to the armed collector uses Gold's own trainer script.
       if not isSailor then return end
-
-      mod.world:queueScript({
-        { "text", "SAILOR: See that\ngirl over there?" },
-        { "text", "That shiny MEOWTH\nwas stolen." },
-        { "text", "Take this\nSNAG BALL." },
-      }, {
-        onDone = function()
-          local ok, err = pcall(function()
-            if stage() == STAGE_DONE then return end
-            if not girlClassIx and not resolveGirlCarrier() then
-              errs("NO LASS CARRIER")
-              return
-            end
-            if not giveOneSnagBall() then
-              errs("SNAG BALL\nBAG FULL")
-              return
-            end
-            setStage(STAGE_ARMED)
-            local w = mod.world:overworld()
-            if not spawnGirlForAmbush(w) then
-              setStage(STAGE_NEW)
-              errs("GIRL AMBUSH\nNO SAFE CELL")
-            end
-          end)
-          if not ok then errs("SAILOR DONE\n%s", tostring(err)) end
-        end,
-      })
+      if stage() == STAGE_ARMED then
+        local inv = mod.game and mod.game.save and mod.game.save.inventory
+        if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 then
+          if not giveOneSnagBall() then
+            I.say({ "BALL pocket full.\nMake space first." }); return
+          end
+        end
+        spawnGirlForAmbush(world)
+        I.say({ "Your target is\nthe lass's MEOWTH.",
+          "East along here.\nTalk when ready.",
+          "Throw a SNAG BALL.\nThen come back." })
+        return
+      end
+      I.say({ "Got time for work?\nNot honest work.",
+        "A collector took\nmy goods. No pay.",
+        "I want her MEOWTH\ntaken in return.",
+        "That's theft.\nYour choice.",
+        "Five SNAG BALLs.\nKeep it or sell." }, I.offerMenu)
     end)
 
     ------------------------------------------------------------------
@@ -2983,6 +3118,10 @@ return function(mod)
             if detail.capped then
               quoteRows[#quoteRows + 1] = { "text", "VALUE CAP: 5" }
             end
+            if detail.careerBonus > 0 then
+              quoteRows[#quoteRows + 1] = {
+                "text", "CAREER: +" .. detail.careerBonus }
+            end
             quoteRows[#quoteRows + 1] = { "text", string.format(
               voice.quote, name, n, n == 1 and "" or "s") }
             mod.world:queueScript(quoteRows, {
@@ -3056,6 +3195,11 @@ return function(mod)
         .. "Here. One SNAG\nBALL. On credit.\f"
         .. "Don't waste it.",
     }
+
+    -- The opening teaches the very same guarded sale used by later fences.
+    -- Selection, price confirmation, last-battler and full-bag checks remain
+    -- centralized. No intro-only removal path or bonus payout receipt.
+    I.sell = function() runFenceSale(ROUTE36_VOICE) end
 
     -- The broker treats every sale as another staff transaction.
     local BROKER_VOICE = {
@@ -4450,7 +4594,7 @@ return function(mod)
         mon.snagBounty = true
         setStage(STAGE_DONE)
         -- Do not despawn the sailor/girl here.  They remain for the rest of
-        -- this Cherrygrove visit and are removed after the player leaves town.
+        -- this Route 29 visit and are removed after the player leaves it.
         cleanupPending = false
       end
       if contractBattleActive and contractStage() == CONTRACT_ACTIVE then
@@ -4517,7 +4661,7 @@ return function(mod)
         if obj then obj.trainer = nil end
         introBattleActive = false
         if stage() ~= STAGE_DONE then
-          setStage(STAGE_NEW)
+          setStage(STAGE_ARMED)
           cleanupPending = true
         end
       end
@@ -4656,16 +4800,20 @@ return function(mod)
     end)
 
     mod.events:on("world.stepped", function(ev)
-      if not cleanupPending or not ev or ev.mapId ~= MAP then return end
+      if not ev then return end
       local world = mod.world:overworld()
       if not world then return end
-      removeNamed(world, MAP, GIRL_NAME)
-      if stage() == STAGE_DONE then
-        removeNamed(world, MAP, SAILOR_NAME)
-      else
-        ensureSailor(world)
+      if ev.mapId == "CHERRYGROVE_CITY" then
+        removeNamed(world, "CHERRYGROVE_CITY", GIRL_NAME)
+        removeNamed(world, "CHERRYGROVE_CITY", SAILOR_NAME)
       end
-      cleanupPending = false
+      if ev.mapId ~= MAP then return end
+      if cleanupPending then
+        removeNamed(world, MAP, GIRL_NAME)
+        cleanupPending = false
+      end
+      ensureSailor(world)
+      if stage() == STAGE_ARMED then spawnGirlForAmbush(world) end
     end)
 
     mod.events:on("world.stepped", function(ev)

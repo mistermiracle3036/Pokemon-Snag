@@ -1,3 +1,35 @@
+## 0.16.5 - Delinquent naming consistency (private test)
+
+- Career/bounty dialogue and player documentation now say Delinquent,
+  matching Trainer Journey. Reflowed within two lines and eighteen columns.
+- Internal ROGUE_TRAINER lookup, quest-mark bonus, THIEF profession, saves,
+  sale rewards and all Gen 1/2 quest behavior remain unchanged.
+
+## 0.16.4 - An outstanding debt on Route 29 (private test)
+
+- The Johto intro leaves Cherrygrove entirely, avoiding its Stantler quest.
+  A roadside middleman on Route 29 openly offers a theft, explains the tool
+  and target, and lets you ask questions or refuse without accepting.
+- Accept, then approach the stationary collector yourself. No ambush or sight
+  cone. Her only Pokemon is the existing Lv.5 shiny MEOWTH; the tutorial catch
+  remains guaranteed. A KO/loss is retryable, and travel/reload keeps the job.
+- Earn the five-ball fee once, whether keeping or selling the target. The
+  middleman stays as an early fence using the existing safe sale flow. He
+  explains Route 36 as the next contact. Existing completed saves stay done.
+- Optional Trainer Journey: ROGUE TRAINER adds one ball to quest-mark fence
+  sales. Snag's THIEF profession ranks at 1/5/12/25 completed jobs, adding a
+  further one ball from rank 2 and two from rank 4. Premiums stack after the
+  ordinary five-ball value cap. Other backgrounds can earn THIEF too.
+- Profession credit is idempotently reconstructed from the intro, three city
+  contracts and completed repeat jobs, capped at 25 in this first slice.
+  Ordinary sales, abandoned jobs and sewer rematches give no profession credit.
+  RELEASE still pays zero balls. Trainer Journey is never required; older API
+  versions gracefully omit unsupported profession features.
+- No new art, vanilla trainer-party edits, battle/catch wrapper changes,
+  Stantler changes or level increase. Placement is dump-checked, not yet
+  device-tested. The early additional fence and career premiums need balance
+  feedback. See TESTING.md.
+
 ## 0.16.3 - The sewers always have a way out (private test)
 
 **Updating from v0.15.9?** Everything since then has been private test

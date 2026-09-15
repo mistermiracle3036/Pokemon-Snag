@@ -5,14 +5,14 @@ adds the Snag Ball to **gen1recomp**: a real, reusable ball that works in
 trainer battles, so any Pokémon an opponent sends out is a Pokémon you can
 walk away with.
 
-**On Pokémon Gold** you work your way into a black-market network — a first
-ball handed over in Cherrygrove, a fence who buys what you steal, and
+**On Pokémon Gold, Silver and Crystal** you work your way into a black-market network — a first
+job knowingly accepted on Route 29, a fence who buys what you steal, and
 brokers who name a target and let you go and find it.
 
 | | |
 |---|---|
 | ![A sailor in Cherrygrove City hands the player a Snag Ball](docs/snag-01-cherrygrove-first-ball.png) | ![A girl in Cherrygrove City says the player stole her Meowth](docs/snag-02-you-stole-my-meowth.png) |
-| It starts with one ball and a target. | It goes about as well as she expected. |
+| Historical screenshot: the retired Cherrygrove opening. | Historical screenshot: the retired Cherrygrove target. |
 | ![A fence on Route 36 says he deals in special Pokémon](docs/snag-03-fence-route36.png) | ![A broker's menu offering a Psychic, Normal or Bug lead](docs/snag-05-choose-a-lead.png) |
 | A fence on Route 36 buys what you steal. | Contracts let you pick the kind of mark. |
 | ![A trainer boasts that it took him weeks to catch his Yanma](docs/snag-06-mark-brags-about-yanma.png) | ![The battle log reads: Gotcha! Yanma was caught!](docs/snag-07-yanma-caught.png) |
@@ -35,16 +35,36 @@ Johto gets its own story rather than a port of Kanto's. The mod splits on
 generation at load, and the Kanto quest never runs on Gold.
 
 **Snag Balls are not sold anywhere on Gold.** Every ball you own comes from
-the questline, starting with the single one the Cherrygrove sailor hands
+the questline, starting with the single one the Route 29 middleman hands
 you.
 
-### Cherrygrove: your first ball
+### Route 29: an outstanding debt
 
-A sailor gives you exactly one SNAG BALL and points you at a girl with
-something unusual on her team. That one ball is guaranteed to catch her
-**shiny Meowth** — the only time the mod bends its own rules. Snag it, find
-him again before you leave town, and he hands over five more and tells you
-where to sell what you take.
+A roadside middleman admits he wants you to steal a collector's **MEOWTH**.
+Ask why he needs you, ask about the old Rocket tool, accept, or walk away.
+Reading the offer does not accept it. Once you agree, talk to the collector
+farther east when ready; she will not pull you into battle by walking past.
+
+Her only Pokemon is the existing **Lv.5 shiny Meowth**, and its tutorial
+catch remains guaranteed. Return for a one-time **five SNAG BALL** fee.
+Keep the Pokemon, or use the middleman's separate, confirmed fence sale.
+He points you to Route 36 for the next contact. Travel and save/reload do
+not cancel the accepted job. Completed older saves retain their progress.
+
+### Optional Trainer Journey careers
+
+Snag never requires Trainer Journey. When its supported API is available,
+DELINQUENT adds **+1 ball to quest-mark fence sales**. Snag registers its
+own **THIEF** profession: RUNNER / OPERATOR / SPECIALIST / FIXER at
+1 / 5 / 12 / 25 completed jobs. OPERATOR adds +1, FIXER +2, stacking with
+the Delinquent background after normal valuation (maximum total sale: 8).
+Other backgrounds can earn THIEF too. Intro, city contracts and repeat
+completions count, including past accomplishments on a later installation;
+credit is deduplicated and capped at 25 for this first slice. Ordinary
+sales and sewer rematches do not advance it. RELEASE still pays no balls.
+Journey owns profession ranks and receipts; Snag does not write its save
+fields. The interface was checked against Trainer Journey 0.5.4; older
+versions omit unsupported features without blocking the quest.
 
 ### Route 36: the fence
 

@@ -10,26 +10,49 @@ has its own section further down.
 <details>
 <summary>How do I start on Gold?</summary>
 
-Go to **Cherrygrove City**. A sailor there gives you a single SNAG BALL and
-points you at a girl with something unusual on her team. Beat her, throw
-your one ball, and it is guaranteed to catch — the only time this mod bends
-its own rules.
+Go to **Route 29**, east of Cherrygrove. The middleman in a sailor sprite
+offers a knowingly shady job. Ask questions or refuse; choose TAKE THE JOB
+to accept. Then talk to the collector (lass sprite) farther east yourself.
+She has one Lv.5 shiny MEOWTH. Use the SNAG BALL rather than knocking it out;
+this tutorial catch is guaranteed. The one-time fee is five SNAG BALLs.
+You may keep the target or sell it separately. Both actors are off Stantler's
+western bundle area; Snag no longer spawns intro actors in Cherrygrove.
 
-Find the sailor again **before you leave town** and he hands over five more
-balls and tells you where to sell what you take. He waits until you have
-claimed that reward, so leaving and coming back later does not forfeit it.
+An accepted job survives travel/reload. For a lost tool, revisit the
+middleman; he replaces it only if you hold no SNAG BALL. If you already
+finished the old intro, it stays finished: use a separate fresh/unfinished
+save to test the new acceptance scene. No replay/reset option was added.
 </details>
 
 <details>
 <summary>Where do I sell things on Gold?</summary>
 
-A fence on **Route 36**, near Sudowoodo. He buys Pokémon you have snagged
+A middleman on **Route 29**, after the intro fee, and a fence on
+**Route 36**, near Sudowoodo. They buy Pokémon you have snagged
 and nothing else.
 
 Later, the people who hand out contracts start buying too — the Goldenrod
 broker once he has paid you for his job, the Ecruteak contact after both
 parts of his reward, and the Olivine foreman after his reward is collected.
 Same rules and same prices, different voices.
+</details>
+
+<details>
+<summary>Do careers affect bounty prices?</summary>
+
+Only with compatible optional Trainer Journey. DELINQUENT gives +1 on
+quest-mark fence sales; THIEF profession ranks at 1, 5, 12 and 25 completed
+jobs. Rank 2 gives +1 and rank 4 gives +2, not +1 plus +2. These stack with
+Delinquent after normal valuation, so a three-ball mark can become six and a
+five-ball mark can become eight. The quote shows CAREER separately.
+Other starting careers can earn the THIEF ranks too. The career menu
+explains the rules; the Trainer Journey profile shows actual profession rank.
+Normal catches, ordinary stolen Pokemon, flat job fees and RELEASE ball
+rewards do not receive the premium. RELEASE remains zero balls.
+Progress currently credits at most 25 intro/city/repeat job completions.
+Historical completions backfill safely when Journey becomes available.
+Older Journey versions without profession support retain only supported
+features; with Journey absent, prices and quest progression stay ordinary.
 </details>
 
 <details>
