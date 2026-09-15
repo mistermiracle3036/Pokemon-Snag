@@ -1,3 +1,50 @@
+## 0.16.6 - Petrel walks in vanilla Rocket colours (private test)
+
+**Updating from v0.15.9?** Everything since then has been private test
+builds, so this is what has changed for a player:
+
+- **The Zapdos job.** Once the network trusts you, a Rocket operation is
+  running in Mahogany, with Proton at the end of it and a KINGPIN BALL as
+  the tool for the job. Three outcomes: keep the bird, sell it, or let it go.
+- **The Cianwood Sewers.** A lookout in Cianwood City opens a fighting pit
+  under the town. Your first three snagged Pokemon fight a two-round card
+  against a Rocket grunt, Ariana and Bruno, scaled to your own team, for a
+  HEIST BALL. Clear it and Petrel offers double or nothing.
+- **Repeat jobs.** After all three city contracts, the Goldenrod broker keeps
+  a board of KEEP / DELIVER / RELEASE jobs. RELEASE can earn HEART through
+  Trainer Journey when it is installed.
+- **Payouts are bounties.** A quest mark never fences for less than 3 SNAG
+  BALLs, no sale pays less than 2, and finishing a contract pays 5 on top.
+  Release and sale are clearly different things now.
+- **Colored throws on Gold.** SNAG, HEIST and KINGPIN BALLs each have their
+  own throw colors, with or without Too Many Balls installed.
+- **The rank-and-file Rocket grunts use Gold's own sprites.** Proton, Ariana
+  and Petrel keep theirs.
+- **Snag NPCs step aside.** If another mod's character, a vanilla one, or you
+  are standing on a Snag NPC's tile, it takes the nearest free one instead of
+  sharing the square.
+- **Nothing dead-ends any more.** A repeat job whose target you sold or
+  released can be called off at the broker; a Kanto fence pays before it
+  takes; wild catches are not thefts. (0.16.1)
+- **A lost Zapdos closes the file** instead of stranding the job. (0.16.2)
+- **The Johto intro moved to Route 29** -- a roadside middleman offers the
+  first theft; Cherrygrove is left entirely to its own quest. (0.16.4)
+- The Sewers always have a way out, and a lost Zapdos closes its file
+  instead of stranding the job. (0.16.2-0.16.3)
+- "Delinquent" naming, matching Trainer Journey. (0.16.5)
+
+**New in 0.16.6:**
+
+- **Petrel's overworld sprite is now Gold's own Rocket grunt.** The custom
+  walker turned out to be Nintendo's art with a few pixels changed (the
+  pre-release scanner matched it to Red's gentleman sprite), so it is out.
+  His battle portrait is unchanged -- that one is original art. He stands
+  where he always did, at the rail, and steps into the pit for the house
+  match as before; he now looks like the grunts he runs.
+- Every vanilla Rocket grunt this mod places -- the Sewers' fighter, the
+  ladder grunt, and Petrel -- is spawned with the game's own palette for
+  that sprite, so their colour is the one Gold uses everywhere else.
+
 ## 0.16.5 - Delinquent naming consistency (private test)
 
 - Career/bounty dialogue and player documentation now say Delinquent,
@@ -31,34 +78,6 @@
   feedback. See TESTING.md.
 
 ## 0.16.3 - The sewers always have a way out (private test)
-
-**Updating from v0.15.9?** Everything since then has been private test
-builds, so this is what has changed for a player:
-
-- **The Zapdos job.** Once the network trusts you, a Rocket operation is
-  running in Mahogany, with Proton at the end of it and a KINGPIN BALL as
-  the tool for the job. Three outcomes: keep the bird, sell it, or let it go.
-- **The Cianwood Sewers.** A lookout in Cianwood City opens a fighting pit
-  under the town. Your first three snagged Pokemon fight a two-round card
-  against a Rocket grunt, Ariana and Bruno, scaled to your own team, for a
-  HEIST BALL. Clear it and Petrel offers double or nothing.
-- **Repeat jobs.** After all three city contracts, the Goldenrod broker keeps
-  a board of KEEP / DELIVER / RELEASE jobs. RELEASE can earn HEART through
-  Trainer Journey when it is installed.
-- **Payouts are bounties.** A quest mark never fences for less than 3 SNAG
-  BALLs, no sale pays less than 2, and finishing a contract pays 5 on top.
-  Release and sale are clearly different things now.
-- **Colored throws on Gold.** SNAG, HEIST and KINGPIN BALLs each have their
-  own throw colors, with or without Too Many Balls installed.
-- **The rank-and-file Rocket grunts use Gold's own sprites.** Proton, Ariana
-  and Petrel keep theirs.
-- **Snag NPCs step aside.** If another mod's character, a vanilla one, or you
-  are standing on a Snag NPC's tile, it takes the nearest free one instead of
-  sharing the square.
-- **Nothing dead-ends any more.** A repeat job whose target you sold or
-  released can be called off at the broker; a Kanto fence pays before it
-  takes; wild catches are not thefts. (0.16.1)
-- **A lost Zapdos closes the file** instead of stranding the job. (0.16.2)
 
 **New in 0.16.3 -- a sweep of every quest for dead ends:**
 

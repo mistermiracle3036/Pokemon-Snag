@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.16.5"
+  local VERSION = "0.16.6"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -264,7 +264,7 @@ return function(mod)
     S.roster = {
       GRUNT = {
         name = "ROCKET GRUNT", class = "GRUNTM", member = "SNAG_SEWER_GRUNT",
-        sprite = "SPRITE_ROCKET", seen = "SNAG_SEWER_GRUNT_SEEN",
+        sprite = "SPRITE_ROCKET", palette = 11, seen = "SNAG_SEWER_GRUNT_SEEN",
         win = "SNAG_SEWER_GRUNT_WIN", loss = "SNAG_SEWER_GRUNT_LOSS",
         party = {
           { species = "RATICATE", delta = -1 },
@@ -288,7 +288,9 @@ return function(mod)
       PETREL = {
         name = "PETREL", class = "EXECUTIVEM",
         member = "SNAG_SEWER_PETREL_HOUSE",
-        sprite = "SPRITE_SNAG_PETREL", seen = "SNAG_SEWER_PETREL_SEEN",
+        -- Vanilla grunt art: the custom petrel.png was Nintendo-derived
+        -- (REQUESTS #37) and is quarantined.  His battle-front stays custom.
+        sprite = "SPRITE_ROCKET", palette = 11, seen = "SNAG_SEWER_PETREL_SEEN",
         win = "SNAG_SEWER_PETREL_WIN", loss = "SNAG_SEWER_PETREL_LOSS",
         party = {
           { species = "WEEZING", delta = 1 },
@@ -414,8 +416,6 @@ return function(mod)
     registerZapdosSprite("SPRITE_SNAG_PROTON", "proton.png", "PAL_OW_PINK", 4)
     -- The rank-and-file grunts use Gold's own SPRITE_ROCKET and
     -- SPRITE_ROCKET_GIRL. Only the named executives need custom art.
-    registerZapdosSprite("SPRITE_SNAG_PETREL", "petrel.png",
-      "PAL_OW_GREEN", 2)
     registerZapdosSprite("SPRITE_SNAG_ARIANA", "ariana.png",
       "PAL_OW_RED", 0)
 
@@ -1167,7 +1167,7 @@ return function(mod)
     mod.exports.owns.items =
       { "SNAG_BALL", "HEIST_BALL", "KINGPIN_BALL", "OPEN_WATER_TAPE" }
     mod.exports.owns.sprites =
-      { "SPRITE_SNAG_PROTON", "SPRITE_SNAG_PETREL",
+      { "SPRITE_SNAG_PROTON",
         "SPRITE_SNAG_ARIANA" }
     mod.exports.owns.runtimeObjects =
       { Z.GRUNT_M_NAME, Z.GRUNT_F_NAME, Z.PROTON_NAME,
@@ -2128,13 +2128,13 @@ return function(mod)
       -- host actor must not also stand at the rail.
       if S.stage() ~= S.HOUSE then
         S.spawnActor(S.MAP, {
-          name = S.PETREL_NAME, sprite = "SPRITE_SNAG_PETREL",
+          name = S.PETREL_NAME, sprite = "SPRITE_ROCKET", palette = 11,
           x = S.cells.petrel.x, y = S.cells.petrel.y,
           movement = MOVE_STANDING_UP, sewerRole = "petrel",
         })
       end
       S.spawnActor(S.MAP, {
-        name = S.EXIT_NAME, sprite = "SPRITE_ROCKET",
+        name = S.EXIT_NAME, sprite = "SPRITE_ROCKET", palette = 11,
         x = S.cells.exit.x, y = S.cells.exit.y,
         movement = MOVE_STANDING_LEFT, sewerRole = "exit",
       })
@@ -2143,7 +2143,7 @@ return function(mod)
       if current then
         local foe = S.roster[current]
         S.spawnActor(S.MAP, {
-          name = S.FOE_NAME, sprite = foe.sprite,
+          name = S.FOE_NAME, sprite = foe.sprite, palette = foe.palette,
           x = S.cells.foe.x, y = S.cells.foe.y,
           movement = MOVE_STANDING_DOWN, sewerKey = current,
           trainer = S.makeTrainer(current),
@@ -2160,7 +2160,8 @@ return function(mod)
         local cell = i == 1 and S.cells.specA or S.cells.specB
         if foe then
           S.spawnActor(S.MAP, {
-            name = name, sprite = foe.sprite, x = cell.x, y = cell.y,
+            name = name, sprite = foe.sprite, palette = foe.palette,
+            x = cell.x, y = cell.y,
             movement = MOVE_STANDING_DOWN, sewerKey = key,
           })
         end

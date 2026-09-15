@@ -13,8 +13,8 @@
   base_talk dialogue and custom trainer classes), Trainer Rematch (the
   engine-patch idiom), Quest System, Whispers Beneath Cerulean, The
   Stolen Fossil, Eevee Three Stones and Dramatic Shape.
-- **SirWhibbles** — the Proton, Ariana and Petrel
-  overworld and battle-front sprites are converted from
+- **SirWhibbles** — the Proton and Ariana overworld sprites, and the
+  Proton, Ariana and Petrel battle-front sprites, are converted from
   [Public Team Rocket's Ready to Rumble Updated](https://www.deviantart.com/sirwhibbles/art/Public-Team-Rocket-s-Ready-to-Rumble-Updated-728467968).
   The source states: **“Free to use, with credits please!”**
 - Pokémon and all related names are trademarks of Nintendo / Creatures
