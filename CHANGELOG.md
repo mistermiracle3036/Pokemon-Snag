@@ -1,3 +1,7 @@
+## 0.15.23 - NPCs answer again
+
+Updating from v0.15.9? NPCs answer again on the current engine; nothing else changed.
+
 ## 0.15.9 - Johto
 
 **Updating from v0.14.11? Pokemon Snag works on Pokemon Gold now.** Not a
