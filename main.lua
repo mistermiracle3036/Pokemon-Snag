@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.15.9"
+  local VERSION = "0.15.23"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -676,6 +676,28 @@ return function(mod)
       return nil
     end
 
+    -- Did this A press land on `obj`?  Engine 0.3.50+ emits "npc" for an
+    -- unscripted runtime actor with ev.target = the live object (x,y is the
+    -- faced cell); older engines emit "none" with only the faced cell.
+    -- "npc" matches by target identity, and only for this mod's own runtime
+    -- object with no scriptKey, so a native script never gets a second
+    -- conversation on top (JQP 0.23.2 suite_runtime.lua
+    -- matchesInteractedActor).  trainer is NOT rejected: the engine only
+    -- reaches its "npc" arm for a trainer def it has refused (beaten) and
+    -- starts nothing there -- the post-battle lines depend on that.
+    local function pressed(ev, obj)
+      if not (ev and obj) then return false end
+      if ev.kind == "npc" then
+        return ev.target ~= nil and ev.target.def == obj
+          and obj.runtime == true and obj.owner == mod.id
+          and not obj.scriptKey
+      end
+      return ev.kind == "none" and ev.x == obj.x and ev.y == obj.y
+    end
+    local function pressKind(ev)
+      return ev and (ev.kind == "none" or ev.kind == "npc")
+    end
+
     local function removeNamed(world, mapId, name)
       local obj = objectNamed(world, mapId, name)
       if not obj then return end
@@ -1260,12 +1282,12 @@ return function(mod)
     -- queue one paged text box, then gift the ball and create the sight-cone
     -- trainer only after the player dismisses the final page.
     mod.events:on("world.interacted", function(ev)
-      if not ev or ev.mapId ~= MAP or ev.kind ~= "none" then return end
+      if not pressKind(ev) or ev.mapId ~= MAP then return end
       local world = mod.world:overworld()
       local sailor = objectNamed(world, MAP, SAILOR_NAME)
       local girl = objectNamed(world, MAP, GIRL_NAME)
-      local isSailor = sailor and ev.x == sailor.x and ev.y == sailor.y
-      local isGirl = girl and ev.x == girl.x and ev.y == girl.y
+      local isSailor = pressed(ev, sailor)
+      local isGirl = pressed(ev, girl)
       if not isSailor and not isGirl then return end
 
       local cur = mod.world:current()
@@ -1519,7 +1541,7 @@ return function(mod)
     -- one real trainer mark elsewhere in the city.  There is no free ball and
     -- no guaranteed catch here: this is the first normal Snag job.
     mod.events:on("world.interacted", function(ev)
-      if not ev or ev.kind ~= "none" then return end
+      if not pressKind(ev) then return end
       if ev.mapId ~= GOLDENROD_MAP
           and ev.mapId ~= GOLDENROD_CITY_MAP
           and ev.mapId ~= MARK_MAP then return end
@@ -1529,11 +1551,11 @@ return function(mod)
       local clue = objectNamed(world, GOLDENROD_CITY_MAP, CLUE_NAME)
       local mark = objectNamed(world, MARK_MAP, MARK_NAME)
       local isBroker = ev.mapId == GOLDENROD_MAP
-          and broker and ev.x == broker.x and ev.y == broker.y
+          and pressed(ev, broker)
       local isClue = ev.mapId == GOLDENROD_CITY_MAP
-          and clue and ev.x == clue.x and ev.y == clue.y
+          and pressed(ev, clue)
       local isMark = ev.mapId == MARK_MAP
-          and mark and ev.x == mark.x and ev.y == mark.y
+          and pressed(ev, mark)
       if not isBroker and not isClue and not isMark then return end
 
       local cur = mod.world:current()
@@ -1645,7 +1667,7 @@ return function(mod)
     -- Ecruteak contract #2: choose the TRAINER archetype, follow neutral
     -- town gossip, then decide what to steal from a multi-Pokemon party.
     mod.events:on("world.interacted", function(ev)
-      if not ev or ev.kind ~= "none" then return end
+      if not pressKind(ev) then return end
       if contractStage() ~= CONTRACT_DONE then return end
 
       local ec = ECRUTEAK_CONTRACTS[ecruteakChoice() or ""]
@@ -1658,11 +1680,11 @@ return function(mod)
       local mark = ec and objectNamed(world, ec.map, ECRUTEAK_MARK_NAME)
 
       local isContact = ev.mapId == ECRUTEAK_MAP
-          and contact and ev.x == contact.x and ev.y == contact.y
+          and pressed(ev, contact)
       local isWitness = ev.mapId == ECRUTEAK_MAP
-          and witness and ev.x == witness.x and ev.y == witness.y
+          and pressed(ev, witness)
       local isMark = ec and ev.mapId == ec.map
-          and mark and ev.x == mark.x and ev.y == mark.y
+          and pressed(ev, mark)
       if not isContact and not isWitness and not isMark then return end
 
       local cur = mod.world:current()
@@ -1789,7 +1811,7 @@ return function(mod)
     -- Olivine contract #3: choose WHERE to intercept the shipment. The
     -- foreman pays the completed job first, then becomes a permanent fence.
     mod.events:on("world.interacted", function(ev)
-      if not ev or ev.kind ~= "none" then return end
+      if not pressKind(ev) then return end
       if ecruteakStage() ~= CONTRACT_DONE
           or not ecruteakFeePaid() or not ecruteakHeistPaid() then return end
 
@@ -1802,11 +1824,11 @@ return function(mod)
       local witness = objectNamed(world, OLIVINE_MAP, OLIVINE_WITNESS_NAME)
       local mark = oc and objectNamed(world, oc.map, OLIVINE_MARK_NAME)
       local isContact = ev.mapId == OLIVINE_MAP
-          and contact and ev.x == contact.x and ev.y == contact.y
+          and pressed(ev, contact)
       local isWitness = ev.mapId == OLIVINE_MAP
-          and witness and ev.x == witness.x and ev.y == witness.y
+          and pressed(ev, witness)
       local isMark = oc and ev.mapId == oc.map
-          and mark and ev.x == mark.x and ev.y == mark.y
+          and pressed(ev, mark)
       if not isContact and not isWitness and not isMark then return end
 
       local cur = mod.world:current()
@@ -1931,11 +1953,11 @@ return function(mod)
     end)
 
     mod.events:on("world.interacted", function(ev)
-      if not ev or ev.mapId ~= FENCE_MAP or ev.kind ~= "none" then return end
+      if not pressKind(ev) or ev.mapId ~= FENCE_MAP then return end
       if stage() ~= STAGE_DONE then return end
       local world = mod.world:overworld()
       local fence = objectNamed(world, FENCE_MAP, FENCE_NAME)
-      if not fence or ev.x ~= fence.x or ev.y ~= fence.y then return end
+      if not pressed(ev, fence) then return end
 
       runFenceSale(ROUTE36_VOICE)
     end)
