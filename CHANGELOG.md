@@ -1,7 +1,13 @@
-## 0.16.6 - Petrel walks in vanilla Rocket colours (private test)
+## 0.16.7 - NPCs answer again on the current engine (private test)
 
 **Updating from v0.15.9?** Everything since then has been private test
 builds, so this is what has changed for a player:
+
+- **NPC interaction on engine 0.3.5x: owned runtime actors answer again;
+  native scripts untouched.** On the current engine, pressing A on the
+  sailor, the broker, the contacts, witnesses, marks, the fence, Proton,
+  Petrel and the sewer spectators did nothing. They answer again, once.
+  Armed trainers still start their battles.
 
 - **The Zapdos job.** Once the network trusts you, a Rocket operation is
   running in Mahogany, with Proton at the end of it and a KINGPIN BALL as
