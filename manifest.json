@@ -1,7 +1,7 @@
 {
   "id": "snag_quest",
   "name": "Pokemon Snag",
-  "version": "0.16.8",
+  "version": "0.17.0",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -26,5 +26,6 @@
   "games": [
     "gen1",
     "gen2"
-  ]
+  ],
+  "assets_transforms": "transforms.lua"
 }

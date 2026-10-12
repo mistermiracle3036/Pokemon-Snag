@@ -21,3 +21,10 @@
   Inc. / GAME FREAK inc. This unofficial fan mod claims no rights to those
   characters or trademarks, contains no ROM data, and requires the user's own
   game copy via gen1recomp.
+- **The Cianwood boxing ring room (Crystal)** is assembled on the player's
+  device by `transforms.lua` from their own imported Crystal tilesets
+  (Champions Room, Elite Four Room, Train Station, Game Corner, Facility,
+  Underground); no tileset pixels ship in this mod. The ropes, rope-to-post
+  stubs and ring-facing stand edges are original art for this mod, stored in
+  the recipe as shade masks. Room layout after the boxing-ring asset search
+  (layout C).

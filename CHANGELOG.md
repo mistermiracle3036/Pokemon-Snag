@@ -1,6 +1,6 @@
-## 0.16.8 - Some Pokemon can't be snagged (private test)
+## 0.17.0 - The boxing ring (private test: Crystal room proof)
 
-**Updating from v0.15.23 or v0.15.24?** Everything since then has been
+**Updating from v0.15.24?** Everything since then has been
 private test builds. NPCs answering on the current engine (v0.15.23) and
 the snag guard (v0.15.24) you already have; this is the rest:
 
@@ -31,6 +31,28 @@ the snag guard (v0.15.24) you already have; this is the rest:
   closes its file, a repeat job whose target is gone can be called off, the
   Kanto fence pays before it takes, wild catches don't count as thefts,
   and held mail stays with the right Pokemon.
+
+**New in 0.17.0 -- the first look at Snag 2.0's room (Crystal):**
+
+- **Under Cianwood is a boxing ring now.** The lookout still takes you
+  down, but on Crystal the room below is a roped ring on a raised
+  platform, with tiered seats on all four sides, a crowd, and an empty VIP
+  sofa at the top that someone important will fill. Everything you see is Crystal's
+  own art, put together on your device from your own game; only the ropes
+  are new.
+- **The ring hand holds the ropes.** Talk to him on the ring stair and he
+  opens the ropes so you can climb in; from inside, face the ropes above
+  the stair and press A to be let out.
+- **A real door.** Step on the mat at the bottom of the room to go back up
+  to Cianwood. The doorman beside it still walks you out too.
+- The circuit itself is unchanged for now -- PETREL, the draw, the house
+  match and the purse all work as before, from new spots in the room.
+  Gold and Silver keep the old room until the new one is built from their
+  art.
+- [DEV] option **Ring palette** (INDOOR / DUNGEON) switches the room's
+  colours from the next launch, so the two can be compared.
+
+## 0.16.8 - Some Pokemon can't be snagged (private test)
 
 **New in 0.16.8:** the snag guard from v0.15.24, on this line too.
 Another mod can mark one of its trainers' Pokemon as off limits; a SNAG,

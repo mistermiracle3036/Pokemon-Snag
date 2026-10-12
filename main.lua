@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.16.8"
+  local VERSION = "0.17.0"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -406,11 +406,16 @@ return function(mod)
     mod.content.text:register("SNAG_SEWER_PETREL_WIN", SEWER_VOICE.petrelWin)
     mod.content.text:register("SNAG_SEWER_PETREL_LOSS", SEWER_VOICE.petrelLoss)
 
-    local function registerZapdosSprite(id, file, palette, paletteId)
+    local function registerZapdosSprite(id, file, palette, paletteId, trueColor)
       mod.content.sprites:register(id, {
         id = id, image = mod.path .. "/assets/" .. file,
         frames = 6, walker = true, spriteType = "WALKING_SPRITE",
         palette = palette, paletteId = paletteId,
+        -- SpriteRenderer draws a trueColor image as-is in gbc colour mode
+        -- and falls back to the OBJ bake (palette/paletteId) otherwise --
+        -- the same registration Kanto Contests uses for its canonical_color
+        -- sheets.
+        trueColor = trueColor or nil,
       })
     end
     registerZapdosSprite("SPRITE_SNAG_PROTON", "proton.png", "PAL_OW_PINK", 4)
@@ -418,6 +423,11 @@ return function(mod)
     -- SPRITE_ROCKET_GIRL. Only the named executives need custom art.
     registerZapdosSprite("SPRITE_SNAG_ARIANA", "ariana.png",
       "PAL_OW_RED", 0)
+    -- TODO(A-0082): Giovanni for boxing room C's VIP seat, as
+    -- registerZapdosSprite("SPRITE_SNAG_GIOVANNI", "giovanni.png",
+    -- "PAL_OW_BROWN", 3, true) with canonical_color/giovanni.png copied
+    -- byte-for-byte -- held out of 0.17.0 until the sprite registry credits
+    -- him to Snag (REQUESTS 114); publish's registry gate refuses it before.
 
     -- Private member rows preserve every vanilla trainer and give these three
     -- battles their own displayed names.  Runtime trainer.party substitution
@@ -1964,6 +1974,297 @@ return function(mod)
       return mostUsed(floors), mostUsed(walls)
     end
 
+    ------------------------------------------------------------------
+    -- BOXING ROOM C (A-0082 stage 2, 0.17.0): the native room proof.
+    --
+    -- ring_c_room.lua is GENERATED (docs/ring_c/build_ring_c.py) from the
+    -- room package's layered native pieces. It is the shared room
+    -- description (contract `snag-ring-room`, exchange/CONTRACTS.md) AND the
+    -- runtime tileset/map. Its tileset image is built at install by
+    -- transforms.lua from the player's own Crystal sheets, so no ROM art
+    -- ships. Crystal only: the recipe is measured against Crystal's 128x128
+    -- sheets and skips anything else, so Gold/Silver keep the old room.
+    --
+    -- The ring entry is Blackthorn Gym's mechanism (changeblock + a re-apply
+    -- on entry): block (4,6) has a CLOSED and an OPEN variant that differ
+    -- only in the gap cell (9,12). The map data is CLOSED, block edits are
+    -- never saved (World:replaceBlock keeps them in blockEdits), and entry
+    -- re-closes it, so a reload or an interrupted beat always comes back
+    -- closed with both ways out intact.
+    ------------------------------------------------------------------
+    local RING = {
+      HAND_NAME = "SNAG_RING_HAND",
+      -- New anchors on C, not the old room's coordinates: arrival just inside
+      -- the door, PETREL at the foot of the ring stair, the doorman by the
+      -- door, the foe inside on the east canvas, spectators ringside in the
+      -- side stands. `move` is the facing (engine MOVE_STANDING_*).
+      cells = {
+        arrival = { x = 9, y = 16 }, petrel = { x = 11, y = 14, move = 8 },
+        foe = { x = 11, y = 9, move = 8 }, specA = { x = 4, y = 7, move = 9 },
+        specB = { x = 15, y = 7, move = 8 }, exit = { x = 11, y = 16, move = 8 },
+      },
+      busy = false,
+    }
+    -- engine/src/script/gen2/Movement.lua: step = 0x0c + direction
+    -- (down 0, up 1, left 2, right 3); 0x47 ends the stream.
+    local RING_STEP = { down = 0x0c, up = 0x0d, left = 0x0e, right = 0x0f }
+    local RING_MOVE_END = 0x47
+    local MOVE_STANDING_RIGHT = 9    -- engine src/world/gen2/Npc.lua MOVE
+
+    function RING.room()
+      if RING._room ~= nil then return RING._room or nil end
+      RING._room = false
+      local okRead, text = pcall(function() return mod:read("ring_c_room.lua") end)
+      if not okRead or type(text) ~= "string" then
+        errs("RING ROOM\nunreadable")
+        return nil
+      end
+      local chunk, err = load(text, "@" .. tostring(mod.path) .. "/ring_c_room.lua")
+      if not chunk then
+        errs("RING ROOM\n%s", tostring(err))
+        return nil
+      end
+      local okRun, room = pcall(chunk)
+      if not okRun or type(room) ~= "table" or not room.runtime then
+        errs("RING ROOM\nbad data")
+        return nil
+      end
+      RING._room = room
+      return room
+    end
+
+    function RING.active()
+      return GameVersion.engine() == "crystal" and RING.room() ~= nil
+    end
+
+    -- [DEV] option, stage 2 only: the package drew the room in INDOOR, the
+    -- vanilla Rocket Base is DUNGEON; the developer compares them on device.
+    function RING.environment()
+      local v = mod.options and mod.options:get("dev_ring_palette")
+      return v == "DUNGEON" and "DUNGEON" or "INDOOR"
+    end
+    -- The Gen 1 arm's options are defined below its own `return`, so this is
+    -- the Gen 2 arm's only definition. Choice rows are read positionally:
+    -- { displayLabel, storedValue }. Read at game.ready (installMap), so a
+    -- change applies from the next launch.
+    mod.options:define({
+      { key = "dev_ring_palette", type = "choice",
+        label = "[DEV] Ring palette",
+        choices = { { "INDOOR", "INDOOR" }, { "DUNGEON", "DUNGEON" } },
+        default = "INDOOR" },
+    })
+
+    -- Static crowd for the inhabited proof: vanilla walkers with the palette
+    -- the cart gives each (sprites/VANILLA_OBJ_PALETTES.json `recommended`).
+    -- Non-interactive, a density sample of the board's 71 records -- not 71
+    -- characters. Seat lists come from the room records.
+    local RING_CROWD = {
+      { "SPRITE_GENTLEMAN", 9 }, { "SPRITE_SUPER_NERD", 9 },
+      { "SPRITE_FISHER", 10 }, { "SPRITE_BIKER", 11 },
+      { "SPRITE_COOLTRAINER_M", 8 }, { "SPRITE_POKEFAN_M", 11 },
+      { "SPRITE_BEAUTY", 9 }, { "SPRITE_SAILOR", 9 },
+      { "SPRITE_GRAMPS", 11 }, { "SPRITE_LASS", 10 },
+      { "SPRITE_YOUNGSTER", 9 }, { "SPRITE_COOLTRAINER_F", 8 },
+    }
+    local RING_FACING = {
+      down = MOVE_STANDING_DOWN, up = MOVE_STANDING_UP,
+      left = MOVE_STANDING_LEFT, right = MOVE_STANDING_RIGHT,
+    }
+
+    function RING.staticObjects(room)
+      local objects = {}
+      local function add(sprite, palette, x, y, facing)
+        objects[#objects + 1] = {
+          index = #objects + 1, sprite = sprite, palette = palette or 0,
+          movement = RING_FACING[facing] or MOVE_STANDING_DOWN,
+          radius = { x = 0, y = 0 }, sight = 0, type = 0,
+          x = x, y = y, eventFlag = 65535, hours = { -1, -1 },
+        }
+      end
+      -- The VIP sofa (room.anchors.vip) stays empty until Giovanni's sprite
+      -- can ship (REQUESTS 114); the empty seats round it are the staging.
+      -- a small Pokemon standing behind the near rope (stage 2 proof item);
+      -- vanilla Grimer is a stand-in, the cart has no Koffing/Meowth walker
+      local near = room.anchors.nearRope
+      add("SPRITE_GRIMER", 0, near.x, near.y, "down")
+      local n = 0
+      for _, side in ipairs({ "north", "west", "east", "south" }) do
+        for i, slot in ipairs(room.crowdSlots[side] or {}) do
+          -- every third seat: enough to read as a crowd, cheap on the phone
+          if i % 3 == 1 then
+            n = n + 1
+            local who = RING_CROWD[(n - 1) % #RING_CROWD + 1]
+            add(who[1], who[2], slot.x, slot.y, slot.facing)
+          end
+        end
+      end
+      return objects
+    end
+
+    -- The room description stays the shared record; the engine gets its own
+    -- copies so nothing the World does to a def writes back into it.
+    function RING.install(maps, tilesets, def)
+      local room = RING.room()
+      local rt = room.runtime
+      local ts = {}
+      for k, v in pairs(rt.tileset) do ts[k] = v end
+      ts.generation = 2
+      tilesets[ts.id] = ts
+      local world = mod.world:overworld()
+      if world and world.tilesets then world.tilesets[ts.id] = ts end
+      local blocks = {}
+      for i, b in ipairs(rt.blocks) do blocks[i] = b end
+      def.tileset, def.tilesetId = ts.id, nil
+      def.blocks, def.borderBlock = blocks, rt.borderBlock
+      def.environment = RING.environment()
+      def.objects = RING.staticObjects(room)
+      return true
+    end
+
+    function RING.gapBlockId(open)
+      local room = RING.room()
+      return room and (open and room.runtime.gapOpenBlock
+        or room.runtime.gapClosedBlock)
+    end
+
+    function RING.setGap(open)
+      local room = RING.room()
+      if not room then return false end
+      local g = room.anchors.gap.block
+      local ok, done = pcall(function()
+        return mod.world:replaceBlock(g.x, g.y, RING.gapBlockId(open))
+      end)
+      return ok and done
+    end
+
+    -- Entry re-closes the ropes if a live edit somehow survived, and drops a
+    -- stale busy latch (a beat cut off by a warp or a reload).
+    function RING.reapply(world)
+      RING.busy = false
+      local room = RING.room()
+      if not (room and world and world.map and world.map.blocks) then return end
+      local g = room.anchors.gap.block
+      local index = g.y * world.map.width + g.x + 1
+      if world.map.blocks[index] ~= RING.gapBlockId(false) then
+        RING.setGap(false)
+      end
+    end
+
+    function RING.objectId(name)
+      local id = S.spawned[name]
+      local n = id and tonumber(tostring(id):match("_obj_(%d+)$"))
+      return n and n + 1 or nil      -- World:objectEntity: index = id - 1
+    end
+
+    -- World:beginMovement is the cart's applymovement: it freezes every
+    -- other object and World:busy() holds the player's input until the
+    -- stream ends. pcall'd, because a failed walk must never strand anyone.
+    function RING.walk(objectId, dirs, onDone)
+      local world = mod.world:overworld()
+      if not (objectId and world and world.beginMovement) then return false end
+      local bytes = {}
+      for _, d in ipairs(dirs) do bytes[#bytes + 1] = RING_STEP[d] end
+      bytes[#bytes + 1] = RING_MOVE_END
+      return (pcall(world.beginMovement, world, objectId, bytes, onDone))
+    end
+
+    local function ringPlayerCell()
+      local world = mod.world:overworld()
+      local p = world and world.player
+      if not p then return nil end
+      return p.cellX, p.cellY
+    end
+
+    -- The held-rope beat, in: the hand at (10,13) holds the gap, the player
+    -- climbs (9,14) -> (9,13) -> (9,12) -> (9,11), the hand steps back to
+    -- (10,14) and the rope closes; he then returns to his post.
+    function RING.enter()
+      if RING.busy then return false end
+      local x, y = ringPlayerCell()
+      local path
+      if x == 10 and y == 14 then path = { "left", "up", "up", "up" }
+      elseif x == 9 and y == 14 then path = { "up", "up", "up" }
+      elseif x == 9 and y == 13 then path = { "up", "up" }
+      end
+      if not path then return false end
+      RING.busy = true
+      RING.setGap(true)
+      local function done()
+        RING.setGap(false)
+        RING.busy = false
+      end
+      local walked = RING.walk(0, path, function()
+        local hand = RING.objectId(RING.HAND_NAME)
+        local stepped = RING.walk(hand, { "down" }, function()
+          RING.setGap(false)
+          if not RING.walk(hand, { "up" }, function() RING.busy = false end) then
+            RING.busy = false
+          end
+        end)
+        if not stepped then done() end
+      end)
+      if not walked then
+        done()
+        mod.world:warpTo(S.MAP, 9, 11, "up")
+      end
+      return true
+    end
+
+    -- Out: from (9,11) or (10,11), facing the closed gap.
+    function RING.leave()
+      if RING.busy then return false end
+      local x, y = ringPlayerCell()
+      local path
+      if x == 9 and y == 11 then path = { "down", "down", "down" }
+      elseif x == 10 and y == 11 then path = { "left", "down", "down", "down" }
+      end
+      if not path then return false end
+      RING.busy = true
+      RING.setGap(true)
+      local walked = RING.walk(0, path, function()
+        RING.setGap(false)
+        RING.busy = false
+      end)
+      if not walked then
+        RING.setGap(false)
+        RING.busy = false
+        mod.world:warpTo(S.MAP, 9, 14, "down")
+      end
+      return true
+    end
+
+    function RING.talkHand()
+      local x, y = ringPlayerCell()
+      if not ((x == 10 and y == 14) or (x == 9 and y == 13)) then
+        mod.world:queueScript({ { "text", "HAND: Ropes stay\nshut for now." } })
+        return true
+      end
+      mod.world:queueScript({
+        { "text", "HAND: I hold the\nropes. Going in?" },
+      }, { onDone = function()
+        local game = mod.game
+        if not (game and game.stack) then return end
+        game.stack:push(ListMenu.new(game, "THE RING", {
+          { label = "STEP IN", value = "IN" },
+          { label = "NOT YET", value = "NO" },
+        }, {
+          kind = "snag.ring_entry",
+          onChoose = function(item, list)
+            list:close()
+            if item and item.value == "IN" then RING.enter() end
+          end,
+        }))
+      end })
+      return true
+    end
+
+    function RING.talkGap()
+      mod.world:queueScript({
+        { "text", "HAND: Out? I've\ngot the rope." },
+      }, { onDone = function() RING.leave() end })
+      return true
+    end
+
     function S.installMap(game)
       local data = game and game.data
       local maps = data and data.gen2Maps
@@ -2000,6 +2301,11 @@ return function(mod)
         coordEvents = {}, bgEvents = {}, objects = {},
         sceneScripts = {}, callbacks = {}, source = "mod:snag_quest",
       }
+      -- Same venue, same lookout, same map id: on Crystal the room inside is
+      -- boxing room C and the actors stand on its anchors instead.
+      if RING.active() and RING.install(maps, tilesets, maps[S.MAP]) then
+        S.cells = RING.cells
+      end
       local world = mod.world:overworld()
       if world and world.maps then world.maps[S.MAP] = maps[S.MAP] end
       return true
@@ -2143,7 +2449,7 @@ return function(mod)
     function S.syncInterior(world)
       if not (world and world.map and world.map.id == S.MAP) then return false end
       for _, name in ipairs({ S.PETREL_NAME, S.FOE_NAME, S.SPEC_A_NAME,
-          S.SPEC_B_NAME, S.EXIT_NAME }) do
+          S.SPEC_B_NAME, S.EXIT_NAME, RING.HAND_NAME }) do
         S.removeActor(world, S.MAP, name)
       end
       -- During the house match PETREL is down in the pit as the foe, so his
@@ -2152,14 +2458,25 @@ return function(mod)
         S.spawnActor(S.MAP, {
           name = S.PETREL_NAME, sprite = "SPRITE_ROCKET", palette = 11,
           x = S.cells.petrel.x, y = S.cells.petrel.y,
-          movement = MOVE_STANDING_UP, sewerRole = "petrel",
+          movement = S.cells.petrel.move or MOVE_STANDING_UP, sewerRole = "petrel",
         })
       end
       S.spawnActor(S.MAP, {
         name = S.EXIT_NAME, sprite = "SPRITE_ROCKET", palette = 11,
         x = S.cells.exit.x, y = S.cells.exit.y,
-        movement = MOVE_STANDING_LEFT, sewerRole = "exit",
+        movement = S.cells.exit.move or MOVE_STANDING_LEFT, sewerRole = "exit",
       })
+      -- Room C's ring hand: SPRITE_BLACK_BELT is the package's stand-in, not
+      -- a new canonical role (the developer picks the real one); palette 11
+      -- is the cart's own for that sprite (VANILLA_OBJ_PALETTES.json).
+      if S.cells == RING.cells then
+        local hand = RING.room().anchors.ringHand
+        S.spawnActor(S.MAP, {
+          name = RING.HAND_NAME, sprite = "SPRITE_BLACK_BELT", palette = 11,
+          x = hand.x, y = hand.y, movement = MOVE_STANDING_LEFT,
+          sewerRole = "ring_hand",
+        })
+      end
 
       local current = S.currentKey()
       if current then
@@ -2167,7 +2484,7 @@ return function(mod)
         S.spawnActor(S.MAP, {
           name = S.FOE_NAME, sprite = foe.sprite, palette = foe.palette,
           x = S.cells.foe.x, y = S.cells.foe.y,
-          movement = MOVE_STANDING_DOWN, sewerKey = current,
+          movement = S.cells.foe.move or MOVE_STANDING_DOWN, sewerKey = current,
           trainer = S.makeTrainer(current),
         })
       end
@@ -2184,7 +2501,7 @@ return function(mod)
           S.spawnActor(S.MAP, {
             name = name, sprite = foe.sprite, palette = foe.palette,
             x = cell.x, y = cell.y,
-            movement = MOVE_STANDING_DOWN, sewerKey = key,
+            movement = cell.move or MOVE_STANDING_DOWN, sewerKey = key,
           })
         end
       end
@@ -2358,8 +2675,11 @@ return function(mod)
     end
 
     function S.talkExit()
+      -- room C has a door, not a ladder
+      local line = S.cells == RING.cells and "GRUNT: Fresh air?\nI'll get the door."
+        or "GRUNT: Fresh air?\nUse the ladder."
       mod.world:queueScript({
-        { "text", "GRUNT: Fresh air?\nUse the ladder." },
+        { "text", line },
         { "warp", S.CITY_MAP, S.CITY_RETURN.x, S.CITY_RETURN.y,
           S.CITY_RETURN.facing },
       })
@@ -2850,6 +3170,7 @@ return function(mod)
       if ev.mapId == S.CITY_MAP then
         S.syncCity(world)
       elseif ev.mapId == S.MAP then
+        if S.cells == RING.cells then RING.reapply(world) end
         S.syncInterior(world)
       end
     end)
@@ -4803,6 +5124,18 @@ return function(mod)
       local exit = objectNamed(world, S.MAP, S.EXIT_NAME)
       local specA = objectNamed(world, S.MAP, S.SPEC_A_NAME)
       local specB = objectNamed(world, S.MAP, S.SPEC_B_NAME)
+      if S.cells == RING.cells then
+        local hand = objectNamed(world, S.MAP, RING.HAND_NAME)
+        if pressed(ev, hand) then
+          RING.talkHand()
+          return
+        end
+        -- from inside, A on the closed rope above the stair (9,12)/(10,12)
+        if ev.kind == "none" and ev.y == 12 and (ev.x == 9 or ev.x == 10) then
+          RING.talkGap()
+          return
+        end
+      end
       if pressed(ev, petrel) then
         S.talkPetrel()
       elseif pressed(ev, exit) then
@@ -4820,6 +5153,17 @@ return function(mod)
       if not world then return end
       if ev.mapId == S.CITY_MAP then
         S.syncCity(world)
+        return
+      end
+      -- Room C's door mat (9-10,17) is a real way out: stepping on it leaves
+      -- exactly as the doorman's script does. The doorman stays as well, so
+      -- the room never depends on this one event to be escapable.
+      if S.cells == RING.cells and ev.y == 17 and (ev.x == 9 or ev.x == 10)
+          and not RING.busy then
+        mod.world:queueScript({
+          { "warp", S.CITY_MAP, S.CITY_RETURN.x, S.CITY_RETURN.y,
+            S.CITY_RETURN.facing },
+        })
         return
       end
       -- The interior has no warps and no connections, so the EXIT grunt's
