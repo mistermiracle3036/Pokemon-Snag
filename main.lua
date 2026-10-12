@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.16.7"
+  local VERSION = "0.16.8"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -4568,6 +4568,30 @@ return function(mod)
         if not SNAG_BALL_TIERS[itemId] then
           return originals.throwBallAtTrainer(self, itemId)
         end
+        -- Snag guard (contract `snag-guard`, exchange/CONTRACTS.md; REQUESTS
+        -- 108).  Another mod marks an opponent it built with
+        -- `mon.snagGuard = "<its mod id>"` when that Pokemon must never enter
+        -- the player's save (IPC's expanded species need IPC to exist).  Read
+        -- whenever present, never gated on who wrote it.  `battle.enemy` IS
+        -- the party table the writer marked (src/battle/gen2/Battle.lua
+        -- Battle.new: self.enemy = self.enemyParty[self.enemyIndex], and
+        -- enemyParty is what the trainer.party hook returned).  The original
+        -- is the vanilla block -- "The trainer blocked the BALL!" / "Don't be
+        -- a thief!", consumeItem, turn spent (src/ui/gen2/BattleState.lua
+        -- throwBallAtTrainer).  The guard is invisible, so the player made
+        -- no mistake: give the one ball back.  The turn stays spent.  This
+        -- also returns before the catch.rate hook, so a KINGPIN BALL's
+        -- unconditional catch never runs on a guarded target -- and the
+        -- KINGPIN, which has no reissue, comes back too.
+        local guarded = self.battle and self.battle.enemy
+        if guarded and guarded.snagGuard then
+          local result = originals.throwBallAtTrainer(self, itemId)
+          local game = mod.game
+          if self.save and game and game.data then
+            Bag.add(self.save, itemId, 1, game.data)
+          end
+          return result
+        end
         local wasWild = self.battle and self.battle.wild
         if self.battle then self.battle.wild = true end
         local ok, err = pcall(originals.useItem, self, itemId)
@@ -5324,6 +5348,22 @@ return function(mod)
     BattleState.throwBall = function(self, ball)
       if not (ball == "SNAG_BALL" and self.kind == "trainer") then
         return vanillaThrowBall(self, ball)
+      end
+      -- Snag guard (contract `snag-guard`; see the Gold arm).  The enemy
+      -- battler's `.mon` is the party table itself (makeBattler stores
+      -- `mon = mon`, src/battle/BattleState.lua), so a writer's mark on its
+      -- party row is visible here.  Vanilla throwBall at a trainer IS the
+      -- block.  BagMenu already removed the ball before calling throwBall
+      -- (src/ui/BagMenu.lua `consume` then `battle:throwBall`), so the
+      -- refund puts that one back.
+      local guarded = self.enemy and self.enemy.mon
+      if guarded and guarded.snagGuard then
+        local result = vanillaThrowBall(self, ball)
+        local save = self.game and self.game.save
+        if save and self.data then
+          require("src.inventory.Bag").add(save, ball, 1, self.data)
+        end
+        return result
       end
       -- verbatim copy of BattleState:throwBall's wild-catch body,
       -- reached without the self.kind == "wild" check

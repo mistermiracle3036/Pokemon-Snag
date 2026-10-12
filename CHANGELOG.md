@@ -1,3 +1,43 @@
+## 0.16.8 - Some Pokemon can't be snagged (private test)
+
+**Updating from v0.15.23 or v0.15.24?** Everything since then has been
+private test builds. NPCs answering on the current engine (v0.15.23) and
+the snag guard (v0.15.24) you already have; this is the rest:
+
+- **The Zapdos job.** After the Radio Tower, witnesses in Goldenrod,
+  Ecruteak and Olivine piece together a Rocket operation. The Olivine
+  foreman hands you one KINGPIN BALL, which never misses. Fight through the
+  Mahogany hideout to Proton and his Zapdos, then keep the bird, sell it,
+  or let it go.
+- **The Cianwood Sewers.** A lookout in Cianwood opens a fighting pit under
+  the town. Your first three snagged Pokemon fight a two-round card against
+  a Rocket grunt, Ariana and Bruno, scaled to your team, for a HEIST BALL.
+  Clear it and Petrel offers double or nothing.
+- **Repeat jobs.** After all three city contracts, the Goldenrod broker
+  keeps a board of KEEP / DELIVER / RELEASE jobs.
+- **A new start on Route 29.** A roadside middleman openly offers the first
+  theft; you can ask questions or say no. Cherrygrove is left to its own
+  quest.
+- **Fairer fences.** A fence shows how it reached its price, bonuses add up
+  properly, a job's target always fetches at least 3 balls, any sale at
+  least 2, and a finished contract pays 5 more. RELEASE pays no balls and
+  says so.
+- **With Trainer Journey:** releases earn HEART, and a THIEF profession and
+  the Delinquent background raise what marks fetch. Never required.
+- **Colored throws on Gold** for SNAG, HEIST and KINGPIN BALLs.
+- **Rocket grunts, and Petrel in the overworld, use Gold's own sprites.**
+- **Snag characters step aside** instead of standing on someone else.
+- **Nothing dead-ends.** You can't be sealed in the Sewers, a lost Zapdos
+  closes its file, a repeat job whose target is gone can be called off, the
+  Kanto fence pays before it takes, wild catches don't count as thefts,
+  and held mail stays with the right Pokemon.
+
+**New in 0.16.8:** the snag guard from v0.15.24, on this line too.
+Another mod can mark one of its trainers' Pokemon as off limits; a SNAG,
+HEIST or KINGPIN BALL thrown at it is blocked ("Don't be a thief!"), the
+turn is spent, and the ball comes back. A KINGPIN BALL thrown at a marked
+Pokemon is not lost.
+
 ## 0.16.7 - NPCs answer again on the current engine (private test)
 
 **Updating from v0.15.9?** Everything since then has been private test
