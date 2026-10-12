@@ -1,3 +1,20 @@
+## 0.15.24 - Some Pokemon can't be snagged
+
+Updating from v0.15.23? One change, and nothing else is different.
+
+- **Another mod can now mark one of its trainers' Pokemon as off limits.**
+  Throw a SNAG BALL (or, on Gold, a HEIST BALL) at a marked Pokemon and the trainer blocks it, the way
+  any trainer blocks a normal POKe BALL -- "Don't be a thief!" -- and the
+  turn is spent. You get the ball back: there was no way to tell the
+  Pokemon was marked, so it does not cost you the ball.
+- The first mod to use this is Indigo Plateau Conference, for the new
+  Pokemon its trainers bring that the game itself does not have. Snagging
+  one would leave a Pokemon in your save that only exists while that mod is
+  installed. Every other Pokemon those trainers carry can still be snagged
+  exactly as before.
+- Works on Gold and on Red/Blue/Yellow, whichever mod sets the mark, and
+  whether or not Indigo Plateau Conference is installed.
+
 ## 0.15.23 - NPCs answer again
 
 Updating from v0.15.9? NPCs answer again on the current engine; nothing else changed.
