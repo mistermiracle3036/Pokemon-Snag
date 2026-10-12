@@ -164,6 +164,17 @@ MEOWTH satisfies the turn-in and the recruiter is always reachable.
   standing somewhere else. Those keep their exact spot, because the game
   can only see the tiles of the map you are actually on.
 
+## 0.15.24 - Some Pokemon can't be snagged (public hotfix, from v0.15.23)
+
+Cut from public v0.15.23 on `hotfix/snag-guard`; contains only the snag
+guard (REQUESTS 108). The same guard reaches this line as 0.16.8.
+
+## 0.15.23 - NPCs answer again (public hotfix, from v0.15.9)
+
+Cut from public v0.15.9 on `hotfix/npc-0.3.5x`: NPCs answer again on the
+current engine; nothing else changed. This line carries the same fix as
+0.16.7.
+
 ## 0.15.22 - Fight PETREL for double the purse (private test)
 
 - The Cianwood Sewers circuit now has a third, optional round. Clear the card
