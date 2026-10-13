@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.1"
+  local VERSION = "0.17.2"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -423,11 +423,12 @@ return function(mod)
     -- SPRITE_ROCKET_GIRL. Only the named executives need custom art.
     registerZapdosSprite("SPRITE_SNAG_ARIANA", "ariana.png",
       "PAL_OW_RED", 0)
-    -- TODO(A-0082): Giovanni for boxing room C's VIP seat, as
-    -- registerZapdosSprite("SPRITE_SNAG_GIOVANNI", "giovanni.png",
-    -- "PAL_OW_BROWN", 3, true) with canonical_color/giovanni.png copied
-    -- byte-for-byte -- held out of 0.17.0 until the sprite registry credits
-    -- him to Snag (REQUESTS 114); publish's registry gate refuses it before.
+    -- Boxing room C's VIP seat (0.17.2; held out of 0.17.0 until REQUESTS
+    -- 114). sprites/canonical_color/giovanni.png byte-for-byte (SirWhibbles,
+    -- cleared), registered exactly as Kanto Contests and Indigo register
+    -- theirs: PAL_OW_BROWN / 3, trueColor.
+    registerZapdosSprite("SPRITE_SNAG_GIOVANNI", "giovanni.png",
+      "PAL_OW_BROWN", 3, true)
 
     -- Private member rows preserve every vanilla trainer and give these three
     -- battles their own displayed names.  Runtime trainer.party substitution
@@ -2102,8 +2103,11 @@ return function(mod)
           x = x, y = y, eventFlag = 65535, hours = { -1, -1 },
         }
       end
-      -- The VIP sofa (room.anchors.vip) stays empty until Giovanni's sprite
-      -- can ship (REQUESTS 114); the empty seats round it are the staging.
+      -- Giovanni on the VIP sofa; the empty seats round him are the staging
+      -- (his dark suit vanishes in a full row). Watching only -- no talk, no
+      -- effect on valuation or credit (order: decorative VIP seating).
+      local vip = room.anchors.vip
+      add("SPRITE_SNAG_GIOVANNI", 0, vip.x, vip.y, vip.facing)
       -- a small Pokemon standing behind the near rope (stage 2 proof item);
       -- vanilla Grimer is a stand-in, the cart has no Koffing/Meowth walker
       local near = room.anchors.nearRope

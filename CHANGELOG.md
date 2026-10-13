@@ -1,3 +1,9 @@
+## 0.17.2 - Giovanni takes his seat (private test)
+
+**New in 0.17.2:** Giovanni now watches from the VIP sofa at the top of
+the boxing ring under Cianwood (Crystal). He only watches for now.
+Everything from 0.17.0 and 0.17.1 is unchanged.
+
 ## 0.17.1 - The ring's layout, shared (private test)
 
 **New in 0.17.1:** nothing you can see. Pokemon Snag now hands the boxing
@@ -43,8 +49,8 @@ the snag guard (v0.15.24) you already have; this is the rest:
 
 - **Under Cianwood is a boxing ring now.** The lookout still takes you
   down, but on Crystal the room below is a roped ring on a raised
-  platform, with tiered seats on all four sides, a crowd, and an empty VIP
-  sofa at the top that someone important will fill. Everything you see is Crystal's
+  platform, with tiered seats on all four sides, a crowd, and Giovanni
+  watching from the VIP sofa at the top (from 0.17.2). Everything you see is Crystal's
   own art, put together on your device from your own game; only the ropes
   are new.
 - **The ring hand holds the ropes.** Talk to him on the ring stair and he

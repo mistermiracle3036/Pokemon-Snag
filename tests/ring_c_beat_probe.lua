@@ -116,11 +116,11 @@ end
 do
   local RING = setup(9, 11)
   local vip = room.anchors.vip
-  local onVip = false
+  local onVip
   for _, o in ipairs(RING.staticObjects(room)) do
-    if o.x == vip.x and o.y == vip.y then onVip = true end
+    if o.x == vip.x and o.y == vip.y then onVip = o.sprite end
   end
-  check("static objects: VIP sofa left empty (REQUESTS 114)", onVip, false)
+  check("static objects: Giovanni on the VIP sofa", onVip, "SPRITE_SNAG_GIOVANNI")
   local n = #RING.staticObjects(room)
   check("static objects: count sane (<=40)", n <= 40 and n >= 10, true)
   print("  static objects:", n)
