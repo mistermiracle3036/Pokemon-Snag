@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.0"
+  local VERSION = "0.17.1"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -2035,6 +2035,27 @@ return function(mod)
 
     function RING.active()
       return GameVersion.engine() == "crystal" and RING.room() ~= nil
+    end
+
+    -- Contract `snag-ring-room` (exchange/CONTRACTS.md; REQUESTS 116): the
+    -- shared description for a renderer, WITHOUT `runtime` (Snag's engine
+    -- data, not part of the contract). A deep copy per call, so a reader can
+    -- never write into the records Snag plays from. Readers check
+    -- `contract` and `version`; Snag never checks who reads it.
+    local function ringCopy(v)
+      if type(v) ~= "table" then return v end
+      local out = {}
+      for k, x in pairs(v) do out[k] = ringCopy(x) end
+      return out
+    end
+    mod.exports.ringRoom = function()
+      local room = RING.room()
+      if not room then return nil end
+      local out = {}
+      for k, v in pairs(room) do
+        if k ~= "runtime" then out[k] = ringCopy(v) end
+      end
+      return out
     end
 
     -- [DEV] option, stage 2 only: the package drew the room in INDOOR, the

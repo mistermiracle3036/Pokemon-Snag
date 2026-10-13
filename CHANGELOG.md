@@ -1,3 +1,10 @@
+## 0.17.1 - The ring's layout, shared (private test)
+
+**New in 0.17.1:** nothing you can see. Pokemon Snag now hands the boxing
+ring's layout to other mods that ask for it, so a 3D view of the room
+(being built in Crystal Cutscene) always matches the room you walk in. Snag
+needs nothing else installed and plays exactly as in 0.17.0.
+
 ## 0.17.0 - The boxing ring (private test: Crystal room proof)
 
 **Updating from v0.15.24?** Everything since then has been

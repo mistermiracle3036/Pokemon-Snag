@@ -28,7 +28,7 @@ local function setup(px, py, opts)
     if onDone then onDone() end
   end
   local mod = {
-    path = ".", options = { get = function() return nil end },
+    path = ".", options = { get = function() return nil end }, exports = {},
     read = function() local h = io.open("ring_c_room.lua", "rb"); local t = h:read("*a"); h:close(); return t end,
     world = {
       overworld = function() return world end,
@@ -53,7 +53,7 @@ local function setup(px, py, opts)
   mod.options.define = function() end
   local chunk = assert(loadstring(body)); setfenv(chunk, env)
   local RING = chunk()
-  return RING, world, log
+  return RING, world, log, mod
 end
 
 local function gap(world)
@@ -124,6 +124,19 @@ do
   local n = #RING.staticObjects(room)
   check("static objects: count sane (<=40)", n <= 40 and n >= 10, true)
   print("  static objects:", n)
+end
+do -- REQUESTS 116: the exported description
+  local RING, _, _, mod = setup(9, 11)
+  local ex = mod.exports.ringRoom and mod.exports.ringRoom()
+  check("export: present", type(ex), "table")
+  check("export: contract id", ex and ex.contract, "snag-ring-room")
+  check("export: version", ex and ex.version, 1)
+  check("export: no runtime", ex and ex.runtime, nil)
+  check("export: cells", ex and #ex.cells, 360)
+  ex.anchors.vip.x = 99
+  ex.cells[1].base = "X"
+  check("export: copy cannot write back (anchor)", RING.room().anchors.vip.x, room.anchors.vip.x)
+  check("export: copy cannot write back (cell)", RING.room().cells[1].base, room.cells[1].base)
 end
 print(fails == 0 and "ALL PASS" or (fails .. " FAILED"))
 os.exit(fails == 0 and 0 or 1)
