@@ -1,7 +1,7 @@
 {
   "id": "snag_quest",
   "name": "Pokemon Snag",
-  "version": "0.17.6",
+  "version": "0.17.7",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -14,14 +14,12 @@
   ],
   "dependencies": [],
   "optional_dependencies": [
-    "quest_system",
     "SHINY_POKEMON",
     "pokeball_colors",
-    "kanto_balls",
-    "trainer_journey@>=0.4.9 <1.0.0"
+    "kanto_balls"
   ],
   "conflicts": [],
-  "description": "Steal Pokemon from trainers and fence them for more SNAG BALLs. On Red, start at Nugget Bridge. On Gold, Silver and Crystal, knowingly accept a shady job on Route 29, then join a network of fences, contracts, repeat jobs and the Cianwood Sewers circuit. Optional Trainer Journey careers improve quest-mark sale bounties; never required.",
+  "description": "Steal Pokemon from trainers and fence them for more SNAG BALLs. On Red, start at Nugget Bridge. On Gold, Silver and Crystal, knowingly accept a shady job on Route 29, then join a network of fences, contracts, repeat jobs and the Cianwood Sewers circuit.",
   "github": "mistermiracle3036/Pokemon-Snag",
   "games": [
     "gen1",

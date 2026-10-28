@@ -13,7 +13,7 @@ return {
     added = {
       "new item + ball: SNAG BALL (10,000 to buy once unlocked), thrown with the Ultra/Master-tier toss arc and flicker",
       "new trainer class: a PICNICKER (OPP_SNAG_QUEST_PICNICKER, real sprite/data class OPP_JR_TRAINER_F) holding a single Meowth",
-      "a short questline via Quest System: one Snag Ball in, a guaranteed catch on the quest Meowth only, 5 SNAG BALLs as the reward for turning it in (a starting float -- every later snag rolls normal odds), with a real turn-in step (party picker, any Meowth qualifies)",
+      "a short questline: one Snag Ball in, a guaranteed catch on the quest Meowth only, 5 SNAG BALLs as the reward for turning it in (a starting float -- every later snag rolls normal odds), with a real turn-in step (party picker, any Meowth qualifies)",
       "optional shiny integration: the quest's Meowth is genuinely shiny by data always, and visually shiny too if the Shiny Pokemon mod is installed",
       "a GET NEW SNAG BALLS option (BOTH / MART / FENCES, default BOTH) choosing where post-quest Snag Balls come from -- marts stock them at 10,000 at the same shops Custom Pokeballs uses for GREAT/ULTRA BALL",
       "a [DEV] option to replay the Meowth quest for testing (default off)",
@@ -21,7 +21,6 @@ return {
       "after the quest, four NPCs become fences: the NUGGET BRIDGE recruiter himself (no badge), the Celadon Game Corner gambler (no badge; Red/Blue and Yellow names both covered), the Pewter City man who explains badge-based obedience (needs the BOULDERBADGE), and the Vermilion City dock sailor (needs the THUNDERBADGE). Hand any of them a snagged Pokemon for 2-5 SNAG BALLs, priced by snag level, species rarity, and VIP provenance (rival/gym leaders/Elite Four/Giovanni); a quest mark on GOLD never pays less than 3",
       "the fences are deliberately not one organization -- the sailor and the recruiter are TEAM ROCKET, the gambler and the Pewter man are independents who simply buy stolen goods, and each has its own voice",
       "JOHTO: knowingly accept a Route 29 middleman's theft job, or refuse without a battle. Talk to the stationary collector yourself and snag her only Pokemon, the Lv.5 shiny MEOWTH. Claim five balls, keep or separately sell the target, and meet the Route 36 fence. No Snag intro NPCs remain in Cherrygrove; all NPCs are owned runtime objects",
-      "OPTIONAL Trainer Journey: DELINQUENT gives +1 on quest-mark fence sales. THIEF profession ranks at 1/5/12/25 completed jobs; rank 2 adds +1, rank 4 adds +2, stacking after normal value. Any background can earn THIEF. No dependency, ordinary-sale bonus, or RELEASE ball reward",
       "GOLD: the HEIST BALL doubles the species catch-rate input, capped before the usual HP calculation; it does not double every final catch probability. The ECRUTEAK contract awards one, OLIVINE awards three, the CIANWOOD SEWERS circuit pays one or two, and selling the ZAPDOS job target pays ten. It is not sold in shops",
       "GOLD: the CIANWOOD SEWERS, a mod-owned map reached through a lookout in CIANWOOD CITY once the OLIVINE contract is done. The first three snagged, non-egg Pokemon in party order form your team; extra party members sit out. Fight a two-round card drawn from a ROCKET GRUNT, ARIANA and BRUNO, all scaled to your own team, with the circuit healing you between rounds and a loss costing the run rather than blacking you out",
       "GOLD: an optional third round in the SEWERS. Clear the card and PETREL offers double or nothing -- walk away with one HEIST BALL, or beat the house for two and get nothing if you lose. The circuit is repeatable, so it is the standing source of HEIST BALLs",
@@ -41,7 +40,6 @@ return {
 
   credits = {
     { who = "trikus (gen1recomp Discord)", for_ = "the Nugget Bridge opening -- use the TEAM ROCKET grunt who already asks you to join, and let saying yes mean something" },
-    { who = "Quest System by FAFF0x (github.com/FAFF0x/gen1recomp -- committed zip, not a release)", for_ = "the journal, NPC markers and quest state this mod registers into when present; OPTIONAL as of 0.14.13 -- without it the questline plays identically, just with no journal entry" },
     { who = "Custom Pokeballs", for_ = "the item+ball registry pattern this mod's Snag Ball follows, and the mart list its shop unlock reuses" },
     { who = "Team Rocket Returns", for_ = "the map_scripts/Flags/base_talk dialogue pattern and custom trainer-class registration this mod follows" },
     { who = "Shiny Pokemon", for_ = "the optional shiny-DV generator this mod's Meowth uses when that mod is installed" },

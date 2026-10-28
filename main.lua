@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.6"
+  local VERSION = "0.17.7"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -920,50 +920,13 @@ return function(mod)
     function R.completed()
       return tonumber(mod.save:get("g2_repeat_completed", 0)) or 0
     end
-    function R.heartReleases()
-      return tonumber(mod.save:get("g2_repeat_heart_releases", 0)) or 0
-    end
-    function R.heartPoints()
-      -- Trainer Journey's planned ledger is point-based. Keep this integer:
-      -- two completed releases reconstruct as one Heart point.
-      return math.floor(R.heartReleases() / 2)
-    end
-    function R.heartAwards()
-      return tonumber(mod.save:get("g2_repeat_heart_awards", 0)) or 0
-    end
-    function R.journeyApi()
-      local handle = mod.find("trainer_journey")
-      local root = handle and handle.exports
-      local api = root and (root.trainer_journey or root)
-      if api and api.api_version == 1
-          and type(api.awardOnceAndQueue) == "function" then
-        return api
-      end
-      return nil
-    end
-    function R.awardHeart(jobId, releaseCount)
-      if releaseCount % 2 ~= 0 then return false, nil, "not due" end
-      local api = R.journeyApi()
-      if not api then
-        return false, nil, "unavailable"
-      end
-      local sourceTag = "snag_quest:release:" .. tostring(jobId)
-      local ok, result, err = pcall(
-        api.awardOnceAndQueue, "HEART", 1, sourceTag)
-      if not ok then
-        errs("HEART AWARD\n%s", tostring(result))
-        return false, nil, "error"
-      end
-      if type(result) ~= "table" then
-        errs("HEART AWARD\n%s", tostring(err))
-        return false, nil, err or "refused"
-      end
-      local awarded = (tonumber(result.awarded) or 0) > 0
-      if awarded then
-        mod.save:set("g2_repeat_heart_awards", R.heartAwards() + 1)
-      end
-      return awarded, result.total, result.reason
-    end
+    -- 0.17.7 (REQUESTS 265, developer-approved cleanup): the RELEASE HEART
+    -- award, the THIEF career and the fence's CAREER bonus were all gated on
+    -- Trainer Journey api_version == 1, so on every Journey since 0.6 they
+    -- never ran. DELETED rather than converted: deleting changes nothing a
+    -- player sees, and Journey rewards are redesigned in Snag 2.0 stage 3
+    -- (briefs/SNAG_2_0_STAGE1.md). Old save keys g2_repeat_heart_* are left
+    -- in place, unread.
     function R.jobId()
       return tonumber(mod.save:get("g2_repeat_job_id", 0)) or 0
     end
@@ -1238,10 +1201,7 @@ return function(mod)
     -- Existing species value remains shared; optional Gen 2 career premiums
     -- are added after its cap and apply only to an advertised quest mark.
     local function snagPayoutBreakdown(mon)
-      local detail = computeSnagPayoutBreakdown(mod.game, mon, nil)
-      detail.careerBonus = I.careerBonus and I.careerBonus(mon) or 0
-      detail.total = detail.total + detail.careerBonus
-      return detail
+      return computeSnagPayoutBreakdown(mod.game, mon, nil)
     end
     local function snagPayout(mon)
       return snagPayoutBreakdown(mon).total
@@ -1752,20 +1712,10 @@ return function(mod)
         local removed, reason = R.removeJobMon()
         if not removed then return false, reason or "remove" end
       end
-      local heartAwarded, heartTotal = false, nil
-      local releases, heartReason, journeyAvailable = nil, nil, false
-      if c.termsKey == "RELEASE" then
-        releases = R.heartReleases() + 1
-        mod.save:set("g2_repeat_heart_releases", releases)
-        journeyAvailable = R.journeyApi() ~= nil
-        heartAwarded, heartTotal, heartReason = R.awardHeart(c.id, releases)
-      end
       mod.save:set("g2_repeat_completed", R.completed() + 1)
       R.clear()
       R.cleanupPending = true
-      if I.syncCareer then I.syncCareer() end
-      return true, c, heartAwarded, heartTotal, releases,
-        heartReason, journeyAvailable
+      return true, c
     end
 
     function Z.resolveCarrier(name)
@@ -3046,70 +2996,6 @@ return function(mod)
       return false
     end
 
-    -- Optional profession API, feature-detected after mods load. Journey owns
-    -- ranks and receipts; Snag only reconstructs durable completed-job facts.
-    function I.journey()
-      local h = mod.find("trainer_journey")
-      local api = h and h.exports and h.exports.trainer_journey
-      return api and api.api_version == 1 and api or nil
-    end
-
-    function I.syncCareer()
-      local api = I.journey()
-      if not api or type(api.registerProfession) ~= "function"
-          or type(api.awardProfessionOnce) ~= "function" then return end
-      local save = mod.game and mod.game.save
-      if not save then return end
-      if I.careerSave ~= save or I.careerApi ~= api then
-        I.careerSave, I.careerApi, I.careerCredited = save, api, 0
-      end
-      local ok, def = pcall(api.registerProfession, {
-        id = "snag_thief", name = "THIEF", owner = "snag_quest",
-        summary = "COMPLETES UNDERWORLD JOBS.",
-        thresholds = { 1, 5, 12, 25 },
-        rankNames = { "RUNNER", "OPERATOR", "SPECIALIST", "FIXER" },
-      })
-      if not ok or not def then return end
-      -- A Rui job proved with her LENT Meowth was not a theft: no THIEF
-      -- credit for a cooperative loan (Shadow opening draft, section B).
-      local introJob = stage() == STAGE_DONE
-        and not (F.ruiJob() and F.facts().proofWith == "loan")
-      local jobs = (introJob and 1 or 0)
-        + (contractStage() == CONTRACT_DONE and 1 or 0)
-        + (ecruteakStage() == CONTRACT_DONE and 1 or 0)
-        + (olivineStage() == CONTRACT_DONE and 1 or 0)
-        + R.completed()
-      -- First slice caps this profession at 25 credited jobs. These ordinal
-      -- receipts also safely backfill a later install, without storing a
-      -- second rank or point ledger in Snag's save. Abandoned jobs add zero.
-      local due = math.min(25, math.max(0, math.floor(jobs)))
-      for n = (I.careerCredited or 0) + 1, due do
-        local awarded, result = pcall(api.awardProfessionOnce,
-          "snag_thief", 1, "snag_quest:thief:completed:" .. n)
-        if not awarded or not result or result.ok ~= true then return end
-        I.careerCredited = n
-      end
-    end
-
-    function I.careerBonus(mon)
-      if not (mon and mon.snagged == true and mon.snagBounty == true) then
-        return 0
-      end
-      I.syncCareer()
-      local api, bonus = I.journey(), 0
-      if not api then return 0 end
-      if type(api.getCareer) == "function" then
-        local ok, career = pcall(api.getCareer)
-        if ok and career == "ROGUE_TRAINER" then bonus = 1 end
-      end
-      if type(api.getProfession) == "function" then
-        local ok, row = pcall(api.getProfession, "snag_thief")
-        local rank = ok and type(row) == "table" and tonumber(row.rank) or 0
-        if rank and rank >= 4 then bonus = bonus + 2
-        elseif rank and rank >= 2 then bonus = bonus + 1 end
-      end
-      return bonus
-    end
 
     function I.say(pages, done)
       local rows = {}
@@ -3138,20 +3024,9 @@ return function(mod)
         if item.value == "sell" then I.sell()
         elseif item.value == "keep" then I.lead()
         elseif item.value == "career" then
-          I.syncCareer()
-          local api = I.journey()
-          if not api then
-            I.say({ "No career ledger.\nOrdinary pay." })
-          elseif type(api.registerProfession) ~= "function" then
-            I.say({ "DELINQUENT bonus:\nBounty sales +1.",
-              "THIEF needs newer\nTRAINER JOURNEY." })
-          else
-            I.say({ "DELINQUENT bonus:\nBounty sales +1.",
-              "THIEF grows with\ncompleted jobs.",
-              "Five jobs: +1.\nTwenty-five: +2.",
-              "Bonuses stack on\nquest-mark sales.",
-              "No bonus for\nreleasing POKEMON." })
-          end
+          -- The line every player has seen since Journey 0.6 (the career
+          -- bonus is gone, 0.17.7). The row stays until the developer rules.
+          I.say({ "No career ledger.\nOrdinary pay." })
         end
       end, onCancel = function() end }))
     end
@@ -3267,7 +3142,6 @@ return function(mod)
       fset("proofPaid", true)
       setStage(STAGE_DONE)
       setRewardClaimed(true)
-      I.syncCareer()
       -- He lets slip who he sells to. Shadow Pokemon reads proofPaid as the
       -- player knowing the fence's customer (Rui's DEDUCTION row), so this is
       -- said exactly when, and only when, proofPaid is set (0.17.4).
@@ -3308,7 +3182,6 @@ return function(mod)
         -- traded). Close the job with no proof pay rather than strand the
         -- rest of Snag behind a Pokemon the player no longer has.
         setRewardClaimed(true)
-        I.syncCareer()
         I.say({ "No MEOWTH to show?\nThen no fee.",
           "Still want work?\nTry ROUTE 36." })
         return
@@ -3374,7 +3247,6 @@ return function(mod)
       end
       S.installMap(game)
       S.resolveCarriers()
-      I.syncCareer()
     end)
 
     -- Cianwood itself remains vanilla.  Entering either relevant map only
@@ -3408,7 +3280,6 @@ return function(mod)
         -- Retire only Snag's old actors; Stantler and vanilla objects stay.
         removeNamed(world, "CHERRYGROVE_CITY", GIRL_NAME)
         removeNamed(world, "CHERRYGROVE_CITY", SAILOR_NAME)
-        I.syncCareer()
         -- After a successful intro, leave both actors standing on Route 29
         -- for the rest of that visit. Clean up off-map; the completed
         -- collector stays gone, while the middleman returns as a fence.
@@ -3568,7 +3439,6 @@ return function(mod)
                   return
                 end
                 setRewardClaimed(true)
-                I.syncCareer()
                 I.afterMenu()
               end)
               if not ok then errs("SAILOR REWARD\n%s", tostring(err)) end
@@ -3697,10 +3567,6 @@ return function(mod)
             end
             if detail.capped then
               quoteRows[#quoteRows + 1] = { "text", "VALUE CAP: 5" }
-            end
-            if detail.careerBonus > 0 then
-              quoteRows[#quoteRows + 1] = {
-                "text", "CAREER: +" .. detail.careerBonus }
             end
             quoteRows[#quoteRows + 1] = { "text", string.format(
               voice.quote, name, n, n == 1 and "" or "s") }
@@ -3853,13 +3719,7 @@ return function(mod)
         { "text", reward },
       }
       if c.termsKey == "RELEASE" then
-        if R.journeyApi() then
-          rows[#rows + 1] = { "text", "HEART: EVERY 2" }
-          rows[#rows + 1] = { "text", string.format(
-            "PROGRESS: %d/2", R.heartReleases() % 2) }
-        else
-          rows[#rows + 1] = { "text", "REWARD: NONE" }
-        end
+        rows[#rows + 1] = { "text", "REWARD: NONE" }
       end
       return rows
     end
@@ -3924,8 +3784,7 @@ return function(mod)
           if not (g and g.stack) then return end
           g.stack:push(ChoiceBox.new(g, function(yes)
             if not yes then return end
-            local ok, why, heartAwarded, _, releases,
-              heartReason, journeyAvailable = R.finish()
+            local ok, why = R.finish()
             if ok then
               local result = c.termsKey == "KEEP"
                   and "BROKER: Proof\naccepted."
@@ -3938,13 +3797,7 @@ return function(mod)
                     and "PAY: NO BALLS"
                   or string.format("PAY: %d SNAG BALLs", c.terms.payout) },
               }
-              if not heartAwarded and c.termsKey == "RELEASE"
-                  and journeyAvailable then
-                doneRows[#doneRows + 1] = { "text",
-                  heartReason == "not due"
-                    and string.format("HEART: %d/2", releases % 2)
-                    or "HEART: PENDING" }
-              elseif c.termsKey == "RELEASE" and not journeyAvailable then
+              if c.termsKey == "RELEASE" then
                 doneRows[#doneRows + 1] = { "text", "REWARD: NONE" }
               end
               mod.world:queueScript(doneRows)
@@ -4027,32 +3880,6 @@ return function(mod)
       })
       g.stack:push(menu)
     end
-
-    mod.exports.trainerJourney = {
-      pathId = "snag_quest:pokemon_thief",
-      evidence = function()
-        return {
-          intro = stage() == STAGE_DONE,
-          goldenrod = contractStage() == CONTRACT_DONE,
-          ecruteak = ecruteakStage() == CONTRACT_DONE,
-          olivine = olivineStage() == CONTRACT_DONE,
-          -- A CLOSED file is not a resolved bird.  Closing out a lost
-          -- ZAPDOS leaves the stage RESOLVED -- nothing else can move it --
-          -- but clears the outcome, and every real finish sets one.  So the
-          -- outcome is what separates "the player decided" from "the bird
-          -- was lost", and only a decision is evidence.
-          zapdos = Z.stage() == Z.RESOLVED and Z.outcome() ~= nil,
-          zapdosOutcome = Z.outcome(),
-          repeatJobs = R.completed(),
-          heartReleases = R.heartReleases(),
-          heartPoints = R.heartPoints(),
-          heartAwards = R.heartAwards(),
-          heartUncredited = math.max(0,
-            R.heartPoints() - R.heartAwards()),
-        }
-      end,
-    }
-    mod.exports.trainerJourneyEvidence = mod.exports.trainerJourney.evidence
 
     function Z.talkWitness(place)
       if not Z.witnessVisible() then return false end
@@ -5604,54 +5431,6 @@ return function(mod)
   -- they become real.
   ----------------------------------------------------------------------
 
-  ----------------------------------------------------------------------
-  -- quest_system is OPTIONAL as of 0.14.13. It used to be a hard
-  -- dependency with an assert here, which meant the whole mod refused to
-  -- load without it -- the Snag Ball, the fences, the questline, all of
-  -- it -- for a mod that only supplies the JOURNAL ENTRY. Everything
-  -- this mod actually does runs on its own save flags; the journal is
-  -- presentation.
-  --
-  -- That mattered more than it looks: quest_system ships as a zip
-  -- committed to FAFF0x/gen1recomp with no GitHub releases, so the
-  -- launcher cannot auto-update it and a player has to fetch it by hand.
-  -- Refusing to boot without it made a hand-installed third-party mod a
-  -- hard gate on everything here.
-  --
-  -- Declared in optional_dependencies rather than dropped entirely,
-  -- because that STILL ORDERS THE LOAD -- src/mods/Loader.lua builds a
-  -- dependency edge for optional specs too ("optional dependencies order
-  -- without requiring anything"), so quest_system is loaded before this
-  -- mod whenever it is installed and the lookup below is reliable at
-  -- load time rather than needing to wait for game.ready.
-  --
-  -- Calls are routed through a shim so the four call sites read exactly
-  -- as they did. Each one re-reads the export at call time and pcalls
-  -- it, so a missing mod, a missing function, or a future API change in
-  -- someone else's mod degrades to "no journal entry" instead of taking
-  -- the questline down with it.
-  ----------------------------------------------------------------------
-  local journal = mod.find("quest_system")
-  local function journalCall(name)
-    return function(...)
-      local api = journal and journal.exports
-      local fn = api and api[name]
-      if type(fn) ~= "function" then return end
-      local ok, err = pcall(fn, ...)
-      if not ok then
-        mod.log:warn("snag_quest: quest_system.%s failed: %s", name, tostring(err))
-      end
-    end
-  end
-  local quests = {
-    register = journalCall("register"),
-    advance  = journalCall("advance"),
-    complete = journalCall("complete"),
-  }
-  if not journal then
-    mod.log:info("Quest System not installed; running without a journal entry")
-  end
-
   local QUEST_ID       = "snag_quest.jessies_meowth"
   local FLAG_STARTED   = "MOD_SNAG_QUEST_GIRL_STARTED"
   local FLAG_DONE      = "MOD_SNAG_QUEST_GIRL_DONE"
@@ -6653,8 +6432,6 @@ return function(mod)
 
   mod.content.commands:register("snag_quest:complete", function(ctx)
     setFlag(ctx.game, FLAG_DONE)
-    quests.advance(QUEST_ID, 1)
-    quests.complete(QUEST_ID)
   end)
 
   ----------------------------------------------------------------------
@@ -6671,58 +6448,6 @@ return function(mod)
   mod.content.trainers:register(TRAINER_CLASS, {
     id = TRAINER_CLASS, name = "PICNICKER", basePic = "OPP_JR_TRAINER_F", baseMoney = 30,
     parties = { { { species = "MEOWTH", level = MEOWTH_LEVEL } } },
-  })
-
-  ----------------------------------------------------------------------
-  -- 6. The quest, registered into Quest System.
-  ----------------------------------------------------------------------
-  quests.register({
-    id          = QUEST_ID,
-    title       = "Introduction to Thievery",
-    source      = "Pokemon Snag",
-    description = "A TEAM ROCKET recruiter has a first assignment for you: the boss wants the oddly-coloured MEOWTH a PICNICKER is holding.",
-    objective   = function(game)
-      if hasFlag(game, FLAG_DONE) then return "MEOWTH is home safe." end
-      -- 0.14.0: was "back to the girl in Viridian City" -- left over from
-      -- the pre-0.13.0 Jessie opening, and wrong since the quest moved to
-      -- the Nugget Bridge recruiter. Viridian is untouched now.
-      if hasFlag(game, FLAG_STARTED) then return "Bring a MEOWTH back to the TEAM ROCKET recruiter at the end of NUGGET BRIDGE." end
-      return "Beat the TEAM ROCKET recruiter at the end of NUGGET BRIDGE, then hear him out."
-    end,
-    location = "Route 24",
-    reward   = "5 SNAG BALLs, and people who'll trade you more",
-    status   = function(game)
-      if hasFlag(game, FLAG_DONE) then return "completed" end
-      if hasFlag(game, FLAG_STARTED) then return "active" end
-      return "available"
-    end,
-    progress = { current = 0, total = 1 },
-    -- Markers are registered for BOTH of the recruiter's forms (0.14.9).
-    -- Only the vanilla object was listed before, so once BILL hid it the
-    -- journal pointed at an NPC that is no longer on the map -- and that
-    -- is the majority case, since every player eventually passes BILL.
-    -- The stand-in carries this mod's own text key, so it needs its own
-    -- entries. Listing a constant whose object is absent is harmless:
-    -- the other pair simply never resolves, the same way registering
-    -- both the Red/Blue and Yellow names of a renamed NPC is harmless.
-    markers = {
-      { map = "ROUTE_24", text = "TEXT_ROUTE24_COOLTRAINER_M1", kind = "available",
-        when = function(game)
-          return not hasFlag(game, FLAG_STARTED)
-        end },
-      { map = "ROUTE_24", text = "TEXT_ROUTE24_COOLTRAINER_M1", kind = "turnin",
-        when = function(game)
-          return hasFlag(game, FLAG_STARTED) and not hasFlag(game, FLAG_DONE)
-        end },
-      { map = "ROUTE_24", text = "TEXT_SNAG_ROUTE24_ROCKET", kind = "available",
-        when = function(game)
-          return not hasFlag(game, FLAG_STARTED)
-        end },
-      { map = "ROUTE_24", text = "TEXT_SNAG_ROUTE24_ROCKET", kind = "turnin",
-        when = function(game)
-          return hasFlag(game, FLAG_STARTED) and not hasFlag(game, FLAG_DONE)
-        end },
-    },
   })
 
   ----------------------------------------------------------------------

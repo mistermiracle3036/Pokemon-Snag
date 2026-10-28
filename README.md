@@ -51,21 +51,6 @@ Keep the Pokemon, or use the middleman's separate, confirmed fence sale.
 He points you to Route 36 for the next contact. Travel and save/reload do
 not cancel the accepted job. Completed older saves retain their progress.
 
-### Optional Trainer Journey careers
-
-Snag never requires Trainer Journey. When its supported API is available,
-DELINQUENT adds **+1 ball to quest-mark fence sales**. Snag registers its
-own **THIEF** profession: RUNNER / OPERATOR / SPECIALIST / FIXER at
-1 / 5 / 12 / 25 completed jobs. OPERATOR adds +1, FIXER +2, stacking with
-the Delinquent background after normal valuation (maximum total sale: 8).
-Other backgrounds can earn THIEF too. Intro, city contracts and repeat
-completions count, including past accomplishments on a later installation;
-credit is deduplicated and capped at 25 for this first slice. Ordinary
-sales and sewer rematches do not advance it. RELEASE still pays no balls.
-Journey owns profession ranks and receipts; Snag does not write its save
-fields. The interface was checked against Trainer Journey 0.5.4; older
-versions omit unsupported features without blocking the quest.
-
 ### Route 36: the fence
 
 A fence near Sudowoodo buys Pokémon you have snagged, and only those. He
@@ -127,8 +112,7 @@ The Olivine foreman offers a choice of interception routes. Completing
 his contract pays **5 SNAG BALLs and 3 HEIST BALLs**, then opens his fence.
 After collecting all three city contracts' rewards, the Goldenrod broker
 also offers repeat jobs with KEEP, DELIVER or RELEASE terms. Read the
-terms before accepting; RELEASE pays no balls and can request HEART from
-the optional Trainer Journey mod every second completed release.
+terms before accepting; RELEASE pays no balls.
 
 Olivine also opens the **Cianwood Sewers** circuit. Your first three
 snagged, non-egg party members fight a two-round card, with an optional
@@ -230,14 +214,6 @@ engine resolves the conflict, not a bug in either mod. If a fence only ever
 gives their ordinary line, try disabling other NPC-editing mods to see which
 one is winning. (Team Rocket Returns was tested alongside this mod and does
 **not** conflict.)
-
-**[quest_system](https://github.com/FAFF0x/gen1recomp)** by FAFF0x —
-optional, and Kanto only. With it, the questline appears in the journal with
-an objective, progress and map markers. Without it the quest plays
-identically — it runs on its own save flags — you simply get no journal
-entry. Grab `quest_system_v<version>.zip` from that repo's file list; it is
-committed there rather than released, so the launcher's auto-update will not
-cover it.
 
 **[Shiny Pokémon](https://github.com/masterwebx/gen1recomp-shiny-pokemon)** —
 optional, and only relevant here: Gold renders shiny Pokémon itself, so

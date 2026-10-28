@@ -1,3 +1,20 @@
+## 0.17.7 - Clearing out what no longer worked (private test)
+
+**New in 0.17.7:** nothing changes in play. Three Trainer Journey extras
+had stopped working when Trainer Journey moved to its new system (0.6),
+and they are **removed** rather than rebuilt, because Snag's Trainer
+Journey rewards are being redesigned:
+
+- the HEART reward for every second RELEASE job (RELEASE still says
+  "REWARD: NONE", as it has since then);
+- the THIEF profession;
+- the DELINQUENT / THIEF bonus on quest-mark sales, and its "CAREER" line
+  in the fence's quote. MY CAREER still answers "No career ledger.
+  Ordinary pay."
+
+Also gone: the Red journal entry that needed the Quest System mod, which
+can no longer be installed. The Red questline itself is unchanged.
+
 ## 0.17.6 - Something's off with that one (private test, with Shadow Pokemon)
 
 **New in 0.17.6:** offer a rescued Shadow Pokemon to a fence and he no

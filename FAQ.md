@@ -40,19 +40,11 @@ Same rules and same prices, different voices.
 <details>
 <summary>Do careers affect bounty prices?</summary>
 
-Only with compatible optional Trainer Journey. DELINQUENT gives +1 on
-quest-mark fence sales; THIEF profession ranks at 1, 5, 12 and 25 completed
-jobs. Rank 2 gives +1 and rank 4 gives +2, not +1 plus +2. These stack with
-Delinquent after normal valuation, so a three-ball mark can become six and a
-five-ball mark can become eight. The quote shows CAREER separately.
-Other starting careers can earn the THIEF ranks too. The career menu
-explains the rules; the Trainer Journey profile shows actual profession rank.
-Normal catches, ordinary stolen Pokemon, flat job fees and RELEASE ball
-rewards do not receive the premium. RELEASE remains zero balls.
-Progress currently credits at most 25 intro/city/repeat job completions.
-Historical completions backfill safely when Journey becomes available.
-Older Journey versions without profession support retain only supported
-features; with Journey absent, prices and quest progression stay ordinary.
+No, not at the moment. The old Trainer Journey career bonus (DELINQUENT and
+the THIEF profession) only worked with Trainer Journey versions before 0.6,
+and was removed in 0.17.7. Fence prices come from the Pokemon alone: its
+level, rarity, who you took it from, and whether it was a job's target.
+Trainer Journey rewards for Snag are being redesigned.
 </details>
 
 <details>
@@ -159,9 +151,7 @@ location and terms before accepting. The current board repeats its nine
 combinations after three completed jobs; it does not change with the day.
 
 KEEP pays 3 SNAG BALLs and leaves you the target. DELIVER pays 6 and
-removes it. RELEASE removes it for no balls; every second release requests
-one HEART unit from a compatible Trainer Journey installation, which owns
-pace and gain presentation. Without Trainer Journey, RELEASE has no reward.
+removes it. RELEASE removes it for no balls and no other reward.
 
 Keep the exact job Pokemon until settlement. The broker can find it in
 the party or any of the 14 boxes, but an ordinary fence sale or PC release
