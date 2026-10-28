@@ -1,3 +1,16 @@
+## 0.17.3 - The fence and RUI (private test, needs Shadow Pokemon)
+
+**New in 0.17.3:** with **Shadow Pokemon** installed, the man on Route 29
+is a fence who wants you to take a MEOWTH from a woman called RUI, instead
+of sending you after the collector. Take the job and you get the same one
+SNAG BALL; show him RUI's MEOWTH -- however you came by it -- and he pays
+the same 5 SNAG BALLs, once. He only looks: the MEOWTH stays with you.
+Turning him down gives you nothing, and you can still change your mind.
+Everything that happens with RUI herself is Shadow Pokemon's story.
+
+**Without Shadow Pokemon nothing changes:** the Route 29 job is exactly the
+one in 0.17.2. A job you already took keeps going the way it started.
+
 ## 0.17.2 - Giovanni takes his seat (private test)
 
 **New in 0.17.2:** Giovanni now watches from the VIP sofa at the top of

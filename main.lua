@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.2"
+  local VERSION = "0.17.3"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -2884,6 +2884,64 @@ return function(mod)
       return n
     end
 
+    ------------------------------------------------------------------
+    -- SHADOW OPENING (0.17.3; REQUESTS 251). Ruling: exchange/decisions/
+    -- 2026-10-27-shadow-opening-split.md; contract `shadow-opening` in
+    -- exchange/CONTRACTS.md (names approved by the developer 2026-10-27).
+    --
+    -- ONLY when shadow_pokemon is active, the Route 29 middleman is the fence
+    -- who names RUI instead of sending you after the lass. Every Rui scene
+    -- (loan, theft battle, refusal catch-up, recruitment, checks) is Shadow
+    -- Pokemon's; Snag recasts the fence, grants its Balls and reads the REAL
+    -- Meowth as proof. mod.find is asked at TALK time, never at load: Shadow
+    -- Pokemon hard-depends on Snag, so it loads after this file runs. Without
+    -- it, 0.17.2's opening (the lass) runs unchanged -- approved, so locked.
+    --
+    -- Shadow writes, Snag reads: mon.storyId == "shadow_pokemon:rui_meowth"
+    -- (Rui's one Meowth, whether lent or stolen) and mon.onLoanFrom == "rui"
+    -- (while lent). Snag writes, Shadow reads: getFenceJob() below. Snag never
+    -- writes either mon field and never takes the Meowth: the fence LOOKS.
+    ------------------------------------------------------------------
+    local RUI_STORY = "shadow_pokemon:rui_meowth"
+    local F = {}
+    function F.shadowActive() return mod.find("shadow_pokemon") ~= nil end
+    local function fget(key, default) return mod.save:get("g2_fence_" .. key, default) end
+    local function fset(key, v) mod.save:set("g2_fence_" .. key, v) end
+    -- The kind of job is fixed when it is TAKEN: a lass job stays a lass job if
+    -- Shadow Pokemon arrives later, and a Rui job stays one if it leaves.
+    function F.ruiJob() return fget("mode", "") == "rui" end
+    function F.isRui(mon) return type(mon) == "table" and mon.storyId == RUI_STORY end
+    -- Durable, set once, never cleared (contract). proofWith: "loan"/"snagged".
+    function F.facts()
+      local with = fget("proofWith", "")
+      return {
+        accepted = fget("accepted", false) == true,
+        refused = fget("refused", false) == true,
+        proofShown = fget("proofShown", false) == true,
+        proofWith = with ~= "" and with or nil,
+        proofPaid = fget("proofPaid", false) == true,
+        soldRuiMeowth = fget("soldRuiMeowth", false) == true,
+      }
+    end
+    function F.findRui()
+      local save = mod.game and mod.game.save
+      if not save then return nil end
+      for i, mon in ipairs(save.party or {}) do
+        if F.isRui(mon) then return mon, "party", i end
+      end
+      for boxIndex = 1, Boxes.NUM_BOXES do
+        for slot, mon in ipairs(save.boxes and save.boxes[boxIndex] or {}) do
+          if F.isRui(mon) then return mon, "box", boxIndex, slot end
+        end
+      end
+      return nil
+    end
+    -- Contract read side for Shadow Pokemon. Published both as a plain export
+    -- and under exports.snag_quest, the spelling the contract uses.
+    mod.exports.getFenceJob = function() return F.facts() end
+    mod.exports.snag_quest = mod.exports.snag_quest or {}
+    mod.exports.snag_quest.getFenceJob = mod.exports.getFenceJob
+
     -- A live job's target is spoken for.  Settling a repeat job or the
     -- ZAPDOS job needs that one Pokemon and no other, so no fence may buy
     -- it out from under the job.  This is a courtesy refusal, not the fix:
@@ -2891,6 +2949,8 @@ return function(mod)
     -- off (R.abandon).
     local function isReservedMon(mon)
       if type(mon) ~= "table" then return false end
+      -- Rui's lent Meowth is hers: no fence buys it (contract shadow-opening).
+      if mon.onLoanFrom ~= nil then return true end
       if mon.snagZapdosJob == true and Z.stage() ~= Z.RESOLVED then
         return true
       end
@@ -3000,7 +3060,11 @@ return function(mod)
         rankNames = { "RUNNER", "OPERATOR", "SPECIALIST", "FIXER" },
       })
       if not ok or not def then return end
-      local jobs = (stage() == STAGE_DONE and 1 or 0)
+      -- A Rui job proved with her LENT Meowth was not a theft: no THIEF
+      -- credit for a cooperative loan (Shadow opening draft, section B).
+      local introJob = stage() == STAGE_DONE
+        and not (F.ruiJob() and F.facts().proofWith == "loan")
+      local jobs = (introJob and 1 or 0)
         + (contractStage() == CONTRACT_DONE and 1 or 0)
         + (ecruteakStage() == CONTRACT_DONE and 1 or 0)
         + (olivineStage() == CONTRACT_DONE and 1 or 0)
@@ -3130,6 +3194,118 @@ return function(mod)
             "Not borrowing.\nNot a rescue." }, I.offerMenu)
         else I.say({ "No deal? Fine.\nKeep walking." }) end
       end, onCancel = function() end }))
+    end
+
+    -- The fence, when Shadow Pokemon is active (see F above). Same four-entry
+    -- menu as 0.17.2. NO DEAL records `refused`; cancelling or walking away
+    -- records nothing, so a revisit simply offers again, and only TAKE THE
+    -- JOB ever grants the tutorial Ball (no accidental acceptance).
+    function F.accept()
+      if F.ruiJob() or stage() ~= STAGE_NEW then return end
+      local inv = mod.game and mod.game.save and mod.game.save.inventory
+      if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 and not giveOneSnagBall() then
+        I.say({ "BALL pocket full.\nMake space first." }); return
+      end
+      fset("mode", "rui")
+      fset("accepted", true)
+      setStage(STAGE_ARMED)
+      I.say({ "The job is yours.\nOne SNAG BALL.",
+        "RUI is east of\nhere. Find her.",
+        "Target: MEOWTH.\nShe has only one.",
+        "This first catch\nis guaranteed.",
+        "Show it to me.\nYour fee: 5 BALLs." })
+    end
+
+    function F.offerMenu()
+      local game = mod.game
+      if not (game and game.stack) then return end
+      game.stack:push(ListMenu.new(game, "OUTSTANDING DEBT", {
+        { label = "WHY ME?", value = "why" },
+        { label = "THE TOOL?", value = "tool" },
+        { label = "TAKE THE JOB", value = "accept" },
+        { label = "NO DEAL", value = "leave" },
+      }, { onChoose = function(item, menu)
+        menu:close()
+        if item.value == "accept" then F.accept()
+        elseif item.value == "why" then
+          I.say({ "She knows my face.\nNot yours.",
+            "You're a trainer.\nShe'll battle you.",
+            "I want proof. Show\nme her MEOWTH.",
+            "Your fee: 5 BALLs.\nSale pays extra." }, F.offerMenu)
+        elseif item.value == "tool" then
+          I.say({ "Old ROCKET kit.\nThey left debts.",
+            "And useful scraps.\nThis is one.",
+            "A SNAG BALL takes\na trainer's mon.",
+            "Not borrowing.\nNot a rescue." }, F.offerMenu)
+        else
+          fset("refused", true)
+          I.say({ "No deal? Fine.\nKeep walking." })
+        end
+      end, onCancel = function() end }))
+    end
+
+    -- Pay once. The stage moves and the chain opens only when the Balls are
+    -- actually in the Bag; a full pocket leaves proofShown set and the pay
+    -- pending, so the next talk pays without asking for the Meowth again.
+    function F.pay()
+      if fget("proofPaid", false) == true then I.afterMenu(); return end
+      if not giveRewardSnagBalls() then
+        errs("REWARD BALLS\nBAG FULL")
+        I.say({ "No room for pay.\nCome back later." })
+        return
+      end
+      fset("proofPaid", true)
+      setStage(STAGE_DONE)
+      setRewardClaimed(true)
+      I.syncCareer()
+      I.say({ "Five SNAG BALLs.\nAs promised." }, I.afterMenu)
+    end
+
+    function F.talk()
+      if not F.ruiJob() then
+        I.say({ "Got time for work?\nNot honest work.",
+          "A woman, RUI. She\nasks questions.",
+          "I want her MEOWTH\ntaken off her.",
+          "That's theft.\nYour choice.",
+          "Show it to me.\nI pay 5 BALLs." }, F.offerMenu)
+        return
+      end
+      if rewardClaimed() then I.afterMenu(); return end
+      if fget("proofShown", false) == true then F.pay(); return end
+      local mon, where = F.findRui()
+      local kind = mon and (mon.onLoanFrom == "rui" and "loan"
+        or (mon.snagged == true and "snagged")) or nil
+      if mon and where == "party" and kind then
+        -- The fence only LOOKS: the Meowth stays with the player either way.
+        fset("proofShown", true)
+        fset("proofWith", kind)
+        I.say({ "That's her MEOWTH.\nGood work.",
+          kind == "snagged" and "Keep it, or sell\nit to me later."
+            or "Hang on to it.\nI've seen enough." }, F.pay)
+        return
+      end
+      if mon and where == "box" then
+        I.say({ "In your PC? Bring\nthe MEOWTH here." })
+        return
+      end
+      if stage() == STAGE_DONE then
+        -- Stolen, then gone without ever being shown (sold, released,
+        -- traded). Close the job with no proof pay rather than strand the
+        -- rest of Snag behind a Pokemon the player no longer has.
+        setRewardClaimed(true)
+        I.syncCareer()
+        I.say({ "No MEOWTH to show?\nThen no fee.",
+          "Still want work?\nTry ROUTE 36." })
+        return
+      end
+      -- Taken, not done: a spent tool is re-issued exactly as the lass job
+      -- does (failed or KO'd attempts), never a second one on top.
+      local inv = mod.game and mod.game.save and mod.game.save.inventory
+      if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 and not giveOneSnagBall() then
+        I.say({ "BALL pocket full.\nMake space first." }); return
+      end
+      I.say({ "Found RUI yet?\nShe's to the east.",
+        "Bring her MEOWTH.\nShow it to me." })
     end
 
     mod.events:on("game.ready", function(p)
@@ -3310,7 +3486,8 @@ return function(mod)
         end
 
         ensureSailor(world)
-        if stage() == STAGE_ARMED then spawnGirlForAmbush(world) end
+        -- a Rui job has no lass: Rui is Shadow Pokemon's NPC (shadow-opening)
+        if stage() == STAGE_ARMED and not F.ruiJob() then spawnGirlForAmbush(world) end
       end)
       if not ok then errs("ENTER\n%s", tostring(err)) end
     end)
@@ -3348,6 +3525,14 @@ return function(mod)
       local who = isSailor and SAILOR_NAME or GIRL_NAME
       local h = mod.world:npc(MAP, who)
       if h and cur and cur.facing then pcall(h.face, h, opposite[cur.facing]) end
+
+      -- Shadow opening: a Rui job, or a fresh one while Shadow Pokemon is
+      -- active, is the fence's conversation. Asked here, at talk time. A lass
+      -- job already taken stays on the 0.17.2 path below, untouched.
+      if isSailor and (F.ruiJob() or (stage() == STAGE_NEW and F.shadowActive())) then
+        F.talk()
+        return
+      end
 
       -- After the successful snag both NPCs remain in town until the player
       -- leaves, so give each of them a short aftermath line instead of
@@ -3527,6 +3712,9 @@ return function(mod)
                   -- goes to [ERRS], not to a dialogue line that never fires.
                   if Boxes.releaseFromParty(g.save, index) ~= true then
                     errs("FENCE RELEASE\nslot %d empty", index)
+                  elseif F.isRui(picked) then
+                    -- contract shadow-opening: Rui remembers the sale
+                    fset("soldRuiMeowth", true)
                   end
                   mod.world:queueScript({ { "text", string.format(
                     voice.done, n, n == 1 and "" or "s") } })
@@ -4847,6 +5035,12 @@ return function(mod)
           and type(o) == "table" and o.species == "MEOWTH" then
         return true, 255
       end
+      -- Shadow opening: the same tutorial guarantee, for Rui's one Meowth in
+      -- place of the lass's (contract shadow-opening). `mon` is the target
+      -- (engine src/battle/gen2/Catching.lua Catching.attempt: opts.mon).
+      if ball == "SNAG_BALL" and F.isRui(mon) and F.ruiJob() then
+        return true, 255
+      end
       if ball == "HEIST_BALL" and type(o) == "table" then
         local boosted = {}
         for k, v in pairs(o) do boosted[k] = v end
@@ -4989,6 +5183,14 @@ return function(mod)
         -- Do not despawn the sailor/girl here.  They remain for the rest of
         -- this Route 29 visit and are removed after the player leaves it.
         cleanupPending = false
+      end
+      -- Shadow opening: Rui's Meowth taken in her (Shadow Pokemon's) trainer
+      -- battle through this same Snag route. The fence named it, so it is a
+      -- bounty exactly like the lass's; the theft also opens the Route 36
+      -- fence (STAGE_DONE), and the 5-Ball fee still waits for the proof.
+      if F.isRui(mon) and F.ruiJob() and stage() == STAGE_ARMED then
+        mon.snagBounty = true
+        setStage(STAGE_DONE)
       end
       if contractBattleActive and contractStage() == CONTRACT_ACTIVE then
         local c = CONTRACTS[contractChoice() or ""]
@@ -5229,7 +5431,7 @@ return function(mod)
         cleanupPending = false
       end
       ensureSailor(world)
-      if stage() == STAGE_ARMED then spawnGirlForAmbush(world) end
+      if stage() == STAGE_ARMED and not F.ruiJob() then spawnGirlForAmbush(world) end
     end)
 
     mod.events:on("world.stepped", function(ev)
