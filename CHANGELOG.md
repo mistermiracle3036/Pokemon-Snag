@@ -1,3 +1,9 @@
+## 0.17.6 - Something's off with that one (private test, with Shadow Pokemon)
+
+**New in 0.17.6:** offer a rescued Shadow Pokemon to a fence and he no
+longer just calls it "spoken for" -- he can tell something is off with it,
+and tells you to keep it. Every fence says it his own way.
+
 ## 0.17.5 - A rescue is not a theft (private test, with Shadow Pokemon)
 
 **New in 0.17.5:** with Shadow Pokemon, a Shadow Pokemon you rescue with a

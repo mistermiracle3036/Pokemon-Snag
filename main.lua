@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.5"
+  local VERSION = "0.17.6"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -3658,6 +3658,17 @@ return function(mod)
           end
           w:selectPartyMon("choose", function(index, picked)
             if not index or not picked then return end
+            -- A rescued Shadow (before or after purification) gets its own
+            -- refusal (developer 2026-10-27, WHAT_TO_CHECK 886), ahead of
+            -- the not-stolen line so an ordinary-Ball rescue hears it too.
+            if F.isRescue(picked) then
+              local rows = {}
+              for _, page in ipairs(voice.rescued or { voice.reserved }) do
+                rows[#rows + 1] = { "text", page }
+              end
+              mod.world:queueScript(rows)
+              return
+            end
             if picked.snagged ~= true then
               mod.world:queueScript({ { "text", voice.notSnagged } })
               return
@@ -3756,6 +3767,7 @@ return function(mod)
       -- contact voices do.  Wording is otherwise unchanged.
       notSnagged = "FENCE: That one's\nclean.\fI only buy hot\ngoods.",
       reserved = "FENCE: That one's\nspoken for.",
+      rescued = { "FENCE: Something's\noff with that one.", "You can keep it." },
       quote = "%s...\fI can do %d SNAG\nBALL%s. Deal?",
       declined = "FENCE: Your call.\nI'll be around.",
       changed = "FENCE: Something\nchanged. No deal.",
@@ -3780,6 +3792,7 @@ return function(mod)
         .. "No partner, no\ncontracts.",
       notSnagged = "BROKER: Clean.\nNot on my ledger.",
       reserved = "BROKER: That one's\non the ledger.",
+      rescued = { "BROKER: Something\nis off with it.", "You can keep it." },
       quote = "%s.\fBROKER: %d SNAG\nBALL%s. Approve?",
       declined = "BROKER: Held back.\nWe'll revisit.",
       changed = "BROKER: Inventory\nchanged. Again.",
@@ -3798,6 +3811,7 @@ return function(mod)
         .. "You need a partner\nto take anything.",
       notSnagged = "CONTACT: Clean.\nWorthless to me.",
       reserved = "CONTACT: Spoken\nfor. Not that one.",
+      rescued = { "CONTACT: That one?\nSomething's off.", "You can keep it." },
       quote = "%s.\fCONTACT: %d SNAG\nBALL%s. Decide.",
       declined = "CONTACT: Refused.\nFor now.",
       changed = "CONTACT: Changed.\nStart again.",
@@ -3816,6 +3830,7 @@ return function(mod)
         .. "No hands, no\ncargo.",
       notSnagged = "FOREMAN: Papers on\nthat one. No.",
       reserved = "FOREMAN: That's\nconsigned cargo.",
+      rescued = { "FOREMAN: Something\nis off with it.", "You can keep it." },
       quote = "%s.\fFOREMAN: %d SNAG\nBALL%s. Loading?",
       declined = "FOREMAN: Hold it.\nDock stays open.",
       changed = "FOREMAN: Manifest\nchanged. No deal.",

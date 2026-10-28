@@ -223,6 +223,21 @@ do -- contract read side + absent Shadow
   check("isRescue false for an ordinary theft", t.F.isRescue({ snagged = true }), false)
 end
 
+do -- 0.17.6: a rescue gets its own refusal from every fence voice (WHAT_TO_CHECK 886)
+  local sale = section("    local function runFenceSale(voice)", "    I.sell = function()")
+  local r, n = sale:find("if F.isRescue(picked) then", 1, true), sale:find("if picked.snagged ~= true then", 1, true)
+  check("sale: rescue refusal before the not-stolen line", r ~= nil and n ~= nil and r < n, true)
+  for _, v in ipairs({ "ROUTE36_VOICE", "BROKER_VOICE", "CONTACT_VOICE", "FOREMAN_VOICE" }) do
+    local body = section("    local " .. v .. " = {", "\n    }")
+    check(v .. " has its rescued line", body:find("rescued = {", 1, true) ~= nil, true)
+    for line in (body:match("rescued = (%b{})") or ""):gmatch('"([^"]*)"') do
+      for seg in (line .. "\\n"):gmatch("(.-)\\n") do
+        if #seg > 18 then check(v .. " rescued width: " .. seg, #seg, 18) end
+      end
+    end
+  end
+end
+
 do -- chunk B: the capture handler returns before any bounty/job for a rescue
   local h = section("    mod.events:on(\"pokemon.caught\", function(payload)",
     "      if introBattleActive and mon.species == \"MEOWTH\"")
