@@ -138,6 +138,9 @@ do -- honest route: loan shown, paid once, kept by the player
   check("loan shown: stage DONE", t.stage, 2)
   check("loan shown: chain open (rewardClaimed)", t.rewarded, true)
   check("loan shown: Meowth still with the player", t.save.party[2], loan)
+  local heard = false
+  for _, p in ipairs(t.said) do if p:find("My buyer", 1, true) then heard = true end end
+  check("paid: fence lets slip his buyer (proofPaid = knows buyer)", heard, true)
   t.F.talk(); t.F.talk()
   check("talk again twice: still 6 Balls", balls(t), 6)
   check("talk again: after-menu", t.after >= 2, true)
@@ -155,6 +158,9 @@ do -- pay pending while the Bag is full
   check("bag full: not paid", t.F.facts().proofPaid, false)
   check("bag full: stage not advanced", t.stage, 1)
   check("bag full: Balls unchanged", balls(t), 1)
+  local early = false
+  for _, p in ipairs(t.said) do if p:find("My buyer", 1, true) then early = true end end
+  check("bag full: buyer not mentioned before payment", early, false)
   t.bagFull = false
   t.save.party[2] = nil
   t.F.talk()

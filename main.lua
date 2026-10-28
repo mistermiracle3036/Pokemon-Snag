@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.3"
+  local VERSION = "0.17.4"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -3258,7 +3258,12 @@ return function(mod)
       setStage(STAGE_DONE)
       setRewardClaimed(true)
       I.syncCareer()
-      I.say({ "Five SNAG BALLs.\nAs promised." }, I.afterMenu)
+      -- He lets slip who he sells to. Shadow Pokemon reads proofPaid as the
+      -- player knowing the fence's customer (Rui's DEDUCTION row), so this is
+      -- said exactly when, and only when, proofPaid is set (0.17.4).
+      I.say({ "Five SNAG BALLs.\nAs promised.",
+        "My buyer pays well\nfor odd POKEMON.",
+        "Strange fellow.\nStrange clothes." }, I.afterMenu)
     end
 
     function F.talk()

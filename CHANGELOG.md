@@ -1,3 +1,9 @@
+## 0.17.4 - The fence talks (private test, with Shadow Pokemon)
+
+**New in 0.17.4:** when the fence pays you for RUI's MEOWTH, he lets slip
+who buys from him -- something RUI will want to hear. Only with Shadow
+Pokemon installed; without it the Route 29 job is unchanged.
+
 ## 0.17.3 - The fence and RUI (private test, needs Shadow Pokemon)
 
 **New in 0.17.3:** with **Shadow Pokemon** installed, the man on Route 29
