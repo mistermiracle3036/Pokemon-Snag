@@ -1,3 +1,10 @@
+## 0.17.5 - A rescue is not a theft (private test, with Shadow Pokemon)
+
+**New in 0.17.5:** with Shadow Pokemon, a Shadow Pokemon you rescue with a
+SNAG BALL is yours to look after, not something to sell: no fence will buy
+it, before or after it is purified, and it pays no bounty. It still counts
+as taken from a trainer, so it can fight where only stolen Pokemon may.
+
 ## 0.17.4 - The fence talks (private test, with Shadow Pokemon)
 
 **New in 0.17.4:** when the fence pays you for RUI's MEOWTH, he lets slip

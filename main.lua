@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.4"
+  local VERSION = "0.17.5"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -2911,6 +2911,14 @@ return function(mod)
     -- Shadow Pokemon arrives later, and a Rui job stays one if it leaves.
     function F.ruiJob() return fget("mode", "") == "rui" end
     function F.isRui(mon) return type(mon) == "table" and mon.storyId == RUI_STORY end
+    -- A Shadow taken with a SNAG BALL is a RESCUE, not a theft (contract
+    -- shadow-pokemon-flag: Snag reads mon.shadow to tell them apart). It stays
+    -- one after purification, so purified/shadowFrom count too (Shadow
+    -- Pokemon, opening chunk B, 0.17.5): never fence stock, no bounty, no job.
+    function F.isRescue(mon)
+      return type(mon) == "table" and (mon.shadow == true
+        or mon.purified == true or mon.shadowFrom ~= nil)
+    end
     -- Durable, set once, never cleared (contract). proofWith: "loan"/"snagged".
     function F.facts()
       local with = fget("proofWith", "")
@@ -2951,6 +2959,8 @@ return function(mod)
       if type(mon) ~= "table" then return false end
       -- Rui's lent Meowth is hers: no fence buys it (contract shadow-opening).
       if mon.onLoanFrom ~= nil then return true end
+      -- A rescued Shadow, before or after purification, is never fence stock.
+      if F.isRescue(mon) then return true end
       if mon.snagZapdosJob == true and Z.stage() ~= Z.RESOLVED then
         return true
       end
@@ -5180,6 +5190,11 @@ return function(mod)
       -- party members are fair game but are not the bounty, so only the
       -- advertised species is stamped below.
       mon.snagBounty = false
+      -- A Shadow rescue keeps the origin above (taken from a trainer, so it
+      -- counts for future snagged-only arenas) but is no bounty and completes
+      -- no job, so it can never earn THIEF credit (contract shadow-pokemon-
+      -- flag; Shadow Pokemon chunk B, Naps's Teddiursa).
+      if F.isRescue(mon) then return end
       if introBattleActive and mon.species == "MEOWTH" and stage() == STAGE_ARMED then
         -- The sailor named this exact target, so it is a bounty like every
         -- later advertised mark rather than ordinary fence merchandise.

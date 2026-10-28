@@ -216,6 +216,20 @@ do -- contract read side + absent Shadow
   local t2 = setup({ shadow = false })
   check("shadowActive without Shadow", t2.F.shadowActive(), false)
   check("ordinary snagged mon not reserved", t.isReserved({ snagged = true }), false)
+  -- chunk B: a rescued Shadow is never fence stock, before or after purify
+  check("rescue (shadow) reserved", t.isReserved({ snagged = true, shadow = true }), true)
+  check("rescue (purified) reserved", t.isReserved({ snagged = true, purified = true }), true)
+  check("rescue (shadowFrom) reserved", t.isReserved({ snagged = true, shadowFrom = "cipher:naps" }), true)
+  check("isRescue false for an ordinary theft", t.F.isRescue({ snagged = true }), false)
+end
+
+do -- chunk B: the capture handler returns before any bounty/job for a rescue
+  local h = section("    mod.events:on(\"pokemon.caught\", function(payload)",
+    "      if introBattleActive and mon.species == \"MEOWTH\"")
+  check("capture: rescue returns before bounty/job stamps",
+    h:find("if F.isRescue(mon) then return end", 1, true) ~= nil, true)
+  check("capture: origin stamped before that return",
+    h:find("mon.snagged = true", 1, true) < h:find("if F.isRescue(mon) then return end", 1, true), true)
 end
 
 print(fails == 0 and "ALL PASS" or (fails .. " FAILED"))
