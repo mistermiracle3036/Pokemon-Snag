@@ -1,3 +1,18 @@
+## 0.17.8 - You say it in your own words (private test)
+
+**New in 0.17.8:** with **Trainer Journey** installed, every choice in Pokemon
+Snag on Gold, Silver and Crystal is now a reply you speak, in Trainer
+Journey's own response box, instead of a separate menu screen: taking or
+refusing a job ("I'll take the job." / "No deal."), selling to a fence
+("Deal. It's yours." / "No, I'll keep it."), the broker's jobs, the ring
+hand, PETREL's card and house match, the ZAPDOS decision and the city
+contracts. For every yes/no, the safe answer is still the one the cursor
+starts on, and B still means no. None of these are skill checks: nothing can
+pass or fail.
+
+**Without Trainer Journey nothing changes:** the menus are the same ones as
+before.
+
 ## 0.17.7 - Clearing out what no longer worked (private test)
 
 **New in 0.17.7:** nothing changes in play. Three Trainer Journey extras

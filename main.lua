@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.7"
+  local VERSION = "0.17.8"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -128,7 +128,75 @@ return function(mod)
     local Bag = require("src.inventory.Bag")
     local Mon = require("src.battle.gen2.Mon")
     local Boxes = require("src.core.gen2.Boxes")
-    local ListMenu = require("src.ui.ListMenu")
+
+    -- Every Snag choice is a Trainer Journey style response (developer
+    -- 2026-10-28: "turn all of the responses to trainer journey style checks
+    -- instead of a separate screen"), 0.17.8. This shim keeps ListMenu's
+    -- interface -- new(game, title, items, opts) -> a screen to push, with
+    -- opts.onChoose(item, list) and list:close() -- so no call site changes
+    -- shape. With Trainer Journey's check UI (dialogue_ui_version >= 3) the
+    -- screen is TJ's own makeCheckMenu, and each item's `reply` is the line
+    -- the player says (a row with no reply shows its label). TJ pops its menu
+    -- itself before onChoose (TJ main.lua makeCheckMenu) and hands back the
+    -- SAME row table, so item.value survives; the list passed on is a no-op
+    -- closer. No stat rows: these are ordinary responses, never checks that
+    -- could pass or fail. Without Trainer Journey -- or if its menu cannot be
+    -- built -- the original ListMenu screen is used exactly as before.
+    local RawListMenu = require("src.ui.ListMenu")
+    local function tjChoiceApi()
+      local h = mod.find("trainer_journey")
+      local api = h and h.exports and h.exports.trainer_journey
+      if api and type(api.makeCheckMenu) == "function"
+          and (tonumber(api.dialogue_ui_version) or 0) >= 3 then
+        return api
+      end
+      return nil
+    end
+    local NO_CLOSE = { close = function() end }
+    local ListMenu = {}
+    function ListMenu.new(game, title, items, opts)
+      opts = opts or {}
+      local api = tjChoiceApi()
+      if api then
+        local rows = {}
+        for i, item in ipairs(items or {}) do
+          rows[i] = { reply = item.reply, label = item.label,
+            value = item.value, stakes = item.stakes }
+        end
+        local ok, menu = pcall(api.makeCheckMenu, game, {
+          game = game, title = title, rows = rows,
+          onChoose = function(row)
+            if opts.onChoose then opts.onChoose(row, NO_CLOSE) end
+          end,
+          onCancel = function()
+            if opts.onCancel then opts.onCancel(NO_CLOSE) end
+          end,
+        })
+        if ok and menu then return menu end
+      end
+      return RawListMenu.new(game, title, items, opts)
+    end
+    -- The YES/NO confirmations, the same way: ChoiceBox.new(game,
+    -- onChoose(yes), { defaultNo }) keeps its interface. The safe answer is
+    -- the first row (TJ's cursor starts on row 1), matching defaultNo, and B
+    -- answers no, as the engine's ChoiceBox does.
+    local RawChoiceBox = require("src.ui.ChoiceBox")
+    local SnagChoiceBox = {}
+    function SnagChoiceBox.new(game, onChoose, opts)
+      opts = opts or {}
+      local api = tjChoiceApi()
+      if api then
+        local yes = { reply = opts.yesReply or "Yes.", label = "YES", value = true }
+        local no = { reply = opts.noReply or "No.", label = "NO", value = false }
+        local ok, menu = pcall(api.makeCheckMenu, game, {
+          game = game, rows = opts.defaultNo and { no, yes } or { yes, no },
+          onChoose = function(row) onChoose(row and row.value == true) end,
+          onCancel = function() onChoose(false) end,
+        })
+        if ok and menu then return menu end
+      end
+      return RawChoiceBox.new(game, onChoose, opts)
+    end
 
     local MAP = "ROUTE_29"
     local I = {} -- intro/menu and optional career helpers; legacy save keys stay.
@@ -745,11 +813,16 @@ return function(mod)
     mod.content.text:register("SNAG_REPEAT_WIN", "That BALL!\nYou're a thief!")
     mod.content.text:register("SNAG_REPEAT_LOSS", "Wrong mark.\nWalk away.")
 
-    local function menuItems(order, contracts)
+    -- `reply` (0.17.8): how the player names the option in a Trainer Journey
+    -- style response, e.g. "The %s lead." -> "The PSYCHIC lead."
+    local function menuItems(order, contracts, reply)
       local items = {}
       for _, key in ipairs(order) do
         local c = contracts[key]
-        if c then items[#items + 1] = { label = c.label, value = key } end
+        if c then
+          items[#items + 1] = { label = c.label, value = key,
+            reply = reply and string.format(reply, c.label) or nil }
+        end
       end
       return items
     end
@@ -2220,8 +2293,8 @@ return function(mod)
         local game = mod.game
         if not (game and game.stack) then return end
         game.stack:push(ListMenu.new(game, "THE RING", {
-          { label = "STEP IN", value = "IN" },
-          { label = "NOT YET", value = "NO" },
+          { label = "STEP IN", value = "IN", reply = "Hold it open. I'm going in." },
+          { label = "NOT YET", value = "NO", reply = "Not yet." },
         }, {
           kind = "snag.ring_entry",
           onChoose = function(item, list)
@@ -2502,8 +2575,8 @@ return function(mod)
       if not (game and game.stack) then return false end
       local menu
       menu = ListMenu.new(game, "SEWER CIRCUIT", {
-        { label = "ENTER", value = "ENTER" },
-        { label = "NOT NOW", value = "LEAVE" },
+        { label = "ENTER", value = "ENTER", reply = "Put me on the card." },
+        { label = "NOT NOW", value = "LEAVE", reply = "Not now." },
       }, {
         kind = "snag.sewer_entry",
         onChoose = function(item, list)
@@ -2604,8 +2677,8 @@ return function(mod)
       if not (game and game.stack) then return false end
       local menu
       menu = ListMenu.new(game, "THE HOUSE", {
-        { label = "TAKE PURSE", value = "PURSE" },
-        { label = "FIGHT PETREL", value = "HOUSE" },
+        { label = "TAKE PURSE", value = "PURSE", reply = "I'll take the purse." },
+        { label = "FIGHT PETREL", value = "HOUSE", reply = "Double or nothing. Let's go." },
       }, {
         kind = "snag.sewer_house",
         onChoose = function(item, list)
@@ -3015,10 +3088,10 @@ return function(mod)
       local game = mod.game
       if not (game and game.stack) then return end
       game.stack:push(ListMenu.new(game, "YOUR NEXT MOVE", {
-        { label = "KEEP MY POKEMON", value = "keep" },
-        { label = "SELL POKEMON", value = "sell" },
-        { label = "MY CAREER", value = "career" },
-        { label = "LEAVE", value = "leave" },
+        { label = "KEEP MY POKEMON", value = "keep", reply = "I'm keeping my POKEMON. Any more work?" },
+        { label = "SELL POKEMON", value = "sell", reply = "I've got something to sell." },
+        { label = "MY CAREER", value = "career", reply = "What about my career?" },
+        { label = "LEAVE", value = "leave", reply = "That's all." },
       }, { onChoose = function(item, menu)
         menu:close()
         if item.value == "sell" then I.sell()
@@ -3060,10 +3133,10 @@ return function(mod)
       local game = mod.game
       if not (game and game.stack) then return end
       game.stack:push(ListMenu.new(game, "OUTSTANDING DEBT", {
-        { label = "WHY ME?", value = "why" },
-        { label = "THE TOOL?", value = "tool" },
-        { label = "TAKE THE JOB", value = "accept" },
-        { label = "NO DEAL", value = "leave" },
+        { label = "WHY ME?", value = "why", reply = "Why me?" },
+        { label = "THE TOOL?", value = "tool", reply = "What is this tool?" },
+        { label = "TAKE THE JOB", value = "accept", reply = "I'll take the job." },
+        { label = "NO DEAL", value = "leave", reply = "No deal." },
       }, { onChoose = function(item, menu)
         menu:close()
         if item.value == "accept" then I.accept()
@@ -3105,10 +3178,10 @@ return function(mod)
       local game = mod.game
       if not (game and game.stack) then return end
       game.stack:push(ListMenu.new(game, "OUTSTANDING DEBT", {
-        { label = "WHY ME?", value = "why" },
-        { label = "THE TOOL?", value = "tool" },
-        { label = "TAKE THE JOB", value = "accept" },
-        { label = "NO DEAL", value = "leave" },
+        { label = "WHY ME?", value = "why", reply = "Why me?" },
+        { label = "THE TOOL?", value = "tool", reply = "What is this tool?" },
+        { label = "TAKE THE JOB", value = "accept", reply = "I'll take the job." },
+        { label = "NO DEAL", value = "leave", reply = "No deal." },
       }, { onChoose = function(item, menu)
         menu:close()
         if item.value == "accept" then F.accept()
@@ -3572,7 +3645,7 @@ return function(mod)
               voice.quote, name, n, n == 1 and "" or "s") }
             mod.world:queueScript(quoteRows, {
               onDone = function()
-                local ChoiceBox = require("src.ui.ChoiceBox")
+                local ChoiceBox = SnagChoiceBox
                 local g = mod.game
                 if not (g and g.stack) then return end
                 g.stack:push(ChoiceBox.new(g, function(yes)
@@ -3610,7 +3683,7 @@ return function(mod)
                   end
                   mod.world:queueScript({ { "text", string.format(
                     voice.done, n, n == 1 and "" or "s") } })
-                end, { defaultNo = true }))
+                end, { defaultNo = true, yesReply = "Deal. It's yours.", noReply = "No, I'll keep it." }))
               end,
             })
           end)
@@ -3735,8 +3808,8 @@ return function(mod)
       if not (g and g.stack) then return end
       local menu
       menu = ListMenu.new(g, "JOB", {
-        { label = "KEEP JOB", value = "KEEP" },
-        { label = "CALL IT OFF", value = "DROP" },
+        { label = "KEEP JOB", value = "KEEP", reply = "I'm still on it." },
+        { label = "CALL IT OFF", value = "DROP", reply = "Call it off." },
       }, {
         kind = "snag.repeat.abandon",
         onChoose = function(item, list)
@@ -3746,7 +3819,7 @@ return function(mod)
             { "text", "BROKER: Drop it?\nNo pay. No credit." },
           }, {
             onDone = function()
-              local ChoiceBox = require("src.ui.ChoiceBox")
+              local ChoiceBox = SnagChoiceBox
               local game = mod.game
               if not (game and game.stack) then return end
               game.stack:push(ChoiceBox.new(game, function(yes)
@@ -3755,7 +3828,7 @@ return function(mod)
                 mod.world:queueScript({
                   { "text", "BROKER: Closed.\nBoard's open." },
                 })
-              end, { defaultNo = true }))
+              end, { defaultNo = true, yesReply = "Drop it.", noReply = "No, I'm still on it." }))
             end,
           })
         end,
@@ -3779,7 +3852,7 @@ return function(mod)
         onDone = function()
           if not R.findJobMon() then R.openAbandonMenu(); return end
           if R.stage() ~= R.CAUGHT then return end
-          local ChoiceBox = require("src.ui.ChoiceBox")
+          local ChoiceBox = SnagChoiceBox
           local g = mod.game
           if not (g and g.stack) then return end
           g.stack:push(ChoiceBox.new(g, function(yes)
@@ -3811,7 +3884,7 @@ return function(mod)
               mod.world:queueScript({ { "text",
                 "BROKER: Target\nnot in storage." } })
             end
-          end, { defaultNo = true }))
+          end, { defaultNo = true, yesReply = "Here it is. Settle up.", noReply = "Not yet." }))
         end,
       })
     end
@@ -3828,7 +3901,8 @@ return function(mod)
           local items = {}
           for slot = 1, 3 do
             local offer = R.offer(slot)
-            items[#items + 1] = { label = offer.target, value = slot }
+            items[#items + 1] = { label = offer.target, value = slot,
+              reply = "The " .. offer.target .. " job." }
           end
           local menu
           menu = ListMenu.new(g, "JOB DOSSIERS", items, {
@@ -3839,7 +3913,7 @@ return function(mod)
               if not offer then return end
               mod.world:queueScript(repeatDossierRows(offer), {
                 onDone = function()
-                  local ChoiceBox = require("src.ui.ChoiceBox")
+                  local ChoiceBox = SnagChoiceBox
                   local game = mod.game
                   if not (game and game.stack) then return end
                   game.stack:push(ChoiceBox.new(game, function(yes)
@@ -3849,7 +3923,7 @@ return function(mod)
                       { "text", "BROKER: Logged.\nTarget only." },
                       { "text", "Go to " .. offer.location.label .. "." },
                     })
-                  end, { defaultNo = true }))
+                  end, { defaultNo = true, yesReply = "I'll take this job.", noReply = "Not this one." }))
                 end,
               })
             end,
@@ -3861,10 +3935,11 @@ return function(mod)
 
     function R.openBroker()
       local items = {
-        { label = "SELL", value = "SELL" },
+        { label = "SELL", value = "SELL", reply = "I've got something to sell." },
         { label = R.stage() == R.NONE and "JOBS" or "STATUS",
-          value = "JOBS" },
-        { label = "LEAVE", value = "LEAVE" },
+          value = "JOBS", reply = R.stage() == R.NONE and "Got any jobs?"
+            or "How's my job going?" },
+        { label = "LEAVE", value = "LEAVE", reply = "That's all." },
       }
       local g = mod.game
       if not (g and g.stack) then return end
@@ -4023,8 +4098,8 @@ return function(mod)
           if not (g and g.stack) then return end
           local menu
           menu = ListMenu.new(g, "THE JOB", {
-            { label = "LEAVE IT", value = "LEAVE" },
-            { label = "CLOSE THE FILE", value = "CLOSE" },
+            { label = "LEAVE IT", value = "LEAVE", reply = "Leave it for now." },
+            { label = "CLOSE THE FILE", value = "CLOSE", reply = "Close the file." },
           }, {
             kind = "snag.zapdos_lost",
             onChoose = function(item, list)
@@ -4034,7 +4109,7 @@ return function(mod)
                 { "text", "Close the file?\nNo pay. No word." },
               }, {
                 onDone = function()
-                  local ChoiceBox = require("src.ui.ChoiceBox")
+                  local ChoiceBox = SnagChoiceBox
                   local game = mod.game
                   if not (game and game.stack) then return end
                   game.stack:push(ChoiceBox.new(game, function(yes)
@@ -4043,7 +4118,7 @@ return function(mod)
                     mod.world:queueScript({
                       { "text", "The file closes.\nNothing is owed." },
                     })
-                  end, { defaultNo = true }))
+                  end, { defaultNo = true, yesReply = "Close it.", noReply = "Leave it open." }))
                 end,
               })
             end,
@@ -4165,9 +4240,9 @@ return function(mod)
           if not (g and g.stack) then return end
           local menu
           menu = ListMenu.new(g, "THE BIRD'S FATE", {
-            { label = "KEEP", value = "KEEP" },
-            { label = "SELL", value = "SELL" },
-            { label = "RELEASE", value = "RELEASE" },
+            { label = "KEEP", value = "KEEP", reply = "I'm keeping the bird." },
+            { label = "SELL", value = "SELL", reply = "Sell it." },
+            { label = "RELEASE", value = "RELEASE", reply = "Let it go." },
           }, {
             kind = "snag.zapdos_outcome",
             onChoose = function(item, list)
@@ -4294,7 +4369,7 @@ return function(mod)
         onDone = function()
           local g = mod.game
           if not (g and g.stack) then return end
-          local items = menuItems(CONTRACT_ORDER, CONTRACTS)
+          local items = menuItems(CONTRACT_ORDER, CONTRACTS, "The %s lead.")
           local menu
           menu = ListMenu.new(g, "CHOOSE A LEAD", items, {
             kind = "snag.contract",
@@ -4438,7 +4513,7 @@ return function(mod)
         onDone = function()
           local g = mod.game
           if not (g and g.stack) then return end
-          local items = menuItems(ECRUTEAK_ORDER, ECRUTEAK_CONTRACTS)
+          local items = menuItems(ECRUTEAK_ORDER, ECRUTEAK_CONTRACTS, "The %s.")
           local menu
           menu = ListMenu.new(g, "CHOOSE A MARK", items, {
             kind = "snag.contract2",
@@ -4586,7 +4661,7 @@ return function(mod)
         onDone = function()
           local g = mod.game
           if not (g and g.stack) then return end
-          local items = menuItems(OLIVINE_ORDER, OLIVINE_CONTRACTS)
+          local items = menuItems(OLIVINE_ORDER, OLIVINE_CONTRACTS, "The %s route.")
           local menu
           menu = ListMenu.new(g, "CHOOSE A ROUTE", items, {
             kind = "snag.contract3",
