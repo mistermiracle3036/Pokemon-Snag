@@ -1,3 +1,9 @@
+## 0.17.9 - The fence keeps her name to himself (private test, with Shadow Pokemon)
+
+**New in 0.17.9:** with Shadow Pokemon installed, the fence on Route 29 no
+longer tells you who the woman he wants robbed is -- only that she is out
+east and asks questions. You learn her name when you meet her.
+
 ## 0.17.8 - You say it in your own words (private test)
 
 **New in 0.17.8:** with **Trainer Journey** installed, every choice in Pokemon

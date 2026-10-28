@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.8"
+  local VERSION = "0.17.9"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -2913,7 +2913,8 @@ return function(mod)
     -- exchange/CONTRACTS.md (names approved by the developer 2026-10-27).
     --
     -- ONLY when shadow_pokemon is active, the Route 29 middleman is the fence
-    -- who names RUI instead of sending you after the lass. Every Rui scene
+    -- who sends you after RUI instead of the lass -- never by name: the player
+    -- learns it from her (developer 2026-10-28, REQUESTS 278). Every Rui scene
     -- (loan, theft battle, refusal catch-up, recruitment, checks) is Shadow
     -- Pokemon's; Snag recasts the fence, grants its Balls and reads the REAL
     -- Meowth as proof. mod.find is asked at TALK time, never at load: Shadow
@@ -3168,7 +3169,7 @@ return function(mod)
       fset("accepted", true)
       setStage(STAGE_ARMED)
       I.say({ "The job is yours.\nOne SNAG BALL.",
-        "RUI is east of\nhere. Find her.",
+        "The woman's east\nof here. Find her.",
         "Target: MEOWTH.\nShe has only one.",
         "This first catch\nis guaranteed.",
         "Show it to me.\nYour fee: 5 BALLs." })
@@ -3226,7 +3227,7 @@ return function(mod)
     function F.talk()
       if not F.ruiJob() then
         I.say({ "Got time for work?\nNot honest work.",
-          "A woman, RUI. She\nasks questions.",
+          "A woman out east.\nAsks questions.",
           "I want her MEOWTH\ntaken off her.",
           "That's theft.\nYour choice.",
           "Show it to me.\nI pay 5 BALLs." }, F.offerMenu)
@@ -3265,7 +3266,7 @@ return function(mod)
       if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 and not giveOneSnagBall() then
         I.say({ "BALL pocket full.\nMake space first." }); return
       end
-      I.say({ "Found RUI yet?\nShe's to the east.",
+      I.say({ "Found her yet?\nShe's to the east.",
         "Bring her MEOWTH.\nShow it to me." })
     end
 

@@ -97,6 +97,17 @@ do
   end
 end
 
+do -- REQUESTS 278: the fence never says her name; the player learns it from Rui
+  local named = 0
+  for line in talk:gmatch('"([^"]-)"') do
+    if line:find("RUI", 1, true) then
+      named = named + 1
+      check("fence line names RUI: " .. line, false, true)
+    end
+  end
+  check("no fence line names RUI", named, 0)
+end
+
 do -- refuse: nothing granted, revisit offers again
   local t = setup()
   t.F.talk()
