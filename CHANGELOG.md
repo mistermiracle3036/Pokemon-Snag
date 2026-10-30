@@ -1,3 +1,9 @@
+## 0.17.10 - The snagged ball gets out of the way (private test)
+
+**New in 0.17.10:** after you snag a trainer's Pokemon, its ball no longer
+stays on screen over what comes next. If one of your Pokemon levels up or
+learns a move in that battle, the move list is now drawn clean.
+
 ## 0.17.9 - The fence keeps her name to himself (private test, with Shadow Pokemon)
 
 **New in 0.17.9:** with Shadow Pokemon installed, the fence on Route 29 no

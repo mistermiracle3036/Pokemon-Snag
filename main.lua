@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.9"
+  local VERSION = "0.17.10"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -4998,6 +4998,16 @@ return function(mod)
         local event = self.queue and self.queue[1]
         if event and event.kind == "snag-replace" then
           table.remove(self.queue, 1)
+          -- 0.17.10 (REQUESTS 328): the engine parks a finished keepSprites
+          -- throw in self.anim so a caught ball stays drawn (BattleState
+          -- update loop + drawObjects, v0.3.96). A wild catch ends the battle
+          -- there; a snag keeps it going, so drop the parked ball before the
+          -- faint/EXP/move-learn screens or it draws over them.
+          local parked = self.anim
+          if parked and parked.animId == "ANIM_THROW_POKE_BALL"
+              and parked.keepSprites and parked:done() then
+            self.anim = nil
+          end
           local battle = self.battle
           if battle and battle.enemy then
             local caught = battle.enemy
