@@ -1,3 +1,8 @@
+## 0.17.13 - PETREL's artist credited too (private test)
+
+**New in 0.17.13:** the CREDITS screen now also lists PETREL among
+SirWhibbles' work. 0.17.12 left him out.
+
 ## 0.17.12 - Artists credited in game (private test)
 
 **New in 0.17.12:** the artists whose work appears in Pokemon Snag are now

@@ -8,7 +8,7 @@
 -- that mod is released -- re-run the generator after any release.
 return {
   { artist = "SirWhibbles",
-    works = { "Ariana", "Giovanni", "Proton" },
+    works = { "Ariana", "Giovanni", "Petrel", "Proton" },
     sections = { "people" },
     mods = { "Pokemon Snag" },
     source = "sprites/REGISTRY.json" },
