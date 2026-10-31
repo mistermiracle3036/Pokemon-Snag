@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.10"
+  local VERSION = "0.17.11"
   mod.exports.version = VERSION
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -486,11 +486,15 @@ return function(mod)
         trueColor = trueColor or nil,
       })
     end
-    registerZapdosSprite("SPRITE_SNAG_PROTON", "proton.png", "PAL_OW_PINK", 4)
+    -- 0.17.11 (REQUESTS 23): PROTON and ARIANA are the developer-approved
+    -- sprites/canonical_color sheets byte-for-byte, registered as Kanto
+    -- Contests does (same palette fallback, trueColor).
+    registerZapdosSprite("SPRITE_SNAG_PROTON", "proton.png", "PAL_OW_PINK", 4,
+      true)
     -- The rank-and-file grunts use Gold's own SPRITE_ROCKET and
     -- SPRITE_ROCKET_GIRL. Only the named executives need custom art.
     registerZapdosSprite("SPRITE_SNAG_ARIANA", "ariana.png",
-      "PAL_OW_RED", 0)
+      "PAL_OW_RED", 0, true)
     -- Boxing room C's VIP seat (0.17.2; held out of 0.17.0 until REQUESTS
     -- 114). sprites/canonical_color/giovanni.png byte-for-byte (SirWhibbles,
     -- cleared), registered exactly as Kanto Contests and Indigo register

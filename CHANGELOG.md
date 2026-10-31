@@ -1,3 +1,9 @@
+## 0.17.11 - PROTON and ARIANA in colour (private test)
+
+**New in 0.17.11:** PROTON and ARIANA now walk around in the same full
+colours they have in Indigo Plateau Conference and Kanto Contests, so they
+look the same in every mod.
+
 ## 0.17.10 - The snagged ball gets out of the way (private test)
 
 **New in 0.17.10:** after you snag a trainer's Pokemon, its ball no longer
