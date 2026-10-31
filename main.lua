@@ -44,8 +44,28 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.11"
+  local VERSION = "0.17.12"
   mod.exports.version = VERSION
+
+  -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
+  -- lib/credits.lua is SHARED code (Credits-Book/lib/credits.lua, library
+  -- v3) and lib/credits_data.lua is GENERATED from sprites/REGISTRY.json
+  -- (exchange/credits_table.py --mod Pokemon-Snag); both are byte-for-byte
+  -- copies and neither may be edited here. The library elects one CREDITS
+  -- row across every embedding mod. In addition to THIRD_PARTY_NOTICES.md,
+  -- not instead of it. No save key, option or dependency.
+  do
+    local function module(path)
+      return assert(load(assert(mod:read(path)), "@" .. mod.id .. "/" .. path))()
+    end
+    local ok, err = pcall(function()
+      module("lib/credits.lua").attach(mod, module("lib/credits_data.lua"))
+    end)
+    if not ok then
+      pcall(require("src.mods.Runtime").reportError, "snag_quest",
+        "credits screen: " .. tostring(err))
+    end
+  end
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
   -- valuation was built for opportunistic theft -- formerly base 1, with

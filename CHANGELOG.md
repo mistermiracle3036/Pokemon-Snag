@@ -1,3 +1,10 @@
+## 0.17.12 - Artists credited in game (private test)
+
+**New in 0.17.12:** the artists whose work appears in Pokemon Snag are now
+credited in game: press START, then CREDITS. If you run other mods that
+carry the same screen, there is still only one CREDITS row, and it lists
+everyone's artists together.
+
 ## 0.17.11 - PROTON and ARIANA in colour (private test)
 
 **New in 0.17.11:** PROTON and ARIANA now walk around in the same full
