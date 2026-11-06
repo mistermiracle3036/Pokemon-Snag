@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.14"
+  local VERSION = "0.17.15"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -5314,9 +5314,21 @@ return function(mod)
       if not pressKind(ev) then return end
       local world = mod.world:overworld()
       if not world then return end
+      -- 0.17.15: whoever you talk to turns to face you first (NPC rule,
+      -- developer 2026-11-05). Their standing facing is only their resting
+      -- pose. NPC:facePlayer (engine gen2/Npc.lua, v0.4.0) leaves a
+      -- fixed-facing or one-pose sprite alone, as the cart does.
+      local function talked(e, obj)
+        if not pressed(e, obj) then return false end
+        local npc = e.kind == "npc" and e.target
+        if npc and npc.facePlayer and world.player then
+          pcall(npc.facePlayer, npc, world.player)
+        end
+        return true
+      end
       if ev.mapId == S.CITY_MAP then
         local lookout = objectNamed(world, S.CITY_MAP, S.LOOKOUT_NAME)
-        if pressed(ev, lookout) then
+        if talked(ev, lookout) then
           S.talkLookout()
         end
         return
@@ -5328,7 +5340,7 @@ return function(mod)
       local specB = objectNamed(world, S.MAP, S.SPEC_B_NAME)
       if S.cells == RING.cells then
         local hand = objectNamed(world, S.MAP, RING.HAND_NAME)
-        if pressed(ev, hand) then
+        if talked(ev, hand) then
           RING.talkHand()
           return
         end
@@ -5338,13 +5350,13 @@ return function(mod)
           return
         end
       end
-      if pressed(ev, petrel) then
+      if talked(ev, petrel) then
         S.talkPetrel()
-      elseif pressed(ev, exit) then
+      elseif talked(ev, exit) then
         S.talkExit()
-      elseif pressed(ev, specA) then
+      elseif talked(ev, specA) then
         S.talkSpectator(specA.sewerKey)
-      elseif pressed(ev, specB) then
+      elseif talked(ev, specB) then
         S.talkSpectator(specB.sewerKey)
       end
     end)

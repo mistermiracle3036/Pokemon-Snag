@@ -1,3 +1,10 @@
+## 0.17.15 - They look at you when you talk (private test)
+
+**New in 0.17.15:** PETREL, the doorman, the ring hand, the spectators in
+the fighting pit and the lookout in Cianwood now turn to face you when you
+talk to them. Nobody moves. This build also
+carries 0.17.14's talk-choice words, which never reached the phone.
+
 ## 0.17.14 - Every reply has a word you can read (private test)
 
 **New in 0.17.14:** with **Trainer Journey** installed, the replies in
