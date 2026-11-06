@@ -1,3 +1,9 @@
+## 0.17.16 - ARIANA looks at you too (private test)
+
+**New in 0.17.16:** ARIANA, watching from the side of the fighting pit, now
+turns to face you as well. In 0.17.15 she was the only one who didn't.
+0.17.14 and 0.17.15 never reached the phone; this build carries both.
+
 ## 0.17.15 - They look at you when you talk (private test)
 
 **New in 0.17.15:** PETREL, the doorman, the ring hand, the spectators in

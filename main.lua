@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.15"
+  local VERSION = "0.17.16"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -5320,7 +5320,13 @@ return function(mod)
       -- fixed-facing or one-pose sprite alone, as the cart does.
       local function talked(e, obj)
         if not pressed(e, obj) then return false end
-        local npc = e.kind == "npc" and e.target
+        local npc = e.kind == "npc" and e.target or nil
+        if not npc then
+          -- the faced-cell event carries no NPC; find the live one
+          for _, n in ipairs(world.npcs or {}) do
+            if n.def == obj then npc = n break end
+          end
+        end
         if npc and npc.facePlayer and world.player then
           pcall(npc.facePlayer, npc, world.player)
         end
