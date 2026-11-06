@@ -1,3 +1,11 @@
+## 0.17.14 - Every reply has a word you can read (private test)
+
+**New in 0.17.14:** with **Trainer Journey** installed, the replies in
+Snag's talk choices no longer show cut-off words like THE, MY and TAKE.
+Each long choice now has its own short word: TOOL, ACCEPT, CAREER, KEEP,
+SELL, PURSE, FIGHT, CALL OFF and CLOSE. The full reply still shows beside
+it. Without Trainer Journey nothing changes.
+
 ## 0.17.13 - PETREL's artist credited too (private test)
 
 **New in 0.17.13:** the CREDITS screen now also lists PETREL among

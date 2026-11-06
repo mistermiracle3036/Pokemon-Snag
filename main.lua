@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.13"
+  local VERSION = "0.17.14"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -180,8 +180,11 @@ return function(mod)
       if api then
         local rows = {}
         for i, item in ipairs(items or {}) do
-          rows[i] = { reply = item.reply, label = item.label,
-            value = item.value, stakes = item.stakes }
+          -- action (0.17.14, REQUESTS 512) is the row's word in Journey's
+          -- check strip (contract check-row-word): Journey cuts a label
+          -- over 8 letters to its first word, so "THE TOOL?" read "THE".
+          rows[i] = { action = item.action, reply = item.reply,
+            label = item.label, value = item.value, stakes = item.stakes }
         end
         local ok, menu = pcall(api.makeCheckMenu, game, {
           game = game, title = title, rows = rows,
@@ -2701,8 +2704,8 @@ return function(mod)
       if not (game and game.stack) then return false end
       local menu
       menu = ListMenu.new(game, "THE HOUSE", {
-        { label = "TAKE PURSE", value = "PURSE", reply = "I'll take the purse." },
-        { label = "FIGHT PETREL", value = "HOUSE", reply = "Double or nothing. Let's go." },
+        { action = "PURSE", label = "TAKE PURSE", value = "PURSE", reply = "I'll take the purse." },
+        { action = "FIGHT", label = "FIGHT PETREL", value = "HOUSE", reply = "Double or nothing. Let's go." },
       }, {
         kind = "snag.sewer_house",
         onChoose = function(item, list)
@@ -3113,9 +3116,9 @@ return function(mod)
       local game = mod.game
       if not (game and game.stack) then return end
       game.stack:push(ListMenu.new(game, "YOUR NEXT MOVE", {
-        { label = "KEEP MY POKEMON", value = "keep", reply = "I'm keeping my POKEMON. Any more work?" },
-        { label = "SELL POKEMON", value = "sell", reply = "I've got something to sell." },
-        { label = "MY CAREER", value = "career", reply = "What about my career?" },
+        { action = "KEEP", label = "KEEP MY POKEMON", value = "keep", reply = "I'm keeping my POKEMON. Any more work?" },
+        { action = "SELL", label = "SELL POKEMON", value = "sell", reply = "I've got something to sell." },
+        { action = "CAREER", label = "MY CAREER", value = "career", reply = "What about my career?" },
         { label = "LEAVE", value = "leave", reply = "That's all." },
       }, { onChoose = function(item, menu)
         menu:close()
@@ -3159,8 +3162,8 @@ return function(mod)
       if not (game and game.stack) then return end
       game.stack:push(ListMenu.new(game, "OUTSTANDING DEBT", {
         { label = "WHY ME?", value = "why", reply = "Why me?" },
-        { label = "THE TOOL?", value = "tool", reply = "What is this tool?" },
-        { label = "TAKE THE JOB", value = "accept", reply = "I'll take the job." },
+        { action = "TOOL", label = "THE TOOL?", value = "tool", reply = "What is this tool?" },
+        { action = "ACCEPT", label = "TAKE THE JOB", value = "accept", reply = "I'll take the job." },
         { label = "NO DEAL", value = "leave", reply = "No deal." },
       }, { onChoose = function(item, menu)
         menu:close()
@@ -3204,8 +3207,8 @@ return function(mod)
       if not (game and game.stack) then return end
       game.stack:push(ListMenu.new(game, "OUTSTANDING DEBT", {
         { label = "WHY ME?", value = "why", reply = "Why me?" },
-        { label = "THE TOOL?", value = "tool", reply = "What is this tool?" },
-        { label = "TAKE THE JOB", value = "accept", reply = "I'll take the job." },
+        { action = "TOOL", label = "THE TOOL?", value = "tool", reply = "What is this tool?" },
+        { action = "ACCEPT", label = "TAKE THE JOB", value = "accept", reply = "I'll take the job." },
         { label = "NO DEAL", value = "leave", reply = "No deal." },
       }, { onChoose = function(item, menu)
         menu:close()
@@ -3834,7 +3837,7 @@ return function(mod)
       local menu
       menu = ListMenu.new(g, "JOB", {
         { label = "KEEP JOB", value = "KEEP", reply = "I'm still on it." },
-        { label = "CALL IT OFF", value = "DROP", reply = "Call it off." },
+        { action = "CALL OFF", label = "CALL IT OFF", value = "DROP", reply = "Call it off." },
       }, {
         kind = "snag.repeat.abandon",
         onChoose = function(item, list)
@@ -4124,7 +4127,7 @@ return function(mod)
           local menu
           menu = ListMenu.new(g, "THE JOB", {
             { label = "LEAVE IT", value = "LEAVE", reply = "Leave it for now." },
-            { label = "CLOSE THE FILE", value = "CLOSE", reply = "Close the file." },
+            { action = "CLOSE", label = "CLOSE THE FILE", value = "CLOSE", reply = "Close the file." },
           }, {
             kind = "snag.zapdos_lost",
             onChoose = function(item, list)
