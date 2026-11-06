@@ -1,3 +1,10 @@
+## 0.17.17 - Job dossiers by number (private test)
+
+**New in 0.17.17:** with **Trainer Journey** installed, the broker's job
+dossiers now read JOB 1, JOB 2 and JOB 3 instead of a cut-off Pokemon name
+(MISDREAVUS showed as MISDREAV). The line beside each one still names the
+Pokemon in full.
+
 ## 0.17.16 - ARIANA looks at you too (private test)
 
 **New in 0.17.16:** ARIANA, watching from the side of the fighting pit, now

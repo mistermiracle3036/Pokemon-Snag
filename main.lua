@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.16"
+  local VERSION = "0.17.17"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -3929,7 +3929,11 @@ return function(mod)
           local items = {}
           for slot = 1, 3 do
             local offer = R.offer(slot)
-            items[#items + 1] = { label = offer.target, value = slot,
+            -- JOB n is the word in Journey's check strip (developer's card
+            -- pick, 2026-11-06, REQUESTS 512): MISDREAVUS and GIRAFARIG do
+            -- not fit 8 letters; the reply beside it names the Pokemon.
+            items[#items + 1] = { action = "JOB " .. slot,
+              label = offer.target, value = slot,
               reply = "The " .. offer.target .. " job." }
           end
           local menu
