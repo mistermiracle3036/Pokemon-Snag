@@ -1,3 +1,9 @@
+## 0.17.18 - The new credits screen (private test)
+
+**New in 0.17.18:** START, then CREDITS, now shows the redesigned credits
+screen: one artist a page with each character's walking sprite, and A opens
+a character's page with their battle portrait and the mods they appear in.
+
 ## 0.17.17 - Job dossiers by number (private test)
 
 **New in 0.17.17:** with **Trainer Journey** installed, the broker's job

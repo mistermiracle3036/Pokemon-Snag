@@ -4,6 +4,7 @@
 -- One entry per artist whose art ships in a PUBLICLY RELEASED mod
 -- (permission cleared or project; public per sprites/PUBLIC_MODS.json).
 -- works = characters drawn; mods = the released mods that ship them.
+-- used = those mods' short names; characters = each work's page (REQUESTS 680).
 -- An artist whose art is only in unreleased mods appears here the day
 -- that mod is released -- re-run the generator after any release.
 return {
@@ -11,5 +12,12 @@ return {
     works = { "Ariana", "Giovanni", "Petrel", "Proton" },
     sections = { "people" },
     mods = { "Pokemon Snag" },
+    used = { "SNAG" },
+    characters = {
+      { battleBy = "SirWhibbles", credit = "Ariana", files = { snag_quest = { front = "assets/ariana_front.png", frontColour = true, walk = "assets/ariana.png", walkColour = true } }, front = "ariana_front.png", name = "Ariana", pal = 0, used = { "SNAG" }, walk = "ariana.png", walkBy = "SirWhibbles" },
+      { battleBy = "SirWhibbles", credit = "Giovanni", files = { snag_quest = { walk = "assets/giovanni.png", walkColour = true } }, front = "giovanni_front.png", name = "Giovanni", pal = 3, used = { "SNAG" }, walk = "giovanni.png", walkBy = "SirWhibbles" },
+      { battleBy = "SirWhibbles", credit = "Petrel", files = { snag_quest = { front = "assets/petrel_front.png", frontColour = true } }, front = "petrel_front.png", name = "Petrel", pal = 2, used = { "SNAG" } },
+      { battleBy = "SirWhibbles", credit = "Proton", files = { snag_quest = { front = "assets/proton_front.png", frontColour = true, walk = "assets/proton.png", walkColour = true } }, front = "proton_front.png", name = "Proton", pal = 4, used = { "SNAG" }, walk = "proton.png", walkBy = "SirWhibbles" },
+    },
     source = "sprites/REGISTRY.json" },
 }
