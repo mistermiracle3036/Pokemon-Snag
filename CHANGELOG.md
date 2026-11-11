@@ -1,3 +1,13 @@
+## 0.17.20 - Rewards play the item jingle (private test)
+
+**New in 0.17.20:** when someone hands you SNAG BALLs, HEIST BALLs, the
+KINGPIN BALL or the SEA SONG TAPE, the line that names it now plays the
+game's own "got an item" jingle and waits for it, the way a gift does in
+the original game. That covers the first SNAG BALL of the job, every fee
+and fence sale, PETREL's purse and both ZAPDOS endings. Nobody's words
+changed. If your BAG is full, they now tell you before naming the reward
+rather than after; nothing is lost either way.
+
 ## 0.17.19 - A better-looking GRIMER (private test)
 
 **New in 0.17.19:** the GRIMER behind the rope in the fighting pit is now

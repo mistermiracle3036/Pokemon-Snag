@@ -36,8 +36,20 @@ local function setup(opts)
     game = { save = save, stack = { push = function(_, menu) st.menus[#st.menus + 1] = menu end } },
   }
   mod.find = function(id) if id == "shadow_pokemon" and opts.shadow ~= false then return {} end end
+  -- 0.17.20: gift lines go through GiftLine (the real block, fake helper lib)
+  st.jingles = {}
+  mod.id = "snag_quest"
+  mod.world = { queueScript = function(_, rows, o)
+    for _, row in ipairs(rows) do st.said[#st.said + 1] = row[2] end
+    if o and o.onDone then o.onDone(true) end
+  end }
+  local GiftLine = dofile("tests/giftline_fixture.lua")(src, mod, function(item, line)
+    st.jingles[#st.jingles + 1] = item .. "|" .. line
+    st.said[#st.said + 1] = line
+  end)
   local env = setmetatable({
     mod = mod,
+    GiftLine = GiftLine,
     Boxes = { NUM_BOXES = 14 },
     STAGE_NEW = 0, STAGE_ARMED = 1, STAGE_DONE = 2,
     stage = function() return st.stage end,

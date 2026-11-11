@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.19"
+  local VERSION = "0.17.20"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -65,6 +65,76 @@ return function(mod)
       pcall(require("src.mods.Runtime").reportError, "snag_quest",
         "credits screen: " .. tostring(err))
     end
+  end
+
+  -- A line that hands over an item ends in Crystal's own item jingle
+  -- (0.17.20, REQUESTS 667; exchange/decisions/2026-11-07-gifts-play-the-
+  -- vanilla-jingle.md). lib/gift_jingle.lua is the SHARED helper
+  -- (exchange/shared/gift_jingle.lua), a byte-for-byte copy that is never
+  -- edited here. Snag always adds the item ITSELF first (its pay-once and
+  -- full-bag guards are older than the helper and stay as they are) and
+  -- then calls GiftLine.say for the line that names it, so nothing below
+  -- ever uses the helper's own Bag.add. No wording changes anywhere.
+  local GiftLine = {}
+  do
+    local ok, lib = pcall(function()
+      return assert(load(assert(mod:read("lib/gift_jingle.lua")),
+        "@" .. mod.id .. "/lib/gift_jingle.lua"))()
+    end)
+    if ok and type(lib) == "table" then
+      GiftLine.lib = lib
+    else
+      pcall(require("src.mods.Runtime").reportError, "snag_quest",
+        "gift jingle: " .. tostring(lib))
+    end
+  end
+
+  -- Plain pages, then `done`. No pages: `done` straight away.
+  function GiftLine.pages(pages, done)
+    if #pages == 0 then
+      if done then done() end
+      return
+    end
+    local rows = {}
+    for _, page in ipairs(pages) do rows[#rows + 1] = { "text", page } end
+    mod.world:queueScript(rows, { onDone = function()
+      if done then done() end
+    end })
+  end
+
+  -- The item is ALREADY in the bag. Shows `line` with the jingle on its
+  -- last page, then `done`. If the helper is missing or refuses, the line
+  -- still shows, silently: a gift is never left unannounced.
+  function GiftLine.say(_, itemId, line, done)
+    local lib = GiftLine.lib
+    if lib then
+      local ok, shown = pcall(lib.say, mod, itemId, line, { onDone = done })
+      if ok and shown then return end
+    end
+    GiftLine.pages({ line }, done)
+  end
+
+  -- The same line with the jingle only when something was handed over this
+  -- time (`gave`); otherwise the plain line, exactly as before 0.17.20.
+  function GiftLine.line(gave, itemId, line, done)
+    if gave then return GiftLine.say(mod, itemId, line, done) end
+    GiftLine.pages({ line }, done)
+  end
+
+  -- A \f-paged voice line whose item is named part-way through: the jingle
+  -- lands on the LAST page containing `word`, and later pages follow plain.
+  function GiftLine.named(itemId, text, word, done)
+    local pages = {}
+    for page in (text .. "\f"):gmatch("(.-)\f") do pages[#pages + 1] = page end
+    local at = #pages
+    for i = #pages, 1, -1 do
+      if pages[i]:find(word, 1, true) then at = i; break end
+    end
+    local rest = {}
+    for i = at + 1, #pages do rest[#rest + 1] = pages[i] end
+    GiftLine.say(mod, itemId, table.concat(pages, "\f", 1, at), function()
+      GiftLine.pages(rest, done)
+    end)
   end
 
   -- A quest mark is a BOUNTY, not merchandise (0.14.41).  The fence's ordinary
@@ -1908,6 +1978,7 @@ return function(mod)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and save.inventory and data) then return false end
+      -- gift_jingle: exempt (helper: the caller plays the line through GiftLine.say)
       return Bag.add(save, "KINGPIN_BALL", 1, data) == true
     end
 
@@ -2683,6 +2754,7 @@ return function(mod)
         local save, data = game and game.save, game and game.data
         if not (save and data) then return false end
         local doubled = tonumber(mod.save:get("g2_sewer_double", 0)) == 1
+        -- gift_jingle: exempt (line + jingle follow below through GiftLine.say)
         if Bag.add(save, "HEIST_BALL", doubled and 2 or 1, data) ~= true then
           mod.world:queueScript({
             { "text", "PETREL: BALL bag\nneeds room." },
@@ -2696,11 +2768,12 @@ return function(mod)
         S.setAfterBattle(nil)
         S.scopedTeam = nil
         S.cleanupPending = true
-        mod.world:queueScript({
-          { "text", doubled and "PETREL: You beat\nthe house. Two."
-            or "PETREL: Champion.\nOne HEIST BALL." },
-          { "text", "House keeps quiet.\nPurse is yours." },
-        })
+        GiftLine.say(mod, "HEIST_BALL",
+          doubled and "PETREL: You beat\nthe house. Two."
+            or "PETREL: Champion.\nOne HEIST BALL.",
+          function()
+            GiftLine.pages({ "House keeps quiet.\nPurse is yours." })
+          end)
         return true
       end
       return false
@@ -2826,6 +2899,7 @@ return function(mod)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and save.inventory and data) then return false end
+      -- gift_jingle: exempt (helper: the caller plays the line through GiftLine.say)
       return Bag.add(save, "HEIST_BALL", n or 1, data) == true
     end
 
@@ -2860,6 +2934,9 @@ return function(mod)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and save.inventory and data) then return false end
+      -- The two re-issues of a spent tool (F.talk, the sailor's ARMED talk) name
+      -- no item and stay silent pending the developer (REQUESTS 667).
+      -- gift_jingle: exempt (helper: the caller plays the line through GiftLine.say)
       return Bag.add(save, "SNAG_BALL", 1, data) == true
     end
 
@@ -2873,6 +2950,7 @@ return function(mod)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and save.inventory and data) then return false end
+      -- gift_jingle: exempt (helper: the caller plays the line through GiftLine.say)
       return Bag.add(save, "SNAG_BALL", n, data) == true
     end
 
@@ -3153,17 +3231,22 @@ return function(mod)
       -- New jobs receive one tool. Refusal/repeated status never gives one;
       -- failed/KO attempts reuse any remaining SNAG BALL before restocking.
       local inv = mod.game and mod.game.save and mod.game.save.inventory
-      if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 and not giveOneSnagBall() then
-        removeNamed(world, MAP, GIRL_NAME)
-        I.say({ "BALL pocket full.\nMake space first." }); return
+      local gave = false
+      if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 then
+        if not giveOneSnagBall() then
+          removeNamed(world, MAP, GIRL_NAME)
+          I.say({ "BALL pocket full.\nMake space first." }); return
+        end
+        gave = true
       end
       setStage(STAGE_ARMED)
-      I.say({ "The job is yours.\nOne SNAG BALL.",
-        "Collector's east.\nTalk to the lass.",
-        "Target: MEOWTH.\nShe has only one.",
-        "This first catch\nis guaranteed.",
-        "Later marks: lower\nHP, then throw.",
-        "Bring proof back.\nYour fee: 5 BALLs." })
+      GiftLine.line(gave, "SNAG_BALL", "The job is yours.\nOne SNAG BALL.", function()
+        I.say({ "Collector's east.\nTalk to the lass.",
+          "Target: MEOWTH.\nShe has only one.",
+          "This first catch\nis guaranteed.",
+          "Later marks: lower\nHP, then throw.",
+          "Bring proof back.\nYour fee: 5 BALLs." })
+      end)
     end
 
     function I.offerMenu()
@@ -3198,17 +3281,22 @@ return function(mod)
     function F.accept()
       if F.ruiJob() or stage() ~= STAGE_NEW then return end
       local inv = mod.game and mod.game.save and mod.game.save.inventory
-      if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 and not giveOneSnagBall() then
-        I.say({ "BALL pocket full.\nMake space first." }); return
+      local gave = false
+      if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 then
+        if not giveOneSnagBall() then
+          I.say({ "BALL pocket full.\nMake space first." }); return
+        end
+        gave = true
       end
       fset("mode", "rui")
       fset("accepted", true)
       setStage(STAGE_ARMED)
-      I.say({ "The job is yours.\nOne SNAG BALL.",
-        "The woman's east\nof here. Find her.",
-        "Target: MEOWTH.\nShe has only one.",
-        "This first catch\nis guaranteed.",
-        "Show it to me.\nYour fee: 5 BALLs." })
+      GiftLine.line(gave, "SNAG_BALL", "The job is yours.\nOne SNAG BALL.", function()
+        I.say({ "The woman's east\nof here. Find her.",
+          "Target: MEOWTH.\nShe has only one.",
+          "This first catch\nis guaranteed.",
+          "Show it to me.\nYour fee: 5 BALLs." })
+      end)
     end
 
     function F.offerMenu()
@@ -3255,9 +3343,10 @@ return function(mod)
       -- He lets slip who he sells to. Shadow Pokemon reads proofPaid as the
       -- player knowing the fence's customer (Rui's DEDUCTION row), so this is
       -- said exactly when, and only when, proofPaid is set (0.17.4).
-      I.say({ "Five SNAG BALLs.\nAs promised.",
-        "My buyer pays well\nfor odd POKEMON.",
-        "Strange fellow.\nStrange clothes." }, I.afterMenu)
+      GiftLine.say(mod, "SNAG_BALL", "Five SNAG BALLs.\nAs promised.", function()
+        I.say({ "My buyer pays well\nfor odd POKEMON.",
+          "Strange fellow.\nStrange clothes." }, I.afterMenu)
+      end)
     end
 
     function F.talk()
@@ -3535,10 +3624,11 @@ return function(mod)
       -- leaving inert scenery behind.
       if stage() == STAGE_DONE then
         if isSailor and not rewardClaimed() then
+          -- 0.17.20: the Balls land just before the page that names them, so
+          -- that page carries the jingle. A full pocket now answers before
+          -- "Five SNAG BALLs." instead of after it; nothing is paid either way.
           mod.world:queueScript({
             { "text", "She says she paid?\nThat's her story." },
-            { "text", "You did the job.\nFive SNAG BALLs." },
-            { "text", "MEOWTH is yours.\nSelling is extra." },
           }, {
             onDone = function()
               local ok, err = pcall(function()
@@ -3549,7 +3639,9 @@ return function(mod)
                   return
                 end
                 setRewardClaimed(true)
-                I.afterMenu()
+                GiftLine.say(mod, "SNAG_BALL", "You did the job.\nFive SNAG BALLs.", function()
+                  I.say({ "MEOWTH is yours.\nSelling is extra." }, I.afterMenu)
+                end)
               end)
               if not ok then errs("SAILOR REWARD\n%s", tostring(err)) end
             end,
@@ -3618,11 +3710,12 @@ return function(mod)
         local game = mod.game
         local save, data = game and game.save, game and game.data
         if not (save and save.inventory and data) then return end
+        -- gift_jingle: exempt (line + jingle follow below through GiftLine.named)
         if Bag.add(save, "SNAG_BALL", 1, data) ~= true then
           mod.world:queueScript({ { "text", voice.valveFull } })
           return
         end
-        mod.world:queueScript({ { "text", voice.valveGive } })
+        GiftLine.named("SNAG_BALL", voice.valveGive, "SNAG")
         return
       end
 
@@ -3698,6 +3791,7 @@ return function(mod)
                   end
                   -- Pay first. If the BALL pocket cannot take the reward,
                   -- the Pokemon never leaves the party.
+                  -- gift_jingle: exempt (voice.done below goes through GiftLine.named)
                   if Bag.add(g.save, "SNAG_BALL", n, g.data) ~= true then
                     mod.world:queueScript({ { "text", voice.noRoom } })
                     return
@@ -3718,8 +3812,8 @@ return function(mod)
                     -- contract shadow-opening: Rui remembers the sale
                     fset("soldRuiMeowth", true)
                   end
-                  mod.world:queueScript({ { "text", string.format(
-                    voice.done, n, n == 1 and "" or "s") } })
+                  GiftLine.named("SNAG_BALL", string.format(
+                    voice.done, n, n == 1 and "" or "s"), "SNAG")
                 end, { defaultNo = true, yesReply = "Deal. It's yours.", noReply = "No, I'll keep it." }))
               end,
             })
@@ -3901,16 +3995,19 @@ return function(mod)
                 or c.termsKey == "DELIVER"
                   and "BROKER: Package\nreceived."
                 or "BROKER: Release\nlogged."
-              local doneRows = {
-                { "text", result },
-                { "text", c.termsKey == "RELEASE"
-                    and "PAY: NO BALLS"
-                  or string.format("PAY: %d SNAG BALLs", c.terms.payout) },
-              }
               if c.termsKey == "RELEASE" then
-                doneRows[#doneRows + 1] = { "text", "REWARD: NONE" }
+                mod.world:queueScript({
+                  { "text", result },
+                  { "text", "PAY: NO BALLS" },
+                  { "text", "REWARD: NONE" },
+                })
+              else
+                -- R.finish has already paid; the PAY page carries the jingle.
+                GiftLine.pages({ result }, function()
+                  GiftLine.line(c.terms.payout > 0, "SNAG_BALL",
+                    string.format("PAY: %d SNAG BALLs", c.terms.payout))
+                end)
               end
-              mod.world:queueScript(doneRows)
             elseif why == "last" then
               mod.world:queueScript({ { "text",
                 "BROKER: Keep one\nother battler." } })
@@ -4050,13 +4147,16 @@ return function(mod)
         mod.world:queueScript({
           { "text", "FOREMAN: Old crew.\nMAHOGANY base." },
           { "text", "They boxed thunder\nBuyer pays tonight" },
-          { "text", "One KINGPIN BALL.\nIt does not miss." },
         }, {
+          -- 0.17.20: the Ball lands just before the page that names it, so
+          -- that page carries the jingle (a full pocket answers in its place).
           onDone = function()
+            local line = "One KINGPIN BALL.\nIt does not miss."
             if Z.kingpinIssued() then
               if Z.stage() == Z.NONE then
                 Z.setStage(Z.GRUNT_M)
               end
+              GiftLine.pages({ line })
               return
             end
             if not Z.giveKingpinBall() then
@@ -4066,6 +4166,7 @@ return function(mod)
             end
             Z.setKingpinIssued(true)
             Z.setStage(Z.GRUNT_M)
+            GiftLine.say(mod, "KINGPIN_BALL", line)
           end,
         })
         return true
@@ -4200,29 +4301,34 @@ return function(mod)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and data) then return false end
+      local paidNow = false
       if mod.save:get("g2_zapdos_sell_snag_paid", false) ~= true then
+        -- gift_jingle: exempt (the settlement line below goes through GiftLine.line)
         if Bag.add(save, "SNAG_BALL", 20, data) ~= true then
           mod.world:queueScript({ { "text", "No BALL room.\nClear your BAG." } })
           return false
         end
         mod.save:set("g2_zapdos_sell_snag_paid", true)
+        paidNow = true
       end
       if mod.save:get("g2_zapdos_sell_heist_paid", false) ~= true then
+        -- gift_jingle: exempt (the settlement line below goes through GiftLine.line)
         if Bag.add(save, "HEIST_BALL", 10, data) ~= true then
           mod.world:queueScript({ { "text", "No HEIST room.\nClear your BAG." } })
           return false
         end
         mod.save:set("g2_zapdos_sell_heist_paid", true)
+        paidNow = true
       end
       if not Z.removeJobMon() then
         errs("ZAPDOS SELL\nmon missing")
         return false
       end
       Z.setResolved("SELL")
-      mod.world:queueScript({
-        { "text", "One call. No names\nThe bird is gone." },
-        { "text", "Twenty SNAG BALLs.\nTen HEIST BALLs." },
-      })
+      -- One jingle for the whole settlement, on the page that names it.
+      GiftLine.pages({ "One call. No names\nThe bird is gone." }, function()
+        GiftLine.line(paidNow, "SNAG_BALL", "Twenty SNAG BALLs.\nTen HEIST BALLs.")
+      end)
       return true
     end
 
@@ -4242,25 +4348,27 @@ return function(mod)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and data) then return false end
+      local gaveTape = false
       if mod.save:get("g2_zapdos_tape_paid", false) ~= true then
         local held = save.inventory
           and (tonumber(save.inventory.OPEN_WATER_TAPE) or 0) > 0
+        -- gift_jingle: exempt (the tape line below goes through GiftLine.line)
         if not held and Bag.add(save, "OPEN_WATER_TAPE", 1, data) ~= true then
           mod.world:queueScript({ { "text", "No KEY ITEM room.\nClear your BAG." } })
           return false
         end
         mod.save:set("g2_zapdos_tape_paid", true)
+        gaveTape = not held
       end
       if not Z.removeJobMon() then
         errs("ZAP RELEASE\nmon missing")
         return false
       end
       Z.setResolved("RELEASE")
-      mod.world:queueScript({
-        { "text", "The crate opens.\nZAPDOS takes wing." },
-        { "text", "The storm breaks.\nThe sea goes still" },
-        { "text", "SEA SONG TAPE.\nNo station airs it" },
-      })
+      GiftLine.pages({ "The crate opens.\nZAPDOS takes wing.",
+        "The storm breaks.\nThe sea goes still" }, function()
+        GiftLine.line(gaveTape, "OPEN_WATER_TAPE", "SEA SONG TAPE.\nNo station airs it")
+      end)
       return true
     end
 
@@ -4372,8 +4480,9 @@ return function(mod)
           mod.world:queueScript({
             { "text", "BROKER: Good work.\nYour call now." },
             { "text", "Keep it, or bring\nit back to me." },
-            { "text", "Five SNAG BALLs.\nYou earned them." },
           }, {
+            -- 0.17.20: paid just before the page that names the fee, so that
+            -- page carries the jingle (a full pocket answers in its place).
             onDone = function()
               if contractRewarded() then return end
               if not giveSnagBalls(CONTRACT_REWARD_BALLS) then
@@ -4382,6 +4491,7 @@ return function(mod)
                 return
               end
               setContractRewarded(true)
+              GiftLine.say(mod, "SNAG_BALL", "Five SNAG BALLs.\nYou earned them.")
             end,
           })
         else
@@ -4495,38 +4605,32 @@ return function(mod)
 
       if ecruteakStage() == CONTRACT_DONE then
         if not (ecruteakFeePaid() and ecruteakHeistPaid()) then
-          local rows = {
-            { "text", "CONTACT: Nice.\nYou are moving up." },
-          }
-          if not ecruteakFeePaid() then
-            rows[#rows + 1] = { "text", "Five SNAG BALLs\nfor the job." }
+          -- Each half claimed independently, so a bag that fills partway
+          -- through leaves exactly the unpaid half owed. 0.17.20: each half
+          -- is paid just before the page that names it, so that page carries
+          -- the jingle (a full pocket answers in its place).
+          local function heistHalf()
+            if ecruteakHeistPaid() then return end
+            if not giveHeistBalls(1) then
+              mod.world:queueScript({ { "text",
+                "CONTACT: No room\nfor a HEIST BALL." } })
+              return
+            end
+            setEcruteakHeistPaid(true)
+            GiftLine.say(mod, "HEIST_BALL", "One more thing.\nHEIST BALL.", function()
+              GiftLine.pages({ "Better odds.\nSave it for later." })
+            end)
           end
-          if not ecruteakHeistPaid() then
-            rows[#rows + 1] = { "text", "One more thing.\nHEIST BALL." }
-            rows[#rows + 1] = { "text", "Better odds.\nSave it for later." }
-          end
-          mod.world:queueScript(rows, {
-            onDone = function()
-              -- Each half claimed independently, so a bag that fills partway
-              -- through leaves exactly the unpaid half owed.
-              if not ecruteakFeePaid() then
-                if not giveSnagBalls(CONTRACT_REWARD_BALLS) then
-                  mod.world:queueScript({ { "text",
-                    "CONTACT: No room.\nClear your BAG." } })
-                  return
-                end
-                setEcruteakFeePaid(true)
-              end
-              if not ecruteakHeistPaid() then
-                if not giveHeistBalls(1) then
-                  mod.world:queueScript({ { "text",
-                    "CONTACT: No room\nfor a HEIST BALL." } })
-                  return
-                end
-                setEcruteakHeistPaid(true)
-              end
-            end,
-          })
+          GiftLine.pages({ "CONTACT: Nice.\nYou are moving up." }, function()
+            if ecruteakFeePaid() then return heistHalf() end
+            if not giveSnagBalls(CONTRACT_REWARD_BALLS) then
+              mod.world:queueScript({ { "text",
+                "CONTACT: No room.\nClear your BAG." } })
+              return
+            end
+            setEcruteakFeePaid(true)
+            GiftLine.say(mod, "SNAG_BALL", "Five SNAG BALLs\nfor the job.", heistHalf)
+          end)
         else
           runFenceSale(CONTACT_VOICE)
         end
@@ -4643,39 +4747,35 @@ return function(mod)
 
       if olivineStage() == CONTRACT_DONE then
         if not (olivineRewarded() and olivineHeistPaid()) then
-          local rows = {
-            { "text", "FOREMAN: Clean.\nRoute's clear." },
-          }
-          if not olivineRewarded() then
-            rows[#rows + 1] = { "text", "Five SNAG BALLs.\nDock rate." }
+          -- Pay each half independently. An upgraded save whose five-ball
+          -- fee was already claimed receives only the three new HEIST
+          -- BALLs, and a full pocket cannot duplicate either half.
+          -- 0.17.20: each half is paid just before the page that names it,
+          -- so that page carries the jingle (a full pocket answers in its
+          -- place).
+          local function tail()
+            GiftLine.pages({ "Bring future cargo\nback to me." })
           end
-          if not olivineHeistPaid() then
-            rows[#rows + 1] = { "text", "Three HEIST BALLs.\nHazard pay." }
+          local function heistHalf()
+            if olivineHeistPaid() then return tail() end
+            if not giveHeistBalls(3) then
+              mod.world:queueScript({ { "text",
+                "FOREMAN: No room\nfor HEIST BALLs." } })
+              return
+            end
+            setOlivineHeistPaid(true)
+            GiftLine.say(mod, "HEIST_BALL", "Three HEIST BALLs.\nHazard pay.", tail)
           end
-          rows[#rows + 1] = { "text", "Bring future cargo\nback to me." }
-          mod.world:queueScript(rows, {
-            onDone = function()
-              -- Pay each half independently. An upgraded save whose five-ball
-              -- fee was already claimed receives only the three new HEIST
-              -- BALLs, and a full pocket cannot duplicate either half.
-              if not olivineRewarded() then
-                if not giveSnagBalls(CONTRACT_REWARD_BALLS) then
-                  mod.world:queueScript({ { "text",
-                    "FOREMAN: BAG full.\nClear deck space." } })
-                  return
-                end
-                setOlivineRewarded(true)
-              end
-              if not olivineHeistPaid() then
-                if not giveHeistBalls(3) then
-                  mod.world:queueScript({ { "text",
-                    "FOREMAN: No room\nfor HEIST BALLs." } })
-                  return
-                end
-                setOlivineHeistPaid(true)
-              end
-            end,
-          })
+          GiftLine.pages({ "FOREMAN: Clean.\nRoute's clear." }, function()
+            if olivineRewarded() then return heistHalf() end
+            if not giveSnagBalls(CONTRACT_REWARD_BALLS) then
+              mod.world:queueScript({ { "text",
+                "FOREMAN: BAG full.\nClear deck space." } })
+              return
+            end
+            setOlivineRewarded(true)
+            GiftLine.say(mod, "SNAG_BALL", "Five SNAG BALLs.\nDock rate.", heistHalf)
+          end)
         else
           runFenceSale(FOREMAN_VOICE)
         end
@@ -5111,6 +5211,7 @@ return function(mod)
           local result = originals.throwBallAtTrainer(self, itemId)
           local game = mod.game
           if self.save and game and game.data then
+            -- gift_jingle: exempt (refund of the player's own blocked ball, not a gift)
             Bag.add(self.save, itemId, 1, game.data)
           end
           return result
