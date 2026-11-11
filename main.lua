@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.20"
+  local VERSION = "0.17.21"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -3395,6 +3395,180 @@ return function(mod)
         "Bring her MEOWTH.\nShow it to me." })
     end
 
+    ------------------------------------------------------------------
+    -- LARRY'S LENT POKEMON (0.17.21, REQUESTS 806; contract
+    -- `adoption-loan-sale` in exchange/CONTRACTS.md; sheet
+    -- exchange/outbox/quest-cleanup/07b-a-home-for-each-walk-them-home.md
+    -- section 7b. Lines, prices and both names approved by the developer
+    -- 2026-11-10 -- locked: change a line only on his say-so).
+    --
+    -- Johto Quest Pack lends one of LARRY's three into the party and marks
+    -- it mon.onLoanFrom = "larry". The ROUTE 29 sailor, and only he, offers
+    -- CASH for it: when the player steps beside him (once a visit) or talks
+    -- to him. This is the ONE way a lent POKEMON is ever bought --
+    -- isReservedMon above still refuses every onLoanFrom mon at every fence,
+    -- RUI's MEOWTH included. It pays money and no SNAG BALLs, so it opens
+    -- nothing and skips no theft.
+    --
+    -- A sale keeps the invariants runFenceSale protects: the lent POKEMON is
+    -- never the last one (no offer at all then); the slot is re-verified
+    -- after the menus; the money lands BEFORE the POKEMON leaves, and is
+    -- taken back if the release fails; Boxes.releaseFromParty, never a bare
+    -- table.remove (held mail). Each sale appends { key, species, mon, day }
+    -- to a list in mod.save that is written once per sale and never cleared;
+    -- getFenceSales() returns copies. JQP and Shadow Pokemon read it ungated.
+    ------------------------------------------------------------------
+    -- (fields on F, not locals: this function is at Lua's 200-local limit)
+    F.LOAN_LENDER = "larry"
+    F.LOAN_SALES_KEY = "g2_fence_loans"
+    F.MAX_MONEY = 999999 -- engine/src/script/gen2/Vm.lua givemoney
+
+    -- Plain data only, so the record survives the save file and no reader
+    -- can reach the live table.
+    function F.copyValue(v, seen)
+      local t = type(v)
+      if t == "function" or t == "userdata" or t == "thread" then return nil end
+      if t ~= "table" then return v end
+      seen = seen or {}
+      if seen[v] then return seen[v] end
+      local out = {}
+      seen[v] = out
+      for k, x in pairs(v) do
+        local key = F.copyValue(k, seen)
+        if key ~= nil then out[key] = F.copyValue(x, seen) end
+      end
+      return out
+    end
+
+    function F.loanMon()
+      local party = mod.game and mod.game.save and mod.game.save.party
+      for i, mon in ipairs(party or {}) do
+        if type(mon) == "table" and mon.onLoanFrom == F.LOAN_LENDER then
+          -- never the player's last POKEMON: then there is no offer at all
+          if battlers(party, mon) < 1 then return nil end
+          return mon, i
+        end
+      end
+      return nil
+    end
+
+    function F.loanPrice(mon)
+      return mon.species == "SLAKOTH" and 1200 or 800
+    end
+
+    function F.loanSales()
+      local list = mod.save:get(F.LOAN_SALES_KEY, nil)
+      return type(list) == "table" and list or {}
+    end
+
+    -- true, price | false, why. Nothing is paid, removed or recorded on false.
+    function F.loanSell(mon, index)
+      local save = mod.game and mod.game.save
+      local party = save and save.party
+      if not (party and type(save.player) == "table") then return false, "save" end
+      if party[index] ~= mon or mon.onLoanFrom ~= F.LOAN_LENDER then
+        return false, "changed"
+      end
+      if battlers(party, mon) < 1 then return false, "last" end
+      local price = F.loanPrice(mon)
+      local record = {
+        -- JQP writes no key of its own; the contract derives it.
+        key = F.LOAN_LENDER .. ":" .. tostring(mon.species),
+        species = mon.species,
+        mon = F.copyValue(mon),
+        day = math.floor(os.time() / 86400),
+      }
+      local cash = tonumber(save.player.money) or 0
+      save.player.money = math.min(cash + price, F.MAX_MONEY)
+      if Boxes.releaseFromParty(save, index) ~= true then
+        save.player.money = cash
+        errs("LOAN SALE\nslot %d empty", index)
+        return false, "release"
+      end
+      local list = F.loanSales()
+      list[#list + 1] = record
+      mod.save:set(F.LOAN_SALES_KEY, list)
+      return true, price
+    end
+
+    mod.exports.snag_quest.getFenceSales = function()
+      return F.copyValue(F.loanSales())
+    end
+    mod.exports.getFenceSales = mod.exports.snag_quest.getFenceSales
+
+    function F.loanQuote(mon)
+      local game = mod.game
+      I.say({ mon.species == "SLAKOTH" and "1200, the SLAKOTH."
+        or "800 for that one." }, function()
+        if not (game and game.stack) then return end
+        -- NO DEAL first: the cursor starts on the row that changes nothing,
+        -- as the fences' own YES/NO does (defaultNo).
+        game.stack:push(ListMenu.new(game, monName(mon), {
+          { label = "NO DEAL", value = "leave", reply = "No deal." },
+          { action = "SELL", label = "SELL IT", value = "sell", reply = "Sell it." },
+        }, { onChoose = function(item, menu)
+          menu:close()
+          if item.value ~= "sell" then
+            I.say({ "No deal? Fine.\nKeep walking." }); return
+          end
+          local now, index = F.loanMon()
+          if now ~= mon or not F.loanSell(mon, index) then
+            I.say({ "No deal? Fine.\nKeep walking." }); return
+          end
+          I.say({ "Pleasure.\nYou never saw me.",
+            "I never saw it.\nIt never saw us." })
+        end, onCancel = function() end }))
+      end)
+    end
+
+    -- false when there is nothing to offer for; the caller carries on.
+    function F.loanOffer()
+      local mon = F.loanMon()
+      if not mon then return false end
+      local game = mod.game
+      if not (game and game.stack) then return false end
+      F.loanOffered = true
+      I.say({ "That's one of the\nADOPTION ones?",
+        "Special, those.\nNot from here.",
+        "I tried to get in.\nGot thrown out.",
+        "They caught me\npricing the lot.",
+        "Got a home? Sure.\nHomes are free.",
+        "I pay cash. More\nfor the SLAKOTH." }, function()
+        game.stack:push(ListMenu.new(game, monName(mon), {
+          { action = "HOW MUCH", label = "HOW MUCH?", value = "price", reply = "How much?" },
+          { action = "NOT MINE", label = "NOT MINE", value = "leave", reply = "It's not mine to sell." },
+        }, { onChoose = function(item, menu)
+          menu:close()
+          if item.value == "price" then F.loanQuote(mon)
+          else I.say({ "No deal? Fine.\nKeep walking." }) end
+        end, onCancel = function() end }))
+      end)
+      return true
+    end
+
+    -- Walking past: once a visit, on the step that lands beside him.
+    mod.events:on("map.entered", function(ev)
+      if ev and ev.mapId == MAP then F.loanOffered = false end
+    end)
+    mod.events:on("world.stepped", function(ev)
+      if not ev or ev.mapId ~= MAP or F.loanOffered then return end
+      if not (ev.x and ev.y) or not F.loanMon() then return end
+      local ok, err = pcall(function()
+        local world = mod.world:overworld()
+        local sailor = world and objectNamed(world, MAP, SAILOR_NAME)
+        if not sailor then return end
+        local dx, dy = ev.x - sailor.x, ev.y - sailor.y
+        if math.abs(dx) + math.abs(dy) ~= 1 then return end
+        local h = mod.world:npc(MAP, SAILOR_NAME)
+        if h then
+          pcall(h.face, h, dx > 0 and "right" or dx < 0 and "left"
+            or dy > 0 and "down" or "up")
+        end
+        F.loanOffer()
+      end)
+      if not ok then errs("LOAN OFFER\n%s", tostring(err)) end
+    end)
+
     mod.events:on("game.ready", function(p)
       local game = p and p.game
       local kantoBalls = mod.find("kanto_balls")
@@ -3610,6 +3784,10 @@ return function(mod)
       local who = isSailor and SAILOR_NAME or GIRL_NAME
       local h = mod.world:npc(MAP, who)
       if h and cur and cur.facing then pcall(h.face, h, opposite[cur.facing]) end
+
+      -- LARRY's lent POKEMON in the party: that is what he talks about
+      -- (0.17.21, contract adoption-loan-sale). Nothing lent: unchanged.
+      if isSailor and F.loanOffer() then return end
 
       -- Shadow opening: a Rui job, or a fresh one while Shadow Pokemon is
       -- active, is the fence's conversation. Asked here, at talk time. A lass

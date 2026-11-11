@@ -1,3 +1,14 @@
+## 0.17.21 - The sailor wants LARRY's POKEMON (private test)
+
+**New in 0.17.21:** with **Johto Quest Pack**'s A Home for Each, while you
+are walking one of LARRY's adoption POKEMON to its new home, the sailor on
+ROUTE 29 offers to buy it for cash: 800, or 1200 for the SLAKOTH. He asks
+when you step beside him or talk to him. Say no and nothing happens. Sell
+it and it is gone for good, and LARRY will notice. He never asks for your
+last POKEMON, and no other fence will touch a POKEMON that is only lent to
+you. Needs the Johto Quest Pack build that lends the POKEMON; without it
+nothing changes.
+
 ## 0.17.20 - Rewards play the item jingle (private test)
 
 **New in 0.17.20:** when someone hands you SNAG BALLs, HEIST BALLs, the

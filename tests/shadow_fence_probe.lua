@@ -39,6 +39,7 @@ local function setup(opts)
   -- 0.17.20: gift lines go through GiftLine (the real block, fake helper lib)
   st.jingles = {}
   mod.id = "snag_quest"
+  mod.events = { on = function() end } -- 0.17.21: the loan-sale block registers two listeners
   mod.world = { queueScript = function(_, rows, o)
     for _, row in ipairs(rows) do st.said[#st.said + 1] = row[2] end
     if o and o.onDone then o.onDone(true) end
@@ -97,7 +98,8 @@ local function balls(t) return t.save.inventory.SNAG_BALL end
 -- dialogue limits on every page the fence can say
 do
   local t = setup()
-  for line in talk:gmatch('"([^"]-)"') do
+  -- menu replies are wrapped by the menu itself, not by the text box
+  for line in (talk:gsub('reply = "[^"]*"', "")):gmatch('"([^"]-)"') do
     if line:find("\\n", 1, true) or #line > 10 then
       local segs = 0
       for seg in (line .. "\\n"):gmatch("(.-)\\n") do
