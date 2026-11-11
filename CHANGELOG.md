@@ -1,3 +1,9 @@
+## 0.17.19 - A better-looking GRIMER (private test)
+
+**New in 0.17.19:** the GRIMER behind the rope in the fighting pit is now
+drawn in anima-nel's full-colour style, like the other POKEMON in Too Much
+Crystal, instead of the game's own sprite.
+
 ## 0.17.18 - The new credits screen (private test)
 
 **New in 0.17.18:** START, then CREDITS, now shows the redesigned credits

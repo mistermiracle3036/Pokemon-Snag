@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.18"
+  local VERSION = "0.17.19"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -524,6 +524,14 @@ return function(mod)
     -- theirs: PAL_OW_BROWN / 3, trueColor.
     registerZapdosSprite("SPRITE_SNAG_GIOVANNI", "giovanni.png",
       "PAL_OW_BROWN", 3, true)
+    -- 0.17.19 (REQUESTS 388): every Pokemon a mod puts in the world is
+    -- anima-nel art, never Crystal's own overworld (developer, 2026-11-01).
+    -- assets/grimer_anima.png is anima-nel converted/gen1/normal/
+    -- 088_grimer.png unchanged (sha256 e2e02d9e), registered as Chance
+    -- Encounters registers its anima sheets: trueColor, PAL_OW_RED fallback
+    -- (Grimer's vanilla sheet default).
+    registerZapdosSprite("SPRITE_SNAG_GRIMER", "grimer_anima.png",
+      "PAL_OW_RED", 0, true)
 
     -- Private member rows preserve every vanilla trainer and give these three
     -- battles their own displayed names.  Runtime trainer.party substitution
@@ -2159,9 +2167,10 @@ return function(mod)
       local vip = room.anchors.vip
       add("SPRITE_SNAG_GIOVANNI", 0, vip.x, vip.y, vip.facing)
       -- a small Pokemon standing behind the near rope (stage 2 proof item);
-      -- vanilla Grimer is a stand-in, the cart has no Koffing/Meowth walker
+      -- Grimer is a stand-in (the cart had no Koffing/Meowth walker); since
+      -- 0.17.19 it is anima-nel's Grimer, not the cart's (REQUESTS 388)
       local near = room.anchors.nearRope
-      add("SPRITE_GRIMER", 0, near.x, near.y, "down")
+      add("SPRITE_SNAG_GRIMER", 0, near.x, near.y, "down")
       local n = 0
       for _, side in ipairs({ "north", "west", "east", "south" }) do
         for i, slot in ipairs(room.crowdSlots[side] or {}) do
