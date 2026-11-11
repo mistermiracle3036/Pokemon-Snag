@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.21"
+  local VERSION = "0.17.22"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -2934,8 +2934,8 @@ return function(mod)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and save.inventory and data) then return false end
-      -- The two re-issues of a spent tool (F.talk, the sailor's ARMED talk) name
-      -- no item and stay silent pending the developer (REQUESTS 667).
+      -- The two re-issues of a spent tool (F.talk, the sailor's ARMED talk)
+      -- announce it through I.reissued (0.17.22).
       -- gift_jingle: exempt (helper: the caller plays the line through GiftLine.say)
       return Bag.add(save, "SNAG_BALL", 1, data) == true
     end
@@ -3193,6 +3193,19 @@ return function(mod)
       end })
     end
 
+    -- A spent tutorial Ball replaced (0.17.22, REQUESTS 667). No line of his
+    -- names it, so the game says it, vanilla style, with the item jingle.
+    -- CONFIRM: new wording. The developer chose "Add a 'received' line"
+    -- (2026-11-10) and has not yet seen this exact text; it is on
+    -- WHAT_TO_CHECK. Nothing re-issued: straight to `done`, as before.
+    function I.reissued(gave, done)
+      if not gave then return done() end
+      local player = mod.game and mod.game.save and mod.game.save.player
+      local name = player and type(player.name) == "string" and player.name or ""
+      if name == "" or #name > 9 then name = "You" end -- 18 columns
+      GiftLine.say(mod, "SNAG_BALL", name .. " received\nSNAG BALL!", done)
+    end
+
     function I.lead()
       I.say({ "Need more work?\nTry ROUTE 36.",
         "Near SUDOWOODO.\nAsk for the fence.",
@@ -3388,11 +3401,17 @@ return function(mod)
       -- Taken, not done: a spent tool is re-issued exactly as the lass job
       -- does (failed or KO'd attempts), never a second one on top.
       local inv = mod.game and mod.game.save and mod.game.save.inventory
-      if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 and not giveOneSnagBall() then
-        I.say({ "BALL pocket full.\nMake space first." }); return
+      local gave = false
+      if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 then
+        if not giveOneSnagBall() then
+          I.say({ "BALL pocket full.\nMake space first." }); return
+        end
+        gave = true
       end
-      I.say({ "Found her yet?\nShe's to the east.",
-        "Bring her MEOWTH.\nShow it to me." })
+      I.reissued(gave, function()
+        I.say({ "Found her yet?\nShe's to the east.",
+          "Bring her MEOWTH.\nShow it to me." })
+      end)
     end
 
     ------------------------------------------------------------------
@@ -3842,15 +3861,19 @@ return function(mod)
       if not isSailor then return end
       if stage() == STAGE_ARMED then
         local inv = mod.game and mod.game.save and mod.game.save.inventory
+        local gave = false
         if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 then
           if not giveOneSnagBall() then
             I.say({ "BALL pocket full.\nMake space first." }); return
           end
+          gave = true
         end
         spawnGirlForAmbush(world)
-        I.say({ "Your target is\nthe lass's MEOWTH.",
-          "East along here.\nTalk when ready.",
-          "Throw a SNAG BALL.\nThen come back." })
+        I.reissued(gave, function()
+          I.say({ "Your target is\nthe lass's MEOWTH.",
+            "East along here.\nTalk when ready.",
+            "Throw a SNAG BALL.\nThen come back." })
+        end)
         return
       end
       I.say({ "Got time for work?\nNot honest work.",
@@ -5389,6 +5412,9 @@ return function(mod)
           local result = originals.throwBallAtTrainer(self, itemId)
           local game = mod.game
           if self.save and game and game.data then
+            -- Silent by the developer's ruling as relayed by the Orchestrator
+            -- (2026-11-10): the refund is the plan's own call. CONFIRM on
+            -- WHAT_TO_CHECK.
             -- gift_jingle: exempt (refund of the player's own blocked ball, not a gift)
             Bag.add(self.save, itemId, 1, game.data)
           end

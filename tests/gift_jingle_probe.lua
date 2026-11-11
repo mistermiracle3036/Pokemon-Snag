@@ -145,6 +145,40 @@ do
   check("intro full bag: line", full.take(), "T:BALL pocket full.\nMake space first.")
 end
 
+------------------------------------------------------------------ re-issued tutorial Ball (0.17.22)
+do
+  local def = section("    function I.reissued(gave, done)", "    function I.lead()")
+  local function run(name, gave)
+    local w = world(); w.save.player = { name = name }
+    w.run(def .. "\nI.reissued(" .. tostring(gave) .. ", function() I.say({ 'NEXT' }) end)\n")
+    return w.take()
+  end
+  check("re-issue: received line with the jingle", run("GOLD", true), "G:SNAG_BALL:GOLD received\nSNAG BALL! / T:NEXT")
+  check("re-issue: nothing given, no line", run("GOLD", false), "T:NEXT")
+  check("re-issue: no name falls back", run(nil, true), "G:SNAG_BALL:You received\nSNAG BALL! / T:NEXT")
+  check("re-issue: 7-letter name fits 18", #("CRYSTAL received") <= 18, true)
+  -- the sailor's ARMED talk, end to end
+  local body = section("        local gave = false\n        if (tonumber(inv and inv.SNAG_BALL) or 0) < 1 then\n          if not giveOneSnagBall() then\n            I.say",
+    "        return\n      end\n      I.say({ \"Got time for work?")
+  local function talk(balls, full)
+    local w = world(function() return { spawnGirlForAmbush = function() end, world = {} } end)
+    w.save.player = { name = "GOLD" }; w.inv.SNAG_BALL = balls; w.full.ALL = full
+    w.env.inv = w.inv
+    w.run(def .. body)
+    return w
+  end
+  local w = talk(0)
+  check("sailor re-issue: one Ball", w.n("SNAG_BALL"), 1)
+  check("sailor re-issue: pages", w.take(), "G:SNAG_BALL:GOLD received\nSNAG BALL! / T:Your target is\nthe lass's MEOWTH."
+    .. " / T:East along here.\nTalk when ready. / T:Throw a SNAG BALL.\nThen come back.")
+  w = talk(1)
+  check("sailor, Ball in hand: none added", w.n("SNAG_BALL"), 1)
+  check("sailor, Ball in hand: no jingle", w.take():find("G:", 1, true), nil)
+  w = talk(0, true)
+  check("sailor re-issue, full bag: nothing", w.n("SNAG_BALL"), 0)
+  check("sailor re-issue, full bag: line", w.take(), "T:BALL pocket full.\nMake space first.")
+end
+
 ------------------------------------------------------------------ sailor reward
 do
   local body = section("          -- 0.17.20: the Balls land just before the page that names them",

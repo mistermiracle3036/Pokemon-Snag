@@ -1,3 +1,11 @@
+## 0.17.22 - "received SNAG BALL!" (private test)
+
+**New in 0.17.22:** if you use up your first SNAG BALL without catching
+the MEOWTH, the man on ROUTE 29 still hands you another when you talk to
+him, and now the game says so: "(your name) received SNAG BALL!", with the
+item jingle, before he carries on. It used to slip into your BAG without a
+word.
+
 ## 0.17.21 - The sailor wants LARRY's POKEMON (private test)
 
 **New in 0.17.21:** with **Johto Quest Pack**'s A Home for Each, while you

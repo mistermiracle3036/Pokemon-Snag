@@ -72,6 +72,10 @@ local function setup(opts)
         if done then done() end
       end,
       afterMenu = function() st.after = st.after + 1 end,
+      reissued = function(gave, done) -- 0.17.22; the real one is in gift_jingle_probe
+        if gave then st.said[#st.said + 1] = "RECEIVED" end
+        done()
+      end,
       syncCareer = function() end,
     },
     ListMenu = { new = function(_, title, items, o) return { title = title, items = items, o = o,
