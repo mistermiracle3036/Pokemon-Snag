@@ -1,3 +1,12 @@
+## 0.17.23 - No leftover health bar after a snag (private test)
+
+**New in 0.17.23:** after you snag a trainer's POKEMON and the trainer is
+about to send out the next one ("Will you change POKEMON?"), the top of the
+screen no longer shows a name and health bar with the trainer's row of BALLs
+drawn over them. Now it shows only the row of BALLs, as it does after an
+ordinary knock-out, and the next POKEMON's name and bar appear when it
+comes out.
+
 ## 0.17.22 - "received SNAG BALL!" (private test)
 
 **New in 0.17.22:** if you use up your first SNAG BALL without catching

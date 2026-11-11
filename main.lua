@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.22"
+  local VERSION = "0.17.23"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -5383,6 +5383,14 @@ return function(mod)
             and self.battle and self.battle._snagReplacing then
           table.remove(self.queue, 1)
           self.battle._snagReplacing = nil
+          -- 0.17.23 (REQUESTS 813): this swallowed faint is where the engine
+          -- would have blanked the enemy HUD -- the end of its faint slide,
+          -- `self.showEnemyHud = false` (src/ui/gen2/BattleState.lua, the
+          -- faintSlide arm, v0.4.0). Skipping the slide left the snagged
+          -- POKEMON's name, level and HP bar up, and the switch prompt then
+          -- drew the trainer's ball row on top of them. The next send-out
+          -- turns the HUD back on (finishSendOut), as after any faint.
+          self.showEnemyHud = false
           return self:advanceQueue()
         end
         return originals.advanceQueue(self)
