@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.24"
+  local VERSION = "0.17.25"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -3459,12 +3459,45 @@ return function(mod)
       return out
     end
 
+    -- 0.17.25 (REQUESTS 857; developer decisions 2026-11-12 as recorded in
+    -- exchange/inbox/architecture-review/ARCHITECTURE_DECISIONS_JQP_LOANS_
+    -- HANDOVERS.md): a POKEMON that is given away hands its held item back
+    -- first, and it may not go if that leaves no HEALTHY POKEMON. 0.17.21
+    -- counted a fainted one as "another battler" and let a held item or a
+    -- letter vanish with the sale (Boxes.releaseFromParty drops the mon and
+    -- its mail slot and returns nothing to the bag).
+    function F.healthyBesides(party, mon)
+      for _, other in ipairs(party or {}) do
+        if other ~= mon and type(other) == "table" and other.isEgg ~= true
+            and (tonumber(other.hp) or 0) > 0 then
+          return true
+        end
+      end
+      return false
+    end
+
+    -- A letter has text the bag cannot hold, so a POKEMON carrying MAIL is
+    -- never bought: the player takes the MAIL off it first, as at the PC.
+    function F.holdsMail(mon)
+      local item = type(mon) == "table" and mon.item or nil
+      if item == nil then return false end
+      local ok, Mail = pcall(require, "src.core.gen2.Mail")
+      if ok and type(Mail) == "table" and type(Mail.monHoldsMail) == "function" then
+        return Mail.monHoldsMail(mon) == true
+      end
+      -- every Gen 2 mail item id ends in MAIL (FLOWER_MAIL ... MIRAGE_MAIL)
+      return type(item) == "string" and item:find("MAIL", 1, true) ~= nil
+    end
+
     function F.loanMon()
       local party = mod.game and mod.game.save and mod.game.save.party
       for i, mon in ipairs(party or {}) do
         if type(mon) == "table" and mon.onLoanFrom == F.LOAN_LENDER then
-          -- never the player's last POKEMON: then there is no offer at all
-          if battlers(party, mon) < 1 then return nil end
+          -- never the player's last healthy POKEMON, never one carrying a
+          -- letter: then there is no offer at all
+          if not F.healthyBesides(party, mon) or F.holdsMail(mon) then
+            return nil
+          end
           return mon, i
         end
       end
@@ -3488,8 +3521,21 @@ return function(mod)
       if party[index] ~= mon or mon.onLoanFrom ~= F.LOAN_LENDER then
         return false, "changed"
       end
-      if battlers(party, mon) < 1 then return false, "last" end
+      if not F.healthyBesides(party, mon) then return false, "last" end
+      if F.holdsMail(mon) then return false, "mail" end
+      -- The held item goes back to the BAG before anything else. A full
+      -- BAG stops the sale with nothing paid, removed or recorded.
+      local data = mod.game and mod.game.data
+      local held = mon.item
+      if held ~= nil then
+        -- gift_jingle: exempt (hand-back of the sold POKEMON's own held item, not a gift)
+        if Bag.add(save, held, 1, data) ~= true then return false, "bag" end
+        mon.item = nil
+      end
       local price = F.loanPrice(mon)
+      -- The copy is taken AFTER the item came off: the item is the
+      -- player's again, so a reader that hands this POKEMON back (Shadow
+      -- Pokemon, REQUESTS 791) cannot duplicate it.
       local record = {
         -- JQP writes no key of its own; the contract derives it.
         key = F.LOAN_LENDER .. ":" .. tostring(mon.species),
@@ -3501,6 +3547,10 @@ return function(mod)
       save.player.money = math.min(cash + price, F.MAX_MONEY)
       if Boxes.releaseFromParty(save, index) ~= true then
         save.player.money = cash
+        if held ~= nil then
+          Bag.remove(save, held, 1, data)
+          mon.item = held
+        end
         errs("LOAN SALE\nslot %d empty", index)
         return false, "release"
       end
@@ -3600,8 +3650,8 @@ return function(mod)
     -- loads that table through dataTable("gen2Text"), v0.4.0). The key
     -- differs per game (Crystal "1e:60f0"), so the entry is found by its
     -- own opening words and two pages are added after his first. Nothing
-    -- vanilla is removed. Idempotent; no save state. CONFIRM: the wording
-    -- is this session's and is on WHAT_TO_CHECK.
+    -- vanilla is removed. Idempotent; no save state. Wording approved by
+    -- the developer 2026-11-12 ("Keep it", WHAT_TO_CHECK 2210): locked.
     ------------------------------------------------------------------
     F.OFFICER_ADD = "Thefts are way up\nall over JOHTO.\f"
       .. "It started with\nthose SNAG BALLs.\f"

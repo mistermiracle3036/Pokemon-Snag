@@ -1,3 +1,12 @@
+## 0.17.25 - Selling LARRY's POKEMON keeps your item (private test)
+
+**New in 0.17.25:** if the POKEMON you sell to the sailor on ROUTE 29 is
+holding an item, the item goes back into your BAG first. Before, it was
+lost with the POKEMON. If your BAG has no room, the sale does not happen
+and nothing is taken. He will not make an offer for a POKEMON carrying
+MAIL (take the MAIL off it first), or when every other POKEMON you have
+has fainted.
+
 ## 0.17.24 - The officer has heard of SNAG BALLs (private test)
 
 **New in 0.17.24:** the police officer in PROF.ELM's lab, after the

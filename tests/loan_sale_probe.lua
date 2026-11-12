@@ -47,7 +47,8 @@ local function setup(opts)
     nickname = opts.nickname, dvs = { atk = 7, def = 3 }, moves = { "SCRATCH", "YAWN" },
     jqpLentFor = "bianca", junk = function() end }
   t.larry = larry
-  local party = opts.party or { { species = "CYNDAQUIL" }, larry, { species = "PIDGEY" } }
+  larry.item = opts.item
+  local party = opts.party or { { species = "CYNDAQUIL", hp = 20 }, larry, { species = "PIDGEY", hp = 9 } }
   local save = { party = party, player = { money = opts.money or 3000 }, inventory = {} }
   t.save = save
   local mod = {
@@ -73,6 +74,17 @@ local function setup(opts)
         if mon ~= excluding and type(mon) == "table" and mon.isEgg ~= true then n = n + 1 end
       end
       return n
+    end,
+    Bag = {
+      add = function(s, id, qty)
+        if t.bagFull then return false end
+        s.inventory[id] = (s.inventory[id] or 0) + qty; return true
+      end,
+      remove = function(s, id, qty) s.inventory[id] = (s.inventory[id] or 0) - qty end,
+    },
+    require = function(name)
+      assert(name == "src.core.gen2.Mail", name)
+      return { monHoldsMail = function(mon) return mon.item == "FLOWER_MAIL" end }
     end,
     Boxes = { releaseFromParty = function(s, index)
       if not t.releaseOk or not s.party[index] then return false end
@@ -201,7 +213,7 @@ do -- guards
   check("last POKEMON: sell refused", select(2, t.F.loanSell(t.larry, 1)), "last")
   local egg = setup(); egg.save.party = { egg.larry, { species = "TOGEPI", isEgg = true } }
   check("only an EGG besides it: no offer", egg.F.loanOffer(), false)
-  local rui = setup(); rui.save.party = { { species = "CYNDAQUIL" }, { species = "MEOWTH", onLoanFrom = "rui" } }
+  local rui = setup(); rui.save.party = { { species = "CYNDAQUIL", hp = 20 }, { species = "MEOWTH", onLoanFrom = "rui" } }
   check("RUI's lent MEOWTH: no offer", rui.F.loanOffer(), false)
   check("RUI's lent MEOWTH: sell refused", select(2, rui.F.loanSell(rui.save.party[2], 2)), "changed")
   check("RUI's lent MEOWTH: untouched", #rui.save.party .. ":" .. rui.save.player.money, "2:3000")
@@ -224,6 +236,37 @@ do -- guards
   rich.F.loanOffer(); rich.choose("price"); rich.choose("sell")
   check("money caps at 999999", rich.save.player.money, 999999)
   check("capped sale still completes", #rich.save.party, 2)
+end
+
+do -- REQUESTS 857: held item, letter, full bag, no healthy POKEMON left
+  local function sell(t) t.F.loanOffer(); t.choose("price"); t.take(); t.choose("sell") end
+  local t = setup({ item = "BERRY" }); sell(t)
+  check("held item: back in the BAG", t.save.inventory.BERRY, 1)
+  check("held item: sale completes", #t.save.party .. ":" .. t.save.player.money, "2:4200")
+  check("held item: the record's copy no longer holds it", t.sales()[1].mon.item, nil)
+  check("held item: one record", #t.sales(), 1)
+  local full = setup({ item = "BERRY" }); full.bagFull = true; sell(full)
+  check("full BAG: nothing paid", full.save.player.money, 3000)
+  check("full BAG: POKEMON kept", #full.save.party, 3)
+  check("full BAG: it still holds the item", full.larry.item, "BERRY")
+  check("full BAG: no record", #full.sales(), 0)
+  check("full BAG: line", full.take(), "No deal? Fine.\nKeep walking.")
+  full.bagFull = false; sell(full)
+  check("full BAG, then room: sells once", #full.save.party .. ":" .. full.save.player.money .. ":" .. full.save.inventory.BERRY, "2:4200:1")
+  local mail = setup({ item = "FLOWER_MAIL" })
+  check("letter: no offer", mail.F.loanOffer(), false)
+  check("letter: sell refused", select(2, mail.F.loanSell(mail.larry, 2)), "mail")
+  check("letter: nothing changed", #mail.save.party .. ":" .. mail.save.player.money .. ":" .. tostring(mail.larry.item), "3:3000:FLOWER_MAIL")
+  check("letter: no record", #mail.sales(), 0)
+  local fail = setup({ item = "BERRY" }); fail.releaseOk = false; sell(fail)
+  check("release fails: item back on the POKEMON", fail.larry.item, "BERRY")
+  check("release fails: not left in the BAG", fail.save.inventory.BERRY, 0)
+  check("release fails: money taken back", fail.save.player.money, 3000)
+  local faint = setup(); faint.save.party = { { species = "CYNDAQUIL", hp = 0 }, faint.larry }
+  check("only a fainted POKEMON besides it: no offer", faint.F.loanOffer(), false)
+  check("only a fainted POKEMON besides it: sell refused", select(2, faint.F.loanSell(faint.larry, 2)), "last")
+  local none = setup(); sell(none)
+  check("no item: BAG untouched", next(none.save.inventory), nil)
 end
 
 do -- walking past: beside him, once a visit
