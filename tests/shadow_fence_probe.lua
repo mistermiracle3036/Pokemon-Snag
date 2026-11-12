@@ -9,7 +9,7 @@ local function section(first, last)
   return src:sub(a, b - 1)
 end
 local core = section("    local RUI_STORY =", "    -- \"Sellable\" must mean")
-local talk = section("    function F.accept()", "    mod.events:on(\"game.ready\"")
+local talk = section("    function F.accept()", "    -- THE OFFICER IN ELM'S LAB")
 local body = core .. talk .. "\nreturn F, isReservedMon\n"
 
 local fails = 0

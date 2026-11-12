@@ -1,3 +1,9 @@
+## 0.17.24 - The officer has heard of SNAG BALLs (private test)
+
+**New in 0.17.24:** the police officer in PROF.ELM's lab, after the
+break-in, now adds that thefts are up all over JOHTO and that it started
+with the SNAG BALLs. The rest of what he says is unchanged.
+
 ## 0.17.23 - No leftover health bar after a snag (private test)
 
 **New in 0.17.23:** after you snag a trainer's POKEMON and the trainer is

@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.23"
+  local VERSION = "0.17.24"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -3588,8 +3588,49 @@ return function(mod)
       if not ok then errs("LOAN OFFER\n%s", tostring(err)) end
     end)
 
+    ------------------------------------------------------------------
+    -- THE OFFICER IN ELM'S LAB (0.17.24; developer, 2026-11-12: "If player
+    -- has snag on lets change the dialog of the police in the lab ...
+    -- 'There have been a lot of Pokemon theft since those Snag Balls
+    -- showed up!' (can change wording I dont love that)").
+    --
+    -- His speech is one vanilla text ("I heard a POKeMON was stolen
+    -- here..."), which the script VM reads from data.gen2Text by key
+    -- (src/script/gen2/Vm.lua Vm:showText -> self.text[textKey]; World
+    -- loads that table through dataTable("gen2Text"), v0.4.0). The key
+    -- differs per game (Crystal "1e:60f0"), so the entry is found by its
+    -- own opening words and two pages are added after his first. Nothing
+    -- vanilla is removed. Idempotent; no save state. CONFIRM: the wording
+    -- is this session's and is on WHAT_TO_CHECK.
+    ------------------------------------------------------------------
+    F.OFFICER_ADD = "Thefts are way up\nall over JOHTO.\f"
+      .. "It started with\nthose SNAG BALLs.\f"
+    function F.officerLine(text)
+      if type(text) ~= "table" then return false end
+      for key, body in pairs(text) do
+        if type(body) == "string" and body:find("^I heard a POK")
+            and body:find("was stolen here", 1, true) then
+          if body:find("SNAG BALLs", 1, true) then return true end
+          local cut = body:find("\f", 1, true)
+          if not cut then return false end
+          text[key] = body:sub(1, cut) .. F.OFFICER_ADD .. body:sub(cut + 1)
+          return true
+        end
+      end
+      return false
+    end
+    -- game.ready, and again on entering the lab in case the text table was
+    -- not loaded yet at game.ready.
+    mod.events:on("map.entered", function(ev)
+      if not ev or ev.mapId ~= "ELMS_LAB" then return end
+      local world = mod.world:overworld()
+      local data = mod.game and mod.game.data
+      pcall(F.officerLine, (world and world.text) or (data and data.gen2Text))
+    end)
+
     mod.events:on("game.ready", function(p)
       local game = p and p.game
+      pcall(F.officerLine, game and game.data and game.data.gen2Text)
       local kantoBalls = mod.find("kanto_balls")
       local api = kantoBalls and kantoBalls.exports
       if api and type(api.requestBallSlots) == "function" then

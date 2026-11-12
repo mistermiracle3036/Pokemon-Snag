@@ -12,7 +12,7 @@ local function section(first, last)
 end
 local body = "local F = {}\n"
   .. section("    -- (fields on F, not locals: this function is at Lua's 200-local limit)",
-    "    mod.events:on(\"game.ready\", function(p)")
+    "    -- THE OFFICER IN ELM'S LAB")
   .. "\nreturn F\n"
 local reserved = "local F, Z, R = ...\n" .. section("    local function isReservedMon(mon)",
   "    -- \"Sellable\" must mean") .. "\nreturn isReservedMon\n"
