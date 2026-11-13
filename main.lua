@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.25"
+  local VERSION = "0.17.26"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -293,6 +293,61 @@ return function(mod)
 
     local MAP = "ROUTE_29"
     local I = {} -- intro/menu and optional career helpers; legacy save keys stay.
+
+    ------------------------------------------------------------------
+    -- HELD PROPERTY (0.17.25 for the loan sale, REQUESTS 857; every other
+    -- removal in 0.17.26, REQUESTS 862). Developer decisions 2026-11-12
+    -- (exchange/inbox/architecture-review/ARCHITECTURE_DECISIONS_JQP_LOANS_
+    -- HANDOVERS.md): a POKEMON that is given away hands its held item back
+    -- first, and it may not go if that leaves no HEALTHY POKEMON.
+    -- Boxes.releaseFromParty / Boxes.release drop the POKEMON (and its mail
+    -- slot) and return nothing to the bag, so every path that takes a
+    -- POKEMON from the player goes through these four first. They live on
+    -- I because it is declared before R, Z and F.
+    ------------------------------------------------------------------
+    function I.healthyBesides(party, mon)
+      for _, other in ipairs(party or {}) do
+        if other ~= mon and type(other) == "table" and other.isEgg ~= true
+            and (tonumber(other.hp) or 0) > 0 then
+          return true
+        end
+      end
+      return false
+    end
+
+    -- A letter has text the bag cannot hold, so a POKEMON carrying MAIL is
+    -- never taken: the player takes the MAIL off it first, as at the PC.
+    function I.holdsMail(mon)
+      local item = type(mon) == "table" and mon.item or nil
+      if item == nil then return false end
+      local ok, Mail = pcall(require, "src.core.gen2.Mail")
+      if ok and type(Mail) == "table" and type(Mail.monHoldsMail) == "function" then
+        return Mail.monHoldsMail(mon) == true
+      end
+      -- every Gen 2 mail item id ends in MAIL (FLOWER_MAIL ... MIRAGE_MAIL)
+      return type(item) == "string" and item:find("MAIL", 1, true) ~= nil
+    end
+
+    -- true, itemId|nil -- the item (if any) is now in the BAG and off the
+    -- POKEMON. false, "mail" | "bag" -- nothing changed.
+    function I.takeHeld(save, mon)
+      if I.holdsMail(mon) then return false, "mail" end
+      local held = type(mon) == "table" and mon.item or nil
+      if held == nil then return true, nil end
+      -- gift_jingle: exempt (hand-back of the departing POKEMON's own held item, not a gift)
+      if Bag.add(save, held, 1, mod.game and mod.game.data) ~= true then
+        return false, "bag"
+      end
+      mon.item = nil
+      return true, held
+    end
+
+    -- Undo I.takeHeld when the removal after it did not happen.
+    function I.putHeldBack(save, mon, held)
+      if held == nil then return end
+      Bag.remove(save, held, 1, mod.game and mod.game.data)
+      mon.item = held
+    end
     local FENCE_MAP = "ROUTE_36"
     local FENCE_NAME = "SNAG_VIOLET_FENCE"
     -- Sudowoodo itself is at (35,9) in vanilla Gold.  First-pass fence
@@ -1856,9 +1911,12 @@ return function(mod)
     function R.canRemoveJobMon()
       local mon, where = R.findJobMon()
       if not mon then return false, "missing" end
+      -- 0.17.26 (REQUESTS 862): never one carrying a letter, and the party
+      -- must keep a HEALTHY POKEMON (a fainted one used to count).
+      if I.holdsMail(mon) then return false, "mail" end
       if where == "box" then return true end
       local party = mod.game and mod.game.save and mod.game.save.party
-      return battlers(party, mon) > 0, "last"
+      return I.healthyBesides(party, mon), "last"
     end
 
     function R.removeJobMon()
@@ -1883,12 +1941,25 @@ return function(mod)
         local canRemove, reason = R.canRemoveJobMon()
         if not canRemove then return false, reason end
       end
+      -- 0.17.26 (REQUESTS 862): a POKEMON that is handed over gives its
+      -- held item back first; a full BAG settles nothing.
+      local save = mod.game and mod.game.save
+      local held
+      if c.termsKey ~= "KEEP" then
+        local took, what = I.takeHeld(save, mon)
+        if not took then return false, what end
+        held = what
+      end
       if c.terms.payout > 0 and not giveSnagBalls(c.terms.payout) then
+        I.putHeldBack(save, mon, held)
         return false, "bag"
       end
       if c.termsKey ~= "KEEP" then
         local removed, reason = R.removeJobMon()
-        if not removed then return false, reason or "remove" end
+        if not removed then
+          I.putHeldBack(save, mon, held)
+          return false, reason or "remove"
+        end
       end
       mod.save:set("g2_repeat_completed", R.completed() + 1)
       R.clear()
@@ -2004,16 +2075,12 @@ return function(mod)
     function Z.canRemoveJobMon()
       local mon, where = Z.findJobMon()
       if not mon then return false, "missing" end
+      -- 0.17.26 (REQUESTS 862): never one carrying a letter, and the party
+      -- must keep a HEALTHY POKEMON (a fainted one used to count).
+      if I.holdsMail(mon) then return false, "mail" end
       if where == "box" then return true end
       local party = mod.game and mod.game.save and mod.game.save.party
-      local others = 0
-      for _, candidate in ipairs(party or {}) do
-        if candidate ~= mon and type(candidate) == "table"
-            and candidate.isEgg ~= true then
-          others = others + 1
-        end
-      end
-      if others < 1 then return false, "last" end
+      if not I.healthyBesides(party, mon) then return false, "last" end
       return true
     end
 
@@ -3465,29 +3532,10 @@ return function(mod)
     -- first, and it may not go if that leaves no HEALTHY POKEMON. 0.17.21
     -- counted a fainted one as "another battler" and let a held item or a
     -- letter vanish with the sale (Boxes.releaseFromParty drops the mon and
-    -- its mail slot and returns nothing to the bag).
-    function F.healthyBesides(party, mon)
-      for _, other in ipairs(party or {}) do
-        if other ~= mon and type(other) == "table" and other.isEgg ~= true
-            and (tonumber(other.hp) or 0) > 0 then
-          return true
-        end
-      end
-      return false
-    end
-
-    -- A letter has text the bag cannot hold, so a POKEMON carrying MAIL is
-    -- never bought: the player takes the MAIL off it first, as at the PC.
-    function F.holdsMail(mon)
-      local item = type(mon) == "table" and mon.item or nil
-      if item == nil then return false end
-      local ok, Mail = pcall(require, "src.core.gen2.Mail")
-      if ok and type(Mail) == "table" and type(Mail.monHoldsMail) == "function" then
-        return Mail.monHoldsMail(mon) == true
-      end
-      -- every Gen 2 mail item id ends in MAIL (FLOWER_MAIL ... MIRAGE_MAIL)
-      return type(item) == "string" and item:find("MAIL", 1, true) ~= nil
-    end
+    -- its mail slot and returns nothing to the bag). The checks themselves
+    -- are the shared ones on I (HELD PROPERTY, near the top) since 0.17.26.
+    F.healthyBesides = I.healthyBesides
+    F.holdsMail = I.holdsMail
 
     function F.loanMon()
       local party = mod.game and mod.game.save and mod.game.save.party
@@ -3522,16 +3570,11 @@ return function(mod)
         return false, "changed"
       end
       if not F.healthyBesides(party, mon) then return false, "last" end
-      if F.holdsMail(mon) then return false, "mail" end
       -- The held item goes back to the BAG before anything else. A full
-      -- BAG stops the sale with nothing paid, removed or recorded.
-      local data = mod.game and mod.game.data
-      local held = mon.item
-      if held ~= nil then
-        -- gift_jingle: exempt (hand-back of the sold POKEMON's own held item, not a gift)
-        if Bag.add(save, held, 1, data) ~= true then return false, "bag" end
-        mon.item = nil
-      end
+      -- BAG or a letter stops the sale with nothing paid, removed or
+      -- recorded.
+      local took, held = I.takeHeld(save, mon)
+      if not took then return false, held end
       local price = F.loanPrice(mon)
       -- The copy is taken AFTER the item came off: the item is the
       -- player's again, so a reader that hands this POKEMON back (Shadow
@@ -3547,10 +3590,7 @@ return function(mod)
       save.player.money = math.min(cash + price, F.MAX_MONEY)
       if Boxes.releaseFromParty(save, index) ~= true then
         save.player.money = cash
-        if held ~= nil then
-          Bag.remove(save, held, 1, data)
-          mon.item = held
-        end
+        I.putHeldBack(save, mon, held)
         errs("LOAN SALE\nslot %d empty", index)
         return false, "release"
       end
@@ -4042,6 +4082,17 @@ return function(mod)
               mod.world:queueScript({ { "text", voice.reserved } })
               return
             end
+            -- 0.17.26 (REQUESTS 862): a letter stays with its owner, and
+            -- the sale may not leave the party without a healthy POKEMON
+            -- (a fainted one used to count as "another").
+            if I.holdsMail(picked) then
+              mod.world:queueScript({ { "text", voice.mail } })
+              return
+            end
+            if not I.healthyBesides(save.party, picked) then
+              mod.world:queueScript({ { "text", voice.lastMon } })
+              return
+            end
             ensureBountyFlag(picked)
             local detail = snagPayoutBreakdown(picked)
             local n = detail.total
@@ -4076,15 +4127,25 @@ return function(mod)
                     return
                   end
                   local party = g.save and g.save.party
-                  if not party or battlers(party, picked) < 1
+                  if not party or not I.healthyBesides(party, picked)
                       or party[index] ~= picked then
                     mod.world:queueScript({ { "text", voice.changed } })
+                    return
+                  end
+                  -- 0.17.26 (REQUESTS 862): its held item goes back to the
+                  -- BAG before anything is paid. No room, or a letter: no
+                  -- sale, nothing paid, nothing taken.
+                  local took, held = I.takeHeld(g.save, picked)
+                  if not took then
+                    mod.world:queueScript({ { "text",
+                      held == "mail" and voice.mail or voice.noRoom } })
                     return
                   end
                   -- Pay first. If the BALL pocket cannot take the reward,
                   -- the Pokemon never leaves the party.
                   -- gift_jingle: exempt (voice.done below goes through GiftLine.named)
                   if Bag.add(g.save, "SNAG_BALL", n, g.data) ~= true then
+                    I.putHeldBack(g.save, picked, held)
                     mod.world:queueScript({ { "text", voice.noRoom } })
                     return
                   end
@@ -4134,6 +4195,8 @@ return function(mod)
       declined = "FENCE: Your call.\nI'll be around.",
       changed = "FENCE: Something\nchanged. No deal.",
       noRoom = "FENCE: No room for\nmy payment.\fClear some space.",
+      -- mail: approved 2026-11-13 (REQUESTS 862, Desk card pick A), all four voices: locked
+      mail = "FENCE: It's got\nMAIL on it.\fTake the MAIL off.\nThen we talk.",
       done = "FENCE: Done.\f%d SNAG BALL%s.\nForget we met.",
       valveFull = "FENCE: Your BAG's\nfull. Clear space.",
       valveGive = "FENCE: No BALLs,\nno goods.\f"
@@ -4159,6 +4222,7 @@ return function(mod)
       declined = "BROKER: Held back.\nWe'll revisit.",
       changed = "BROKER: Inventory\nchanged. Again.",
       noRoom = "BROKER: BAG full.\nMake room first.",
+      mail = "BROKER: It carries\nMAIL. Remove it.",
       done = "BROKER: Transfer\napproved.\f%d SNAG BALL%s.\nGood work.",
       valveFull = "BROKER: BAG full.\nMake room first.",
       valveGive = "BROKER: No stock,\nno BALLs.\f"
@@ -4178,6 +4242,7 @@ return function(mod)
       declined = "CONTACT: Refused.\nFor now.",
       changed = "CONTACT: Changed.\nStart again.",
       noRoom = "CONTACT: BAG full.\nClear it.",
+      mail = "CONTACT: MAIL?\nTake it off first.",
       done = "CONTACT: Accepted.\f%d SNAG BALL%s.\nYou saw nothing.",
       valveFull = "CONTACT: BAG full.\nClear it.",
       valveGive = "CONTACT: Empty?\nPathetic.\f"
@@ -4197,6 +4262,7 @@ return function(mod)
       declined = "FOREMAN: Hold it.\nDock stays open.",
       changed = "FOREMAN: Manifest\nchanged. No deal.",
       noRoom = "FOREMAN: BAG full.\nClear deck space.",
+      mail = "FOREMAN: No MAIL\non my cargo.",
       done = "FOREMAN: Shipped.\f%d SNAG BALL%s.\nJob closed.",
       valveFull = "FOREMAN: BAG full.\nClear deck space.",
       valveGive = "FOREMAN: No BALLs?\nNothing to ship.\f"
@@ -4306,6 +4372,10 @@ return function(mod)
             elseif why == "bag" then
               mod.world:queueScript({ { "text",
                 "BROKER: BAG full.\nMake room first." } })
+            elseif why == "mail" then
+              -- approved 2026-11-13 (REQUESTS 862, Desk card pick A): locked
+              mod.world:queueScript({ { "text",
+                "BROKER: It carries\nMAIL. Remove it." } })
             else
               mod.world:queueScript({ { "text",
                 "BROKER: Target\nnot in storage." } })
@@ -4577,6 +4647,19 @@ return function(mod)
       return true
     end
 
+    -- 0.17.26 (REQUESTS 862). Both lines approved 2026-11-13 (Desk card
+    -- pick A): locked. The bird's held item goes back to the BAG just
+    -- before it leaves; the two payments above it keep their own paid
+    -- flags, so a full BAG here is retried without paying twice.
+    Z.MAIL_LINE = "It carries MAIL.\nTake it off first."
+    function Z.takeHeld(save, mon)
+      local took, what = I.takeHeld(save, mon)
+      if took then return true, what end
+      mod.world:queueScript({ { "text", what == "mail" and Z.MAIL_LINE
+        or "No room in BAG.\nClear some space." } })
+      return false
+    end
+
     function Z.finishSell()
       local mon = Z.findJobMon()
       if not mon then
@@ -4587,6 +4670,8 @@ return function(mod)
       if not removable then
         if reason == "last" then
           mod.world:queueScript({ { "text", "Keep one partner.\nThen decide." } })
+        elseif reason == "mail" then
+          mod.world:queueScript({ { "text", Z.MAIL_LINE } })
         end
         return false
       end
@@ -4612,7 +4697,10 @@ return function(mod)
         mod.save:set("g2_zapdos_sell_heist_paid", true)
         paidNow = true
       end
+      local took, held = Z.takeHeld(save, mon)
+      if not took then return false end
       if not Z.removeJobMon() then
+        I.putHeldBack(save, mon, held)
         errs("ZAPDOS SELL\nmon missing")
         return false
       end
@@ -4634,6 +4722,8 @@ return function(mod)
       if not removable then
         if reason == "last" then
           mod.world:queueScript({ { "text", "Keep one partner.\nThen decide." } })
+        elseif reason == "mail" then
+          mod.world:queueScript({ { "text", Z.MAIL_LINE } })
         end
         return false
       end
@@ -4652,7 +4742,10 @@ return function(mod)
         mod.save:set("g2_zapdos_tape_paid", true)
         gaveTape = not held
       end
+      local took, held = Z.takeHeld(save, mon)
+      if not took then return false end
       if not Z.removeJobMon() then
+        I.putHeldBack(save, mon, held)
         errs("ZAP RELEASE\nmon missing")
         return false
       end

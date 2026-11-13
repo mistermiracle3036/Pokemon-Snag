@@ -1,3 +1,13 @@
+## 0.17.26 - Fences give your held item back (private test)
+
+**New in 0.17.26:** whenever a fence, the BROKER or the FOREMAN takes a
+POKEMON from you (an ordinary sale, a repeat job, or the ZAPDOS ending),
+the item it was holding now goes back into your BAG first. Before, the
+item was lost with the POKEMON. If your BAG has no room, nothing is paid
+and the POKEMON stays. A POKEMON carrying MAIL is turned away until you
+take the MAIL off it, and nobody will take a POKEMON when every other one
+you have has fainted.
+
 ## 0.17.25 - Selling LARRY's POKEMON keeps your item (private test)
 
 **New in 0.17.25:** if the POKEMON you sell to the sailor on ROUTE 29 is

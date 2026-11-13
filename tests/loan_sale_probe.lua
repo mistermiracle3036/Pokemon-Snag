@@ -10,7 +10,7 @@ local function section(first, last)
   local b = assert(src:find(last, a + #first, true), "end not found: " .. last)
   return src:sub(a, b - 1)
 end
-local body = "local F = {}\n"
+local body = dofile("tests/held_fixture.lua")(src) .. "local F = {}\n"
   .. section("    -- (fields on F, not locals: this function is at Lua's 200-local limit)",
     "    -- THE OFFICER IN ELM'S LAB")
   .. "\nreturn F\n"

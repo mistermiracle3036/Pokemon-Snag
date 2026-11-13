@@ -47,7 +47,7 @@ local function world(extra)
     if w.full.ALL or w.full[item] then return false end
     w.inv[item] = (w.inv[item] or 0) + n
     return true
-  end }
+  end, remove = function(_, item, n) w.inv[item] = (w.inv[item] or 0) - n end }
   local GiftLine = dofile("tests/giftline_fixture.lua")(src, mod, function(item, line)
     log("G:" .. item .. ":" .. line)
   end)
@@ -71,7 +71,13 @@ local function world(extra)
     afterMenu = function() log("MENU") end,
   }
   for k, v in pairs(extra and extra(w, env, flag) or {}) do env[k] = v end
+  env.require = function(name)
+    assert(name == "src.core.gen2.Mail", name)
+    return { monHoldsMail = function(mon) return mon.item == "FLOWER_MAIL" end }
+  end
   setmetatable(env, { __index = _G })
+  -- 0.17.26: the real held-property helpers (I.takeHeld and friends)
+  local held = assert(loadstring(dofile("tests/held_fixture.lua")(src), "=held")); setfenv(held, env); held()
   w.env, w.save, w.mod = env, save, mod
   function w.run(body)
     local chunk = assert(loadstring(body, "=snippet")); setfenv(chunk, env)
@@ -217,7 +223,7 @@ do
   local function sale(w)
     local sell, voice = w.run(body)
     local mon = { snagged = true }
-    w.save.party = { { species = "A" }, mon }
+    w.save.party = { { species = "A", hp = 10 }, mon }
     w.overworld = { selectPartyMon = function(_, _, cb) cb(2, mon) end }
     w.mod.game.stack = { push = function(_, box) box.cb(true) end }
     sell(voice)
@@ -374,7 +380,7 @@ end
 
 ------------------------------------------------------------------ Zapdos settlements
 do
-  local body = "local Z = Z\n" .. section("    function Z.finishSell()", "    function Z.openOutcome()")
+  local body = "local Z = Z\n" .. section("    Z.MAIL_LINE = ", "    function Z.openOutcome()")
   local function extra(w)
     w.bird = true
     return { Z = { findJobMon = function() return w.bird and {} or nil end,
