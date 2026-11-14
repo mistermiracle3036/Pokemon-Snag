@@ -278,6 +278,69 @@ do
   end
 end
 
+------------------------------------------------------------------ the courtesy BALL (0.17.27, REQUESTS 915)
+-- The dead-end test must agree with the sale: whoever cannot sell, and has no BALLs, gets the BALL.
+do
+  local body = section("    local function hasSellableSnaggedMon()", "    -- One-time retro-fit")
+    .. section("    local function runFenceSale(voice)", "    -- The Route 36 fence: a professional")
+    .. section("    local ROUTE36_VOICE = {", "\n    }\n") .. "\n    }\n"
+    .. "\nreturn runFenceSale, ROUTE36_VOICE, isDeadEnded, hasSellableSnaggedMon\n"
+  local function fence(opts)
+    opts.env = function(w)
+      return {
+        snagBallsHeld = function() return w.inv.SNAG_BALL or 0 end,
+        isReservedMon = function(mon) return mon.reserved == true end,
+        F = { isRescue = function() return false end, isRui = function() return false end },
+        ensureBountyFlag = function() end,
+        snagPayoutBreakdown = function() return { total = 3, base = 3, levelBonus = 0, rarityBonus = 0, vipBonus = 0 } end,
+        monName = function() return "RATTATA" end,
+        SnagChoiceBox = { new = function(_, cb) return { cb = cb } end },
+        fset = function() end,
+      }
+    end
+    local w = world(opts)
+    w.sell, w.voice, w.dead, w.sellable = w.run(body)
+    w.overworld = { selectPartyMon = function(_, _, cb) cb(2, w.target) end }
+    w.mod.game.stack = { push = function(_, box) box.cb(true) end }
+    function w.talk() w.sell(w.voice); return w.take() end
+    return w
+  end
+  local GIVE = "FENCE: No BALLs,\nno goods.\fYou're no use to\nme like that.\fHere. One SNAG\nBALL. On credit.\fDon't waste it."
+
+  local w = fence({ fainted = true })
+  check("no BALLs, fainted reserve: nothing sellable", w.sellable(), false)
+  check("no BALLs, fainted reserve: dead-ended", w.dead(), true)
+  check("no BALLs, fainted reserve: he gives the BALL", w.talk(), GIVE)
+  check("no BALLs, fainted reserve: one BALL, POKEMON kept", w.state(), "party=2 item=nil bagItem=nil balls=1")
+  w.talk()
+  check("re-talk while holding it: no second BALL", w.inv.SNAG_BALL, 1)
+  check("re-talk while holding it: POKEMON still kept", #w.save.party, 2)
+
+  w = fence({ item = "FLOWER_MAIL" })
+  check("no BALLs, MAIL on the candidate: dead-ended", w.dead(), true)
+  check("no BALLs, MAIL on the candidate: he gives the BALL", w.talk(), GIVE)
+  check("no BALLs, MAIL on the candidate: MAIL and POKEMON kept", w.state(), "party=2 item=FLOWER_MAIL bagItem=nil balls=1")
+
+  w = fence({})
+  check("control, healthy reserve: sellable", w.sellable(), true)
+  check("control, healthy reserve: not dead-ended", w.dead(), false)
+  w.talk()
+  check("control, healthy reserve: an ordinary sale, no courtesy BALL", w.state(), "party=1 item=nil bagItem=nil balls=3")
+
+  w = fence({}); w.target.reserved = true
+  check("no BALLs, only a reserved job target: dead-ended, as before", w.dead(), true)
+  w = fence({}); w.target.snagged = false
+  check("no BALLs, nothing stolen: dead-ended, as before", w.dead(), true)
+  w = fence({ fainted = true }); w.inv.SNAG_BALL = 2
+  check("BALLs in hand: never dead-ended", w.dead(), false)
+  w = fence({ fainted = true }); w.full = true
+  check("no BALLs, BAG full: his full-BAG line", w.talk(), "FENCE: Your BAG's\nfull. Clear space.")
+  check("no BALLs, BAG full: nothing given", w.inv.SNAG_BALL, nil)
+  w = fence({ party = { { species = "CYNDAQUIL", hp = 0 }, { species = "EGG", isEgg = true, hp = 5 } } })
+  w.save.party[#w.save.party + 1] = w.target
+  check("no BALLs, reserve is a fainted one and an EGG: dead-ended", w.dead(), true)
+end
+
 print(("%d passed, %d failed"):format(passes, fails))
 print(fails == 0 and "ALL PASS" or "FAILED")
 os.exit(fails == 0 and 0 or 1)

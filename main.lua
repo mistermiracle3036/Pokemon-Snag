@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.26"
+  local VERSION = "0.17.27"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -3179,10 +3179,19 @@ return function(mod)
     -- job target is NOT sellable, so a player holding only that one still
     -- counts as dead-ended and still gets the courtesy BALL.
     local function hasSellableSnaggedMon()
+      -- 0.17.27 (REQUESTS 915): the SAME conditions the sale itself applies
+      -- since 0.17.26 -- another HEALTHY POKEMON must stay behind and the
+      -- candidate may not carry MAIL. This used to count any non-EGG party
+      -- member whatever its HP and never looked at MAIL, so with no BALLs,
+      -- one stolen POKEMON and only a fainted reserve (or MAIL on the
+      -- candidate) the fence withheld the courtesy BALL as "you have goods"
+      -- and then refused to buy them.
       local party = mod.game and mod.game.save and mod.game.save.party
-      if type(party) ~= "table" or battlers(party) < 2 then return false end
+      if type(party) ~= "table" then return false end
       for _, mon in ipairs(party) do
-        if mon and mon.snagged == true and not isReservedMon(mon) then
+        if type(mon) == "table" and mon.snagged == true
+            and not isReservedMon(mon) and not I.holdsMail(mon)
+            and I.healthyBesides(party, mon) then
           return true
         end
       end

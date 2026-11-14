@@ -1,3 +1,11 @@
+## 0.17.27 - The spare SNAG BALL when you cannot sell (private test)
+
+**New in 0.17.27:** a fence hands you one SNAG BALL on credit when you
+have none left and nothing he can buy. Since 0.17.26 he will not buy your
+last healthy POKEMON or one carrying MAIL, but he still counted those as
+goods, so he gave no BALL and then refused the sale. Now, if he cannot buy
+what you have, you get the spare BALL.
+
 ## 0.17.26 - Fences give your held item back (private test)
 
 **New in 0.17.26:** whenever a fence, the BROKER or the FOREMAN takes a
