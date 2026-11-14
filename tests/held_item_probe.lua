@@ -226,6 +226,7 @@ do
   w = job({ item = "BERRY" }); w.releaseOk = false
   check("repeat job, removal fails: why", select(2, w.env.R.finish()), "remove")
   check("repeat job, removal fails: item put back", w.target.item .. ":" .. w.inv.BERRY, "BERRY:0")
+  check("repeat job, removal fails: the pay is taken back (0.17.28)", w.inv.SNAG_BALL, 0)
   w = job({ item = "BERRY" }); table.remove(w.save.party, 2); w.save.boxes[1] = { w.target }
   check("repeat job, target in the PC with an item: settles", w.env.R.finish(), true)
   check("repeat job, target in the PC: item back, box empty", w.inv.BERRY .. ":" .. #w.save.boxes[1], "1:0")
@@ -254,6 +255,21 @@ do
   check("ZAPDOS sell, no room for the item: stalls", w.env.Z.finishSell(), false)
   check("ZAPDOS sell, no room for the item: bird kept with its item", #w.save.party .. ":" .. w.target.item, "2:BERRY")
   check("ZAPDOS sell, no room for the item: line", w.take(), "No room in BAG.\nClear some space.")
+  -- 0.17.28 (REQUESTS 931): nothing is paid while the bird stays
+  check("ZAPDOS sell, no room for the item: not paid", tostring(w.inv.SNAG_BALL) .. ":" .. tostring(w.inv.HEIST_BALL), "nil:nil")
+  check("ZAPDOS sell, no room for the item: no paid flag", w.store.g2_zapdos_sell_snag_paid, nil)
+  do
+    local p = zap({ item = "BERRY" }); p.full = { HEIST_BALL = true }
+    check("ZAPDOS sell, second payment has no room: stalls", p.env.Z.finishSell(), false)
+    check("ZAPDOS sell, second payment has no room: item back on the bird", p.target.item .. ":" .. p.inv.BERRY, "BERRY:0")
+    check("ZAPDOS sell, second payment has no room: bird kept", #p.save.party, 2)
+    p.full = nil
+    check("ZAPDOS sell, second payment, then room: completes", p.env.Z.finishSell(), true)
+    check("ZAPDOS sell, second payment, then room: each paid once", p.state() .. " heist=" .. p.inv.HEIST_BALL, "party=1 item=nil bagItem=1 balls=20 heist=10")
+    local r = zap({ item = "BERRY" }); r.full = { BERRY = true }
+    check("ZAPDOS release, no room for the item: stalls", r.env.Z.finishRelease(), false)
+    check("ZAPDOS release, no room for the item: no tape yet", r.inv.OPEN_WATER_TAPE, nil)
+  end
   w.full = nil
   check("ZAPDOS sell, then room: completes", w.env.Z.finishSell(), true)
   check("ZAPDOS sell, then room: paid once", w.state(), "party=1 item=nil bagItem=1 balls=20")

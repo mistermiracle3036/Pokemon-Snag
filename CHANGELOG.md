@@ -1,3 +1,14 @@
+## 0.17.28 - No lost MEOWTH on a full bag (private test)
+
+**New in 0.17.28:** on Red, Blue and Yellow, handing the MEOWTH to the
+recruiter on ROUTE 24 with a full bag used to take the MEOWTH and pay
+nothing. Now he checks first: with no room for the five SNAG BALLs you
+are told your bag is full and the MEOWTH stays yours. He and the Kanto
+fences also no longer take a POKEMON when every other one you have has
+fainted. On Gold, Silver and Crystal, the ZAPDOS ending and repeat jobs
+no longer pay you while the POKEMON stays behind because your BAG had no
+room for what it was holding.
+
 ## 0.17.27 - The spare SNAG BALL when you cannot sell (private test)
 
 **New in 0.17.27:** a fence hands you one SNAG BALL on credit when you

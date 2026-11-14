@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.27"
+  local VERSION = "0.17.28"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -1958,6 +1958,13 @@ return function(mod)
         local removed, reason = R.removeJobMon()
         if not removed then
           I.putHeldBack(save, mon, held)
+          -- 0.17.28 (REQUESTS 931): no hand-over, no pay. The payout just
+          -- above is taken back so a refused removal cannot leave the
+          -- player paid and still holding the target.
+          if c.terms.payout > 0 then
+            Bag.remove(save, "SNAG_BALL", c.terms.payout,
+              mod.game and mod.game.data)
+          end
           return false, reason or "remove"
         end
       end
@@ -4687,10 +4694,17 @@ return function(mod)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and data) then return false end
+      -- 0.17.28 (REQUESTS 931): the held item comes off FIRST. 0.17.26 took
+      -- it after the two payments, so a full item pocket left the player
+      -- paid and still holding the bird. A payment that fails below puts
+      -- the item back on the bird.
+      local took, heldItem = Z.takeHeld(save, mon)
+      if not took then return false end
       local paidNow = false
       if mod.save:get("g2_zapdos_sell_snag_paid", false) ~= true then
         -- gift_jingle: exempt (the settlement line below goes through GiftLine.line)
         if Bag.add(save, "SNAG_BALL", 20, data) ~= true then
+          I.putHeldBack(save, mon, heldItem)
           mod.world:queueScript({ { "text", "No BALL room.\nClear your BAG." } })
           return false
         end
@@ -4700,16 +4714,15 @@ return function(mod)
       if mod.save:get("g2_zapdos_sell_heist_paid", false) ~= true then
         -- gift_jingle: exempt (the settlement line below goes through GiftLine.line)
         if Bag.add(save, "HEIST_BALL", 10, data) ~= true then
+          I.putHeldBack(save, mon, heldItem)
           mod.world:queueScript({ { "text", "No HEIST room.\nClear your BAG." } })
           return false
         end
         mod.save:set("g2_zapdos_sell_heist_paid", true)
         paidNow = true
       end
-      local took, held = Z.takeHeld(save, mon)
-      if not took then return false end
       if not Z.removeJobMon() then
-        I.putHeldBack(save, mon, held)
+        I.putHeldBack(save, mon, heldItem)
         errs("ZAPDOS SELL\nmon missing")
         return false
       end
@@ -4739,22 +4752,24 @@ return function(mod)
       local game = mod.game
       local save, data = game and game.save, game and game.data
       if not (save and data) then return false end
+      -- 0.17.28 (REQUESTS 931): held item first, as in Z.finishSell.
+      local took, heldItem = Z.takeHeld(save, mon)
+      if not took then return false end
       local gaveTape = false
       if mod.save:get("g2_zapdos_tape_paid", false) ~= true then
         local held = save.inventory
           and (tonumber(save.inventory.OPEN_WATER_TAPE) or 0) > 0
         -- gift_jingle: exempt (the tape line below goes through GiftLine.line)
         if not held and Bag.add(save, "OPEN_WATER_TAPE", 1, data) ~= true then
+          I.putHeldBack(save, mon, heldItem)
           mod.world:queueScript({ { "text", "No KEY ITEM room.\nClear your BAG." } })
           return false
         end
         mod.save:set("g2_zapdos_tape_paid", true)
         gaveTape = not held
       end
-      local took, held = Z.takeHeld(save, mon)
-      if not took then return false end
       if not Z.removeJobMon() then
-        I.putHeldBack(save, mon, held)
+        I.putHeldBack(save, mon, heldItem)
         errs("ZAP RELEASE\nmon missing")
         return false
       end
@@ -6704,6 +6719,20 @@ return function(mod)
     return computeSnagPayout(game, mon, VIP_CLASSES)
   end
 
+  -- 0.17.28 (REQUESTS 931). Gen 1 has no eggs and no held items, so
+  -- "another healthy POKEMON" is HP alone. Kept on mod.exports (private,
+  -- underscore) rather than a new local: this function is at Lua's
+  -- 200-local limit.
+  mod.exports._healthyBesidesGen1 = function(party, mon)
+    for _, other in ipairs(party or {}) do
+      if other ~= mon and type(other) == "table"
+          and (tonumber(other.hp) or 0) > 0 then
+        return true
+      end
+    end
+    return false
+  end
+
   mod.content.commands:register("snag_quest:sell_snagged", {
     foreground = true,
     fn = function(ctx)
@@ -6744,7 +6773,9 @@ return function(mod)
       for i, mon in ipairs(party) do
         if mon == picked then slot = i break end
       end
-      if not slot then
+      -- 0.17.28 (REQUESTS 931): another POKEMON with HP must stay behind;
+      -- the size guard above counted a fainted one.
+      if not slot or not mod.exports._healthyBesidesGen1(party, picked) then
         ctx.lastCheck = false
         return
       end
@@ -7060,6 +7091,25 @@ return function(mod)
         ctx.lastCheck = false
         return
       end
+      -- 0.17.28 (REQUESTS 931). The reward is a give_item row AFTER this
+      -- command, and Commands.give_item halts the script when the bag
+      -- refuses (src/script/Commands.lua, the Bag.add guard), so a full bag
+      -- took the MEOWTH and paid nothing, with FLAG_DONE never set. Room
+      -- for the reward is proven BEFORE the picker opens, by adding the
+      -- Balls and taking them straight back out; with no room the engine's
+      -- own bag-full text shows and the script ends ("end" halts it,
+      -- src/script/ScriptRunner.lua), exactly as give_item itself would.
+      -- Nothing is picked and nothing is taken.
+      local Bag = require("src.inventory.Bag")
+      local data = ctx.game and ctx.game.data
+      if Bag.add(ctx.save, "SNAG_BALL", QUEST_REWARD_BALLS, data) then
+        Bag.remove(ctx.save, "SNAG_BALL", QUEST_REWARD_BALLS, data)
+      else
+        require("src.script.Commands").show_text(ctx,
+          (data and data.text and data.text._BagFullText)
+          or "You can't carry\nany more items!")
+        return "end"
+      end
       local picked
       Screens.push(ctx.game, "PartyMenu", {
         pickOnly = true,
@@ -7075,7 +7125,13 @@ return function(mod)
       for i, mon in ipairs(party) do
         if mon == picked then slot = i break end
       end
-      if slot then table.remove(party, slot) end
+      -- Another POKEMON with HP must stay behind (developer decision
+      -- 2026-11-12); the size guard above counted a fainted one.
+      if not slot or not mod.exports._healthyBesidesGen1(party, picked) then
+        ctx.lastCheck = false
+        return
+      end
+      table.remove(party, slot)
       ctx.lastCheck = true
     end,
   })
