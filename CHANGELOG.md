@@ -1,3 +1,10 @@
+## 0.17.29 - Credits screen catches up (private test)
+
+**New in 0.17.29:** the CREDITS screen (START, then CREDITS) now shows
+pictures for Polished Crystal art and for the added POKEMON, colours every
+picture the way the game itself does, and its menu description ("Who made
+the art") fits its box. Nothing in Snag's own quests changed.
+
 ## 0.17.28 - No lost MEOWTH on a full bag (private test)
 
 **New in 0.17.28:** on Red, Blue and Yellow, handing the MEOWTH to the
