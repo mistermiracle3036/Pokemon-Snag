@@ -44,7 +44,7 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.29"
+  local VERSION = "0.17.30"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
@@ -1630,6 +1630,15 @@ return function(mod)
 
     local function ensureContractMark(world)
       if contractStage() ~= CONTRACT_ACTIVE then return true end
+      -- 0.17.30 (REQUESTS 944): only spawn while standing on the mark's own
+      -- map. Taking the job from the broker used to spawn the mark at once,
+      -- off-map, where placeOrShift cannot measure and hands back the fixed
+      -- cell -- so it skipped the free-cell search and could land on another
+      -- mod's NPC. The map.entered and world.stepped handlers below spawn
+      -- it on arrival, with the search.
+      if not (world and world.map and world.map.id == MARK_MAP) then
+        return true
+      end
       local key = contractChoice()
       local c = key and CONTRACTS[key]
       local carrier = key and contractCarriers[key]
@@ -1721,6 +1730,11 @@ return function(mod)
       local obj = objectNamed(world, c.map, ECRUTEAK_MARK_NAME)
       if obj then
         if not obj.trainer then armEcruteakMark(world) end
+        return true
+      end
+      -- 0.17.30 (REQUESTS 944): spawn only while on the mark's own map, so
+      -- the free-cell search runs; see ensureContractMark.
+      if not (world and world.map and world.map.id == c.map) then
         return true
       end
       local x, y = placeOrShift(world, c.map, c.x, c.y)
@@ -2784,6 +2798,11 @@ return function(mod)
         if not S.selectTeam() then
           mod.world:queueScript({
             { "text", "PETREL: Three\nstolen mons only." },
+            -- 0.17.30 (REQUESTS 1021): the pit takes any POKEMON marked
+            -- snagged, and a Shadow rescue is marked too, which no line
+            -- said. FOR TESTING -- the Orchestrator's wording (developer's
+            -- go-ahead 2026-11-17), NOT approved.
+            { "text", "Rescued ones count\ntoo. Stolen twice." },
             { "text", "First three stolen\nmons take the pit." },
           })
           return true
@@ -3996,9 +4015,16 @@ return function(mod)
         if isSailor then
           I.afterMenu()
         else
+          -- 0.17.30 (REQUESTS 1021): "You got your cut" was said as soon as
+          -- the MEOWTH was taken, before the sailor had paid (or after a
+          -- full BAG refused the fee). FOR TESTING -- "Go ask him" is the
+          -- Orchestrator's wording (developer's go-ahead 2026-11-17), NOT
+          -- approved. The shipped line is approved and stays for the paid
+          -- case.
           mod.world:queueScript({
             { "text", "I paid him! You\nnever asked me." },
-            { "text", "You got your cut.\nNow leave." },
+            { "text", rewardClaimed() and "You got your cut.\nNow leave."
+              or "Go ask him for\nyour cut. Go on." },
           })
         end
         return
@@ -4563,6 +4589,20 @@ return function(mod)
           { "text", "Save that BALL.\nIt is for ZAPDOS." },
         })
       elseif s == Z.CAUGHT then
+        -- 0.17.30 (REQUESTS 1021, dialogue audit): "Bird's yours" was said
+        -- on the stage alone, so it was false once the player had released
+        -- the job's ZAPDOS (PROTON already handles that through Z.openLost).
+        -- FOR TESTING -- the two "No bird?" pages are the Orchestrator's
+        -- wording on the developer's go-ahead of 2026-11-17 ("you can write
+        -- them now ... for testing"), NOT approved: they lock only on the
+        -- developer's word. The shipped pages below are approved and stay.
+        if not Z.findJobMon() then
+          mod.world:queueScript({
+            { "text", "FOREMAN: No bird?\nThen no deal." },
+            { "text", "Tell PROTON. He\ncloses the file." },
+          })
+          return true
+        end
         mod.world:queueScript({
           { "text", "FOREMAN: Bird's\nyours. Settle it." },
           { "text", "Finish where you\ntook it." },

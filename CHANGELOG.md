@@ -1,3 +1,13 @@
+## 0.17.30 - Three lines that could be wrong (private test)
+
+**New in 0.17.30:** three people no longer say something untrue. The
+FOREMAN stops telling you "Bird's yours" after you have let the ZAPDOS go.
+The lass on ROUTE 29 no longer says you got your cut before the sailor has
+paid you. PETREL now mentions that rescued POKEMON count for the fighting
+pit too. The new wording is on trial and may change. Also, the people you
+are sent to rob in GOLDENROD and around ECRUTEAK now step aside if someone
+else is already standing on their spot.
+
 ## 0.17.29 - Credits screen catches up (private test)
 
 **New in 0.17.29:** the CREDITS screen (START, then CREDITS) now shows
