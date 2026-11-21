@@ -26,7 +26,11 @@
 -- data. Coloured-or-grey is read from the pixels; a Pokemon picture takes the
 -- species' battle colours from the game's own tables; a walker takes its
 -- registered palette; with nothing known, greys -- never another palette.
-local LIB_VERSION = 7
+-- v8 (2026-11-21, REQUESTS 432/1056; developer "Yes, Pokedex version", then
+-- "Yes, build it" on UI Theme's mock): under UI THEME's DEX+WATCH both pages
+-- draw through ui_theme's look.credits; VANILLA and no ui_theme draw the
+-- approved white pages unchanged.
+local LIB_VERSION = 8
 local DESC = { "Who made", "the art" }
 local ROW_ID = "credits:book"
 local CRYSTAL = "CRYSTAL"
@@ -382,22 +386,40 @@ function Credits.attach(mod, initialEntries)
       if path then return path, colour end
       return registeredSprite(c.walk)
     end
-    local function drawWalker(c, x, y)
-      local path, colour = walkerPath(c)
-      local img = path and image(path)
-      if not img then return false end
-      local quad = love.graphics.newQuad(0, 0, 16, 16, img:getDimensions())
+    -- A picture resolved once: {image, quad, colors, trueColor}, the shape
+    -- UI Theme's look.credits takes (REQUESTS 1056), drawn the same here.
+    local walkerArts, portraitArts = {}, {}
+    local function walkerArt(c)
+      if walkerArts[c] == nil then
+        local path, colour = walkerPath(c)
+        local img = path and image(path)
+        if img then
+          -- the registered palette (registry), else the palette the mod registered
+          -- the sprite with; with neither, the greys as drawn -- never a guess
+          walkerArts[c] = { image = img, quad = love.graphics.newQuad(0, 0, 16, 16, img:getDimensions()),
+            colors = not colour and (objColors(c.pal) or whiteZero(registeredPalette(path))) or nil,
+            trueColor = colour == true }
+        else
+          walkerArts[c] = false
+        end
+      end
+      return walkerArts[c] or nil
+    end
+    local function drawArt(a, x, y)
       love.graphics.setColor(1, 1, 1, 1)
-      -- the registered palette (registry), else the palette the mod registered
-      -- the sprite with; with neither, the greys as drawn -- never a guess
-      local colors = not colour and (objColors(c.pal) or whiteZero(registeredPalette(path))) or nil
-      paletted(colors, colour, function()
-        love.graphics.draw(img, quad, x, y)
+      paletted(a.colors, a.trueColor, function()
+        if a.quad then love.graphics.draw(a.image, a.quad, x, y) else love.graphics.draw(a.image, x, y) end
       end)
       love.graphics.setColor(0, 0, 0, 1)
+    end
+    local function drawWalker(c, x, y)
+      local a = walkerArt(c)
+      if not a then return false end
+      drawArt(a, x, y)
       return true
     end
-    local function drawPortrait(c, x, y)
+    local function portraitArt(c)
+      if portraitArts[c] ~= nil then return portraitArts[c] or nil end
       local path, colors, colour
       if c.battleBy == CRYSTAL and c.battleClass then
         -- the battle intro's own lookup (BattleState.trainerArt) and colours
@@ -420,10 +442,13 @@ function Credits.attach(mod, initialEntries)
         end
       end
       local img = path and image(path)
-      if not img then return false end
-      love.graphics.setColor(1, 1, 1, 1)
-      paletted(colors, colour, function() love.graphics.draw(img, x, y) end)
-      love.graphics.setColor(0, 0, 0, 1)
+      portraitArts[c] = img and { image = img, colors = colors, trueColor = colour == true } or false
+      return portraitArts[c] or nil
+    end
+    local function drawPortrait(c, x, y)
+      local a = portraitArt(c)
+      if not a then return false end
+      drawArt(a, x, y)
       return true
     end
 
@@ -516,6 +541,20 @@ function Credits.attach(mod, initialEntries)
 
     function state:update(_dt)
       local input = game.input
+      if self.detail and self.dexShown then
+        -- the Pokedex page shows USED IN names whole and says how many fit,
+        -- so it pages by that count (REQUESTS 1056)
+        local d = self.detail
+        d.usedFirst, d.usedBack = d.usedFirst or 1, d.usedBack or {}
+        if input:wasPressed("b") then self.detail, self.usedTop = nil, 0
+        elseif input:wasPressed("down") and d.usedFirst + self.dexShown <= #d.used then
+          d.usedBack[#d.usedBack + 1] = d.usedFirst
+          d.usedFirst = d.usedFirst + self.dexShown
+        elseif input:wasPressed("up") and #d.usedBack > 0 then
+          d.usedFirst = table.remove(d.usedBack)
+        end
+        return
+      end
       if self.detail then
         local rows = math.ceil(#self.detail.used / 2)
         if input:wasPressed("b") then self.detail, self.usedTop = nil, 0
@@ -650,7 +689,71 @@ function Credits.attach(mod, initialEntries)
         Font.drawCode(mod.ui.Theme.moreArrow or 0xEE, 152, y + (d.usedRows - 1) * 16)
       end
     end
+    -- UI Theme's Pokedex look (REQUESTS 432/1056; developer 2026-11-21: "Yes,
+    -- Pokedex version"). look.credits exists only under DEX+WATCH; absent
+    -- (VANILLA, or ui_theme not installed) the approved white pages draw.
+    -- Asked every frame, never by version, pcall-wrapped (ADOPT.md).
+    local function uiCredits()
+      local find = mod.find
+      if type(find) ~= "function" then return nil end
+      local ok, look = pcall(function()
+        local ui = find("ui_theme")
+        return ui and ui.exports and ui.exports.look and ui.exports.look(game)
+      end)
+      return ok and type(look) == "table" and type(look.credits) == "function" and look.credits or nil
+    end
+    local function creditsOf(d)
+      local c = d.character
+      local list = {}
+      if c and (c.walkBy or c.battleBy) then
+        if c.walkBy then list[#list + 1] = { "WALK/", c.walkBy } end
+        if c.battleBy then list[#list + 1] = { "BATTLE/", c.battleBy } end
+      else
+        list[1] = { "ART/", d.artist }
+      end
+      return list
+    end
+    local function dexArtist(paint)
+      local page = pages[state.artist]
+      if not page then
+        paint({ page = "artist", header = "ARTIST", right = "", name = "", rows = {}, cur = 0, first = 1 })
+        return
+      end
+      local rows = {}
+      for i, row in ipairs(page.rows) do
+        local c = row.character
+        rows[i] = { text = display(row.text), heading = row.heading or nil,
+          art = c and c.walk and walkerArt(c) or nil }
+      end
+      paint({ page = "artist", header = "ARTIST", right = tostring(state.artist) .. "/" .. #pages,
+        name = display(page.entry.artist), rows = rows, cur = page.cursor, first = page.top,
+        more = page.top + VISIBLE <= #page.rows })
+    end
+    local function dexDetail(paint)
+      local d = state.detail
+      local c = d.character
+      local name = (c and c.name or d.row.work):upper()
+      local list = {}
+      for i, cr in ipairs(creditsOf(d)) do list[i] = { cr[1], display(cr[2]) } end
+      local used = {}
+      for i, m in ipairs(d.used) do used[i] = display(m) end
+      local first = d.usedFirst or 1
+      local shown = paint({ page = "character", name = display(c and name or d.row.work),
+        portrait = c and portraitArt(c) or nil, walker = c and c.walk and walkerArt(c) or nil,
+        credits = list, creditText = (c and d.row.work:upper() ~= name) and display(d.row.work) or nil,
+        used = used, usedFirst = first })
+      state.dexShown = math.max(1, tonumber(shown) or #used)
+    end
     function state:draw()
+      local paint = uiCredits()
+      if paint then
+        local ok, err = pcall(function()
+          if self.detail then dexDetail(paint) else dexArtist(paint) end
+        end)
+        if ok then return end
+        report("POKEDEX CREDITS\n" .. tostring(err))
+      end
+      self.dexShown = nil
       love.graphics.setColor(1, 1, 1, 1)
       love.graphics.rectangle("fill", 0, 0, 160, 144)
       love.graphics.setColor(0, 0, 0, 1)

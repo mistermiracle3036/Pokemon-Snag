@@ -44,12 +44,12 @@ return function(mod)
   -- "Pokemon Snag nil loaded" and BattleState._snagQuestWrapped, the
   -- stamp that answers "which code is live", was stamped nil. Keep this
   -- at the top; keep it equal to manifest.json.
-  local VERSION = "0.17.30"
+  local VERSION = "0.17.31"
   mod.exports.version = VERSION
 
   -- In-game artist credits (0.17.12, REQUESTS 29): START -> CREDITS.
   -- lib/credits.lua is SHARED code (Credits-Book/lib/credits.lua, library
-  -- v7 since 0.17.29) and lib/credits_data.lua is GENERATED from sprites/REGISTRY.json
+  -- v8 since 0.17.31) and lib/credits_data.lua is GENERATED from sprites/REGISTRY.json
   -- (exchange/credits_table.py --mod Pokemon-Snag); both are byte-for-byte
   -- copies and neither may be edited here. The library elects one CREDITS
   -- row across every embedding mod. In addition to THIRD_PARTY_NOTICES.md,

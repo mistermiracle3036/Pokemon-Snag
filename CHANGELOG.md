@@ -1,3 +1,10 @@
+## 0.17.31 - Credits in the Pokedex (private test)
+
+**New in 0.17.31:** with **UI Theme** set to DEX+WATCH, START, then
+CREDITS now opens the credits inside the Pokedex. On the VANILLA look, or
+without UI Theme, the credits look exactly as before. Nothing in Snag's
+own quests changed.
+
 ## 0.17.30 - Three lines that could be wrong (private test)
 
 **New in 0.17.30:** three people no longer say something untrue. The
